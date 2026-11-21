@@ -1,0 +1,10 @@
+# Dependências
+node_modules/
+
+# Builds
+dist/
+.next/
+*.tsbuildinfo
+
+# Variáveis de ambiente (credenciais)
+.env*

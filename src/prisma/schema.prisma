@@ -1,0 +1,313 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ==========================================
+// ENUMS DO DOMÍNIO
+// ==========================================
+
+enum UserRole {
+  ADMIN
+  OPERATOR
+  CLIENT
+}
+
+enum WorkOrderStatus {
+  DRAFT           // Rascunho inicial
+  QUOTE           // Orçamento aguardando aprovação
+  APPROVED        // Orçamento aprovado pelo cliente
+  IN_PROGRESS     // Em execução na oficina
+  WAITING_PARTS   // Bloqueado aguardando peças
+  COMPLETED       // Serviço concluído fisicamente
+  BILLED          // Faturado e pago
+  CANCELLED       // Cancelado
+}
+
+enum WorkOrderItemType {
+  SERVICE
+  PRODUCT
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  ATTENDED
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum TransactionStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+enum PaymentMethod {
+  PIX
+  CREDIT_CARD
+  DEBIT_CARD
+  CASH
+  BANK_TRANSFER
+}
+
+enum PaymentGateway {
+  MERCADO_PAGO
+  MANUAL
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REFUNDED
+}
+
+// ==========================================
+// AUTENTICAÇÃO E PERFIS
+// ==========================================
+
+model User {
+  id           String    @id @default(uuid()) @db.Uuid
+  name         String    @db.VarChar(150)
+  email        String    @unique @db.VarChar(255)
+  passwordHash String    @map("password_hash") @db.VarChar(255)
+  phone        String?   @db.VarChar(20)
+  role         UserRole  @default(CLIENT)
+  isActive     Boolean   @default(true) @map("is_active")
+
+  client       Client?
+  workOrders   WorkOrder[] @relation("OperatorWorkOrders")
+
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@index([role])
+  @@map("users")
+}
+
+model Client {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String?   @unique @map("user_id") @db.Uuid
+  name         String    @db.VarChar(150)
+  document     String    @unique @db.VarChar(20) // CPF ou CNPJ (somente números)
+  phone        String    @db.VarChar(20)
+  email        String?   @db.VarChar(255)
+  address      String?   @db.VarChar(255)
+  city         String?   @db.VarChar(100)
+  state        String?   @db.Char(2)
+
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  vehicles     Vehicle[]
+  workOrders   WorkOrder[]
+  appointments Appointment[]
+
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@index([document])
+  @@index([name])
+  @@map("clients")
+}
+
+model Vehicle {
+  id           String    @id @default(uuid()) @db.Uuid
+  clientId     String    @map("client_id") @db.Uuid
+  licensePlate String    @unique @map("license_plate") @db.VarChar(10) // Padrão Mercosul ou Antigo
+  brand        String    @db.VarChar(60)
+  model        String    @db.VarChar(80)
+  year         Int
+  color        String?   @db.VarChar(30)
+  currentKm    Int       @default(0) @map("current_km")
+  chassis      String?   @db.VarChar(30)
+  notes        String?   @db.Text
+
+  client       Client        @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  workOrders   WorkOrder[]
+  appointments Appointment[]
+
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@index([licensePlate])
+  @@index([clientId])
+  @@map("vehicles")
+}
+
+// ==========================================
+// CATÁLOGO DE PRODUTOS E SERVIÇOS
+// ==========================================
+
+model Service {
+  id               String          @id @default(uuid()) @db.Uuid
+  name             String          @db.VarChar(120)
+  description      String?         @db.Text
+  basePrice        Decimal         @map("base_price") @db.Decimal(10, 2)
+  estimatedMinutes Int             @default(60) @map("estimated_minutes")
+  isActive         Boolean         @default(true) @map("is_active")
+
+  items            WorkOrderItem[]
+
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  @@index([isActive])
+  @@map("services")
+}
+
+model Product {
+  id            String          @id @default(uuid()) @db.Uuid
+  sku           String          @unique @db.VarChar(50) // Código interno ou de barras
+  name          String          @db.VarChar(150)
+  description   String?         @db.Text
+  costPrice     Decimal         @map("cost_price") @db.Decimal(10, 2)
+  salePrice     Decimal         @map("sale_price") @db.Decimal(10, 2)
+  stockQuantity Int             @default(0) @map("stock_quantity")
+  minStock      Int             @default(2) @map("min_stock")
+  isActive      Boolean         @default(true) @map("is_active")
+
+  items         WorkOrderItem[]
+
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  @@index([sku])
+  @@index([isActive])
+  @@map("products")
+}
+
+// ==========================================
+// ORDENS DE SERVIÇO E ITENS
+// ==========================================
+
+model WorkOrder {
+  id              String            @id @default(uuid()) @db.Uuid
+  code            Int               @unique @default(autoincrement()) // OS #1001, #1002...
+  clientId        String            @map("client_id") @db.Uuid
+  vehicleId       String            @map("vehicle_id") @db.Uuid
+  operatorId      String?           @map("operator_id") @db.Uuid
+  status          WorkOrderStatus   @default(DRAFT)
+
+  totalServices   Decimal           @default(0.00) @map("total_services") @db.Decimal(10, 2)
+  totalProducts   Decimal           @default(0.00) @map("total_products") @db.Decimal(10, 2)
+  discount        Decimal           @default(0.00) @db.Decimal(10, 2)
+  finalAmount     Decimal           @default(0.00) @map("final_amount") @db.Decimal(10, 2)
+
+  reportedIssue   String?           @map("reported_issue") @db.Text // Relato do cliente
+  technicalNotes  String?           @map("technical_notes") @db.Text // Diagnóstico mecânico
+
+  client          Client            @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  vehicle         Vehicle           @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  operator        User?             @relation("OperatorWorkOrders", fields: [operatorId], references: [id], onDelete: SetNull)
+  items           WorkOrderItem[]
+  transactions    CashTransaction[]
+  paymentLogs     PaymentLog[]
+
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+  finishedAt      DateTime?         @map("finished_at")
+
+  @@index([clientId])
+  @@index([vehicleId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("work_orders")
+}
+
+model WorkOrderItem {
+  id          String            @id @default(uuid()) @db.Uuid
+  workOrderId String            @map("work_order_id") @db.Uuid
+  itemType    WorkOrderItemType @map("item_type")
+  serviceId   String?           @map("service_id") @db.Uuid
+  productId   String?           @map("product_id") @db.Uuid
+
+  quantity    Int               @default(1)
+  unitPrice   Decimal           @map("unit_price") @db.Decimal(10, 2)
+  totalPrice  Decimal           @map("total_price") @db.Decimal(10, 2)
+
+  workOrder   WorkOrder         @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  service     Service?          @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  product     Product?          @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([workOrderId])
+  @@index([serviceId])
+  @@index([productId])
+  @@map("work_order_items")
+}
+
+// ==========================================
+// AGENDAMENTO
+// ==========================================
+
+model Appointment {
+  id           String            @id @default(uuid()) @db.Uuid
+  clientId     String            @map("client_id") @db.Uuid
+  vehicleId    String            @map("vehicle_id") @db.Uuid
+  scheduledFor DateTime          @map("scheduled_for")
+  status       AppointmentStatus @default(PENDING)
+  notes        String?           @db.Text
+
+  client       Client            @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  vehicle      Vehicle           @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @updatedAt @map("updated_at")
+
+  @@index([scheduledFor])
+  @@index([clientId])
+  @@index([status])
+  @@map("appointments")
+}
+
+// ==========================================
+// FINANCEIRO, CAIXA E GATEWAY
+// ==========================================
+
+model CashTransaction {
+  id            String            @id @default(uuid()) @db.Uuid
+  workOrderId   String?           @map("work_order_id") @db.Uuid
+  type          TransactionType
+  category      String            @db.VarChar(80) // ex.: "FATURAMENTO_OS", "PEÇAS_FORNECEDOR", "ALUGUEL"
+  amount        Decimal           @db.Decimal(10, 2)
+  paymentMethod PaymentMethod     @map("payment_method")
+  status        TransactionStatus @default(PENDING)
+  notes         String?           @db.Text
+  paidAt        DateTime?         @map("paid_at")
+
+  workOrder     WorkOrder?        @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  @@index([type])
+  @@index([status])
+  @@index([paidAt])
+  @@index([createdAt])
+  @@map("cash_transactions")
+}
+
+model PaymentLog {
+  id                String         @id @default(uuid()) @db.Uuid
+  workOrderId       String         @map("work_order_id") @db.Uuid
+  externalPaymentId String?        @unique @map("external_payment_id") @db.VarChar(100) // ID retornado pelo Mercado Pago
+  gateway           PaymentGateway @default(MERCADO_PAGO)
+  status            PaymentStatus  @default(PENDING)
+  payload           Json?          // Webhook bruto recebido para auditoria e idempotência
+
+  workOrder         WorkOrder      @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+
+  @@index([workOrderId])
+  @@index([externalPaymentId])
+  @@map("payment_logs")
+}

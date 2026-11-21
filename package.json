@@ -1,0 +1,37 @@
+{
+  "dependencies": {
+    "@nestjs/common": "^12.5.1",
+    "@nestjs/core": "^12.5.1",
+    "@nestjs/jwt": "^12.0.5",
+    "@nestjs/mapped-types": "^12.0.1",
+    "@nestjs/passport": "^12.0.2",
+    "@nestjs/platform-express": "^12.5.1",
+    "@prisma/client": "^6.19.3",
+    "bcrypt": "^6.0.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
+    "mercadopago": "^3.6.2",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^12.0.13",
+    "@types/bcrypt": "^6.0.0",
+    "@types/node": "^26.6.6",
+    "@types/passport-jwt": "^4.0.1",
+    "dotenv": "^18.0.10",
+    "prisma": "^6.19.3",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  },
+  "prisma": {
+    "schema": "src/prisma/schema.prisma",
+    "seed": "tsx src/prisma/seed.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/main.js",
+    "start:dev": "tsc && node --watch dist/main.js"
+  }
+}
