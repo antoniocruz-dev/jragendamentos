@@ -23,14 +23,16 @@
     "prisma": "^6.19.3",
     "ts-node": "^10.9.2",
     "tsx": "^4.23.15",
-    "typescript": "^7.0.2"
+    "typescript": "^6.0.3"
   },
   "prisma": {
     "schema": "src/prisma/schema.prisma",
     "seed": "tsx src/prisma/seed.ts"
   },
   "scripts": {
-    "build": "tsc",
+    "postinstall": "prisma generate",
+    "build": "prisma generate && nest build",
+    "prisma:migrate:deploy": "prisma migrate deploy",
     "start": "node dist/main.js",
     "start:dev": "tsc && node --watch dist/main.js"
   }

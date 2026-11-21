@@ -1,10 +1,15 @@
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // Runtime (funções serverless da Vercel): use a URL COM pooling (PgBouncer / pooler do provedor)
+  url       = env("DATABASE_URL")
+  // Migrations (prisma migrate): conexão DIRETA, sem pooler
+  directUrl = env("DIRECT_URL")
 }
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // "native" para o ambiente local; "rhel-openssl-3.0.x" é o Linux das funções da Vercel
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 // ==========================================

@@ -8,3 +8,7 @@ dist/
 
 # Variáveis de ambiente (credenciais)
 .env*
+!.env.example
+
+# Vercel CLI
+.vercel/

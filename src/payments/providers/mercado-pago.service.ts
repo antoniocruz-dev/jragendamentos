@@ -36,7 +36,8 @@ export class MercadoPagoService {
     clientDocument: string;
   }): Promise<PixPaymentResponse> {
     try {
-      const webhookUrl = `${process.env.API_PUBLIC_URL}/payments/webhook`;
+      // API_PUBLIC_URL = origem pública (ex.: https://seu-app.vercel.app), sem /api no final
+      const webhookUrl = `${process.env.API_PUBLIC_URL}/api/payments/webhook`;
       const nameParts = params.clientName.trim().split(' ');
       const firstName = nameParts[0] || 'Cliente';
       const lastName = nameParts.slice(1).join(' ') || 'Oficina';

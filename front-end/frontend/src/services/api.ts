@@ -1,4 +1,16 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+/**
+ * Base das chamadas à API (todas as chamadas são feitas no navegador, em Client Components).
+ *
+ * - Produção (Vercel Services): front e back no mesmo domínio → caminho relativo "/api".
+ *   NÃO defina NEXT_PUBLIC_API_URL na Vercel.
+ * - Desenvolvimento: NEXT_PUBLIC_API_URL aponta para a origem do Nest (ex.: http://localhost:3001),
+ *   sem "/api" no final; o prefixo é adicionado aqui.
+ */
+const API_ORIGIN =
+  process.env.NEXT_PUBLIC_API_URL ??
+  (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3001');
+
+const API_BASE_URL = `${API_ORIGIN.replace(/\/+$/, '')}/api`;
 
 export interface FetchOptions extends RequestInit {
   token?: string;
