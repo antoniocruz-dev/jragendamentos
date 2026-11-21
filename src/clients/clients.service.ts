@@ -3,10 +3,10 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateClientDto } from './dto/create-client.dto';
-import { UpdateClientDto } from './dto/update-client.dto';
-import { CreateVehicleDto } from './dto/create-vehicle.dto';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { CreateClientDto } from './dto/create-client.dto.js';
+import { UpdateClientDto } from './dto/update-client.dto.js';
+import { CreateVehicleDto } from './dto/create-vehicle.dto.js';
 
 @Injectable()
 export class ClientsService {

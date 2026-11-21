@@ -6,11 +6,11 @@ import {
   UseGuards,
   ValidationPipe,
 } from '@nestjs/common';
-import { AuthService } from './auth.service';
-import { LoginDto } from './dto/login.dto';
-import { RegisterUserDto } from './dto/register.dto';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { CurrentUser, AuthenticatedUser } from './decorators/current-user.decorator';
+import { AuthService } from './auth.service.js';
+import { LoginDto } from './dto/login.dto.js';
+import { RegisterUserDto } from './dto/register.dto.js';
+import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
+import { CurrentUser, AuthenticatedUser } from './decorators/current-user.decorator.js';
 
 @Controller('auth')
 export class AuthController {

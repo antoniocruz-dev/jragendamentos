@@ -7,8 +7,8 @@ import {
   HttpStatus,
   ValidationPipe,
 } from '@nestjs/common';
-import { PaymentsService } from './payments.service';
-import { CreatePixPaymentDto } from './dto/create-pix-payment.dto';
+import { PaymentsService } from './payments.service.js';
+import { CreatePixPaymentDto } from './dto/create-pix-payment.dto.js';
 
 @Controller('payments')
 export class PaymentsController {

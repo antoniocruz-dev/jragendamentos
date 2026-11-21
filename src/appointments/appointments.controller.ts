@@ -9,10 +9,10 @@ import {
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { AppointmentStatus } from '@prisma/client';
-import { AppointmentsService } from './appointments.service';
-import { CreateAppointmentDto } from './dto/create-appointment.dto';
-import { UpdateAppointmentDto } from './dto/update-appointment.dto';
-import { UpdateAppointmentStatusDto } from './dto/update-appointment-status.dto';
+import { AppointmentsService } from './appointments.service.js';
+import { CreateAppointmentDto } from './dto/create-appointment.dto.js';
+import { UpdateAppointmentDto } from './dto/update-appointment.dto.js';
+import { UpdateAppointmentStatusDto } from './dto/update-appointment-status.dto.js';
 
 @Controller('appointments')
 export class AppointmentsController {

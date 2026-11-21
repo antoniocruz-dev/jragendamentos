@@ -4,8 +4,8 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { MercadoPagoService } from './providers/mercado-pago.service';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { MercadoPagoService } from './providers/mercado-pago.service.js';
 import {
   WorkOrderStatus,
   PaymentStatus,

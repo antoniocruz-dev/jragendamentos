@@ -4,9 +4,9 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { PrismaService } from '../prisma/prisma.service';
-import { LoginDto } from './dto/login.dto';
-import { RegisterUserDto } from './dto/register.dto';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { LoginDto } from './dto/login.dto.js';
+import { RegisterUserDto } from './dto/register.dto.js';
 import { UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 

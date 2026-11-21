@@ -5,10 +5,10 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { AppointmentStatus, Prisma } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateAppointmentDto } from './dto/create-appointment.dto';
-import { UpdateAppointmentDto } from './dto/update-appointment.dto';
-import { UpdateAppointmentStatusDto } from './dto/update-appointment-status.dto';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { CreateAppointmentDto } from './dto/create-appointment.dto.js';
+import { UpdateAppointmentDto } from './dto/update-appointment.dto.js';
+import { UpdateAppointmentStatusDto } from './dto/update-appointment-status.dto.js';
 
 /** Janela mínima (em minutos) entre dois agendamentos ativos do mesmo veículo. */
 const VEHICLE_CONFLICT_WINDOW_MINUTES = 60;

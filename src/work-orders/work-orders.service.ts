@@ -3,9 +3,9 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateWorkOrderDto } from './dto/create-work-order.dto';
-import { UpdateWorkOrderStatusDto } from './dto/update-status.dto';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { CreateWorkOrderDto } from './dto/create-work-order.dto.js';
+import { UpdateWorkOrderStatusDto } from './dto/update-status.dto.js';
 import { WorkOrderStatus, WorkOrderItemType, Prisma } from '@prisma/client';
 
 @Injectable()

@@ -9,9 +9,9 @@ import {
   ParseUUIDPipe,
   ValidationPipe,
 } from '@nestjs/common';
-import { WorkOrdersService } from './work-orders.service';
-import { CreateWorkOrderDto } from './dto/create-work-order.dto';
-import { UpdateWorkOrderStatusDto } from './dto/update-status.dto';
+import { WorkOrdersService } from './work-orders.service.js';
+import { CreateWorkOrderDto } from './dto/create-work-order.dto.js';
+import { UpdateWorkOrderStatusDto } from './dto/update-status.dto.js';
 import { WorkOrderStatus } from '@prisma/client';
 
 @Controller('work-orders')
