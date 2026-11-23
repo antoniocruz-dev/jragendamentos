@@ -3,6 +3,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { loadUserModules } from '../permissions.js';
 
 export interface JwtPayload {
   sub: string;
@@ -23,13 +24,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: JwtPayload) {
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, email: true, name: true, role: true, isActive: true },
+      select: { id: true, email: true, name: true, role: true, profile: true, isActive: true },
     });
 
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Acesso não autorizado: usuário inativo ou inexistente.');
     }
 
-    return user;
+    // Permissões lidas a cada requisição: mudanças de perfil valem imediatamente
+    const { profile, modules } = await loadUserModules(this.prisma, user.role, user.profile);
+    return { ...user, profile, modules };
   }
 }

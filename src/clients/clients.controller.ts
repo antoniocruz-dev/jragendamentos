@@ -1,10 +1,14 @@
 import { Controller, Get, Post, Body, Param } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { RequireModules } from '../auth/decorators/require-modules.decorator.js';
 
+@RequireModules('CLIENTS')
 @Controller('clients')
 export class ClientsController {
   constructor(private readonly prisma: PrismaService) {}
 
+  // Lista também usada pelas telas de Agendamentos e Nova OS
+  @RequireModules('CLIENTS', 'APPOINTMENTS', 'WORK_ORDERS')
   @Get()
   async findAll() {
     return this.prisma.client.findMany({

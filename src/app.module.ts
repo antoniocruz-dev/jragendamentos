@@ -5,6 +5,7 @@ import { ClientsModule } from './clients/clients.module.js';
 import { WorkOrdersModule } from './work-orders/work-orders.module.js';
 import { PaymentsModule } from './payments/payments.module.js';
 import { AppointmentsModule } from './appointments/appointments.module.js';
+import { TeamModule } from './team/team.module.js';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { AppointmentsModule } from './appointments/appointments.module.js';
     WorkOrdersModule,
     PaymentsModule,
     AppointmentsModule,
+    TeamModule,
   ],
   controllers: [],
   providers: [],

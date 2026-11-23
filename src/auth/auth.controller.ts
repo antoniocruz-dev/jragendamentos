@@ -1,15 +1,6 @@
-import {
-  Controller,
-  Post,
-  Get,
-  Body,
-  ForbiddenException,
-  ValidationPipe,
-} from '@nestjs/common';
-import { UserRole } from '@prisma/client';
+import { Controller, Post, Get, Body, ValidationPipe } from '@nestjs/common';
 import { AuthService } from './auth.service.js';
 import { LoginDto } from './dto/login.dto.js';
-import { RegisterUserDto } from './dto/register.dto.js';
 import { SetupAdminDto } from './dto/setup.dto.js';
 import { CurrentUser, AuthenticatedUser } from './decorators/current-user.decorator.js';
 import { Public } from './decorators/public.decorator.js';
@@ -44,18 +35,9 @@ export class AuthController {
     return this.authService.login(dto);
   }
 
-  /** Cadastro de novos usuários da equipe: apenas administradores. */
-  @Post('register')
-  async register(
-    @CurrentUser() user: AuthenticatedUser,
-    @Body(new ValidationPipe({ transform: true, whitelist: true })) dto: RegisterUserDto,
-  ) {
-    if (user.role !== UserRole.ADMIN) {
-      throw new ForbiddenException('Apenas administradores podem cadastrar usuários.');
-    }
-    return this.authService.register(dto);
-  }
+  // O cadastro de usuários da equipe fica em POST /team/users (Administrador e Gerente Geral).
 
+  /** Dados do usuário logado, com perfil e módulos atuais (o front usa para montar o menu). */
   @Get('me')
   async getProfile(@CurrentUser() user: AuthenticatedUser) {
     return user;

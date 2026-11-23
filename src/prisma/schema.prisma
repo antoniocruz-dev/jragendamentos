@@ -22,8 +22,18 @@ enum UserRole {
   CLIENT
 }
 
+// Perfis (cargos) da equipe da oficina. As permissões de cada perfil ficam em ProfilePermission.
+enum StaffProfile {
+  ADMINISTRADOR
+  GERENTE_GERAL
+  MECANICO_CHEFE
+  MECANICO
+  AUXILIAR_OFICINA
+  AUXILIAR_ADMINISTRATIVO
+}
+
 enum WorkOrderStatus {
-  DRAFT           // Rascunho inicial
+  DRAFT          // Rascunho inicial
   QUOTE           // Orçamento aguardando aprovação
   APPROVED        // Orçamento aprovado pelo cliente
   IN_PROGRESS     // Em execução na oficina
@@ -87,6 +97,8 @@ model User {
   passwordHash String    @map("password_hash") @db.VarChar(255)
   phone        String?   @db.VarChar(20)
   role         UserRole  @default(CLIENT)
+  // Cargo do usuário da equipe (null para usuários CLIENT)
+  profile      StaffProfile?
   isActive     Boolean   @default(true) @map("is_active")
 
   client       Client?
@@ -97,6 +109,18 @@ model User {
 
   @@index([role])
   @@map("users")
+}
+
+// Módulos do sistema liberados para cada perfil (configurável na tela Equipe).
+// Valores de `modules`: DASHBOARD, WORK_ORDERS, CLIENTS, CATALOG, APPOINTMENTS, FINANCIAL.
+// ADMINISTRADOR sempre tem acesso total, independentemente desta tabela.
+model ProfilePermission {
+  profile   StaffProfile @id
+  modules   String[]
+
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  @@map("profile_permissions")
 }
 
 model Client {

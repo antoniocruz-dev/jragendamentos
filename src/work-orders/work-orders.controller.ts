@@ -15,7 +15,9 @@ import { UpdateWorkOrderStatusDto } from './dto/update-status.dto.js';
 import { CustomerDecisionDto } from './dto/customer-decision.dto.js';
 import { WorkOrderStatus } from '@prisma/client';
 import { Public } from '../auth/decorators/public.decorator.js';
+import { RequireModules } from '../auth/decorators/require-modules.decorator.js';
 
+@RequireModules('WORK_ORDERS')
 @Controller('work-orders')
 export class WorkOrdersController {
   constructor(private readonly workOrdersService: WorkOrdersService) {}
@@ -27,6 +29,8 @@ export class WorkOrdersController {
     return this.workOrdersService.create(dto);
   }
 
+  // Lista também usada pelo Dashboard
+  @RequireModules('WORK_ORDERS', 'DASHBOARD')
   @Get()
   async listAll(@Query('status') status?: WorkOrderStatus) {
     return this.workOrdersService.listAll(status);

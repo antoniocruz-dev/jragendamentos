@@ -2,6 +2,7 @@ import 'dotenv/config';
 import {
   PrismaClient,
   UserRole,
+  StaffProfile,
   WorkOrderStatus,
   WorkOrderItemType,
   PaymentMethod,
@@ -44,6 +45,7 @@ async function main() {
       passwordHash,
       phone: '11999990001',
       role: UserRole.ADMIN,
+      profile: StaffProfile.ADMINISTRADOR,
     },
   });
 
@@ -54,6 +56,7 @@ async function main() {
       passwordHash,
       phone: '11999990002',
       role: UserRole.OPERATOR,
+      profile: StaffProfile.MECANICO,
     },
   });
 

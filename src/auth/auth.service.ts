@@ -9,7 +9,8 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterUserDto } from './dto/register.dto.js';
-import { UserRole } from '@prisma/client';
+import { StaffProfile, UserRole } from '@prisma/client';
+import { loadUserModules, roleForProfile } from './permissions.js';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -19,7 +20,8 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async register(dto: RegisterUserDto) {
+  /** Cria um usuário. Com `profile`, o papel técnico (role) é derivado do cargo. */
+  async register(dto: RegisterUserDto & { profile?: StaffProfile }) {
     const existing = await this.prisma.user.findUnique({
       where: { email: dto.email.toLowerCase() },
     });
@@ -37,13 +39,17 @@ export class AuthService {
         email: dto.email.toLowerCase(),
         passwordHash,
         phone: dto.phone,
-        role: dto.role || UserRole.CLIENT,
+        role: dto.profile ? roleForProfile(dto.profile) : dto.role || UserRole.CLIENT,
+        profile: dto.profile ?? null,
       },
       select: {
         id: true,
         name: true,
         email: true,
+        phone: true,
         role: true,
+        profile: true,
+        isActive: true,
         createdAt: true,
       },
     });
@@ -61,7 +67,7 @@ export class AuthService {
       throw new ForbiddenException('O sistema já foi configurado. Faça login com um administrador.');
     }
 
-    await this.register({ ...dto, role: UserRole.ADMIN });
+    await this.register({ ...dto, profile: StaffProfile.ADMINISTRADOR });
     return this.login({ email: dto.email, password: dto.password });
   }
 
@@ -86,6 +92,8 @@ export class AuthService {
       role: user.role,
     };
 
+    const { profile, modules } = await loadUserModules(this.prisma, user.role, user.profile);
+
     return {
       accessToken: this.jwtService.sign(payload),
       user: {
@@ -93,6 +101,8 @@ export class AuthService {
         name: user.name,
         email: user.email,
         role: user.role,
+        profile,
+        modules,
       },
     };
   }

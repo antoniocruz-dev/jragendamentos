@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useSyncExternalStore } from 'react';
+import type { AppModule, StaffProfile } from './permissions';
 
 /**
  * Sessão da equipe da oficina (token JWT + dados do usuário) guardada no navegador.
@@ -12,6 +13,9 @@ export interface AuthUser {
   name: string;
   email: string;
   role: string;
+  profile: StaffProfile | null;
+  /** Módulos liberados pelo perfil (a API recalcula a cada requisição) */
+  modules: AppModule[];
 }
 
 export interface AuthSession {
@@ -56,6 +60,14 @@ export function saveSession(session: AuthSession) {
     // Navegação privada / storage bloqueado: a sessão dura só até recarregar
   }
   notify();
+}
+
+/** Atualiza só os dados do usuário (perfil/módulos), mantendo o token. */
+export function updateSessionUser(user: AuthUser) {
+  const current = getSession();
+  if (!current) return;
+  if (JSON.stringify(current.user) === JSON.stringify(user)) return;
+  saveSession({ ...current, user });
 }
 
 export function clearSession() {

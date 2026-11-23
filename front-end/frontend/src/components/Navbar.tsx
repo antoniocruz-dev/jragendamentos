@@ -15,18 +15,21 @@ import {
   Menu,
   X,
   LogOut,
+  UserCog,
 } from 'lucide-react';
+import type { AppModule } from '@/services/permissions';
 import { useAuth, clearSession } from '@/services/auth';
 import { isPublicPath } from '@/components/AuthGate';
 
-const navItems = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Ordens de Serviço', href: '/work-orders', icon: ClipboardList },
-  { name: 'Nova OS', href: '/work-orders/new', icon: PlusCircle },
-  { name: 'Clientes & Veículos', href: '/clients', icon: Users },
-  { name: 'Peças & Serviços', href: '/catalog', icon: Package },
-  { name: 'Agendamentos', href: '/appointments', icon: Calendar },
-  { name: 'Financeiro', href: '/financial', icon: DollarSign },
+const navItems: { name: string; href: string; icon: typeof Wrench; module: AppModule }[] = [
+  { name: 'Dashboard', href: '/', icon: LayoutDashboard, module: 'DASHBOARD' },
+  { name: 'Ordens de Serviço', href: '/work-orders', icon: ClipboardList, module: 'WORK_ORDERS' },
+  { name: 'Nova OS', href: '/work-orders/new', icon: PlusCircle, module: 'WORK_ORDERS' },
+  { name: 'Clientes & Veículos', href: '/clients', icon: Users, module: 'CLIENTS' },
+  { name: 'Peças & Serviços', href: '/catalog', icon: Package, module: 'CATALOG' },
+  { name: 'Agendamentos', href: '/appointments', icon: Calendar, module: 'APPOINTMENTS' },
+  { name: 'Financeiro', href: '/financial', icon: DollarSign, module: 'FINANCIAL' },
+  { name: 'Equipe', href: '/team', icon: UserCog, module: 'TEAM' },
 ];
 
 export default function Navbar() {
@@ -39,6 +42,9 @@ export default function Navbar() {
   if (isPublicPath(pathname)) {
     return null;
   }
+
+  // Só os módulos liberados para o perfil do usuário
+  const visibleItems = navItems.filter((item) => user?.modules?.includes(item.module));
 
   function handleLogout() {
     clearSession();
@@ -61,8 +67,8 @@ export default function Navbar() {
           </Link>
 
           {/* Menu Horizontal para Desktop */}
-          <div className="hidden lg:flex items-center gap-1">
-            {navItems.map((item) => {
+          <div className="hidden xl:flex items-center gap-1">
+            {visibleItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
               return (
@@ -93,7 +99,7 @@ export default function Navbar() {
           </div>
 
           {/* Botão Hambúrguer Mobile */}
-          <div className="lg:hidden flex items-center">
+          <div className="xl:hidden flex items-center">
             <button
               onClick={() => setIsOpen(!isOpen)}
               className="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800 focus:outline-none"
@@ -107,8 +113,8 @@ export default function Navbar() {
 
       {/* Menu Colapsado Mobile */}
       {isOpen && (
-        <div className="lg:hidden bg-slate-950/95 border-b border-slate-800 px-4 pt-2 pb-5 space-y-1.5 backdrop-blur-md">
-          {navItems.map((item) => {
+        <div className="xl:hidden bg-slate-950/95 border-b border-slate-800 px-4 pt-2 pb-5 space-y-1.5 backdrop-blur-md">
+          {visibleItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
             return (
