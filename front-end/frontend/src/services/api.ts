@@ -1,3 +1,5 @@
+import { clearSession, getToken } from './auth';
+
 /**
  * Base das chamadas à API (todas as chamadas são feitas no navegador, em Client Components).
  *
@@ -14,13 +16,17 @@ const API_BASE_URL = `${API_ORIGIN.replace(/\/+$/, '')}/api`;
 
 export interface FetchOptions extends RequestInit {
   token?: string;
+  /** Não redireciona para /login em caso de 401 (ex.: a própria tela de login). */
+  skipAuthRedirect?: boolean;
 }
 
 export async function fetchApi<T = any>(
   endpoint: string,
   options: FetchOptions = {},
 ): Promise<T> {
-  const { token, headers, ...rest } = options;
+  const { token: explicitToken, skipAuthRedirect, headers, ...rest } = options;
+  // Envia automaticamente o token da sessão da equipe, se houver
+  const token = explicitToken ?? getToken();
 
   const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 
@@ -32,6 +38,15 @@ export async function fetchApi<T = any>(
     },
     ...rest,
   });
+
+  // Sessão ausente/expirada em rota protegida: volta para o login
+  if (response.status === 401 && !skipAuthRedirect && typeof window !== 'undefined') {
+    clearSession();
+    const here = window.location.pathname + window.location.search;
+    if (!window.location.pathname.startsWith('/login')) {
+      window.location.assign(`/login?next=${encodeURIComponent(here)}`);
+    }
+  }
 
   if (!response.ok) {
     let errorMessage = `Erro HTTP: ${response.status} ${response.statusText}`;

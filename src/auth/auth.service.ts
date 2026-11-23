@@ -1,8 +1,10 @@
 import {
   Injectable,
   ConflictException,
+  ForbiddenException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { SetupAdminDto } from './dto/setup.dto.js';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { LoginDto } from './dto/login.dto.js';
@@ -47,6 +49,20 @@ export class AuthService {
     });
 
     return user;
+  }
+
+  async isSetupRequired() {
+    return (await this.prisma.user.count()) === 0;
+  }
+
+  /** Cria o primeiro ADMIN. Recusa se já houver qualquer usuário (evita tomada de controle). */
+  async setupFirstAdmin(dto: SetupAdminDto) {
+    if (!(await this.isSetupRequired())) {
+      throw new ForbiddenException('O sistema já foi configurado. Faça login com um administrador.');
+    }
+
+    await this.register({ ...dto, role: UserRole.ADMIN });
+    return this.login({ email: dto.email, password: dto.password });
   }
 
   async login(dto: LoginDto) {

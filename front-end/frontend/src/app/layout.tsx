@@ -4,8 +4,14 @@ import type { Metadata } from 'next';
 import './globals.css';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import AuthGate from '@/components/AuthGate';
 
 //const inter = Inter({ subsets: ['latin'] });
+
+// As páginas internas só renderizam depois que o AuthGate confirma a sessão (guardada no
+// navegador), então não há como validar "instant navigation" no prerender. Opt-out indicado
+// pelo guia "authentication-with-cache-components"; o prerender e o streaming continuam iguais.
+export const instant = false;
 
 export const metadata: Metadata = {
   title: 'JR Agendamentos | Gestão de Oficina Mecânica',
@@ -27,7 +33,12 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <Navbar />
         </Suspense>
-        <main className="flex-1">{children}</main>
+        <main className="flex-1">
+          {/* AuthGate usa usePathname(): mesmo motivo do Suspense acima */}
+          <Suspense fallback={null}>
+            <AuthGate>{children}</AuthGate>
+          </Suspense>
+        </main>
         <Suspense fallback={null}>
           <Footer />
         </Suspense>

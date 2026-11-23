@@ -12,9 +12,12 @@ import {
   Package, 
   Calendar, 
   DollarSign, 
-  Menu, 
-  X 
+  Menu,
+  X,
+  LogOut,
 } from 'lucide-react';
+import { useAuth, clearSession } from '@/services/auth';
+import { isPublicPath } from '@/components/AuthGate';
 
 const navItems = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -30,9 +33,16 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
 
-  // Oculta a navegação administrativa se for a página pública do cliente (/os/[id])
-  if (pathname.startsWith('/os/')) {
+  const { user } = useAuth();
+
+  // Oculta a navegação administrativa na página pública do cliente (/os/[id]) e no login
+  if (isPublicPath(pathname)) {
     return null;
+  }
+
+  function handleLogout() {
+    clearSession();
+    window.location.assign('/login');
   }
 
   return (
@@ -70,6 +80,16 @@ export default function Navbar() {
                 </Link>
               );
             })}
+            {user && (
+              <button
+                onClick={handleLogout}
+                title={`Sair (${user.email})`}
+                className="ml-2 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-all"
+              >
+                <LogOut className="w-4 h-4" />
+                {user.name.split(' ')[0]} · Sair
+              </button>
+            )}
           </div>
 
           {/* Botão Hambúrguer Mobile */}
@@ -107,6 +127,15 @@ export default function Navbar() {
               </Link>
             );
           })}
+          {user && (
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+            >
+              <LogOut className="w-5 h-5" />
+              Sair ({user.name})
+            </button>
+          )}
         </div>
       )}
     </nav>

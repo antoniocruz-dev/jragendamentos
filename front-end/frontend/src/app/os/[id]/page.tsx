@@ -24,6 +24,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { fetchApi } from '@/services/api';
+import { useAuth } from '@/services/auth';
 
 interface WorkOrderDetail {
   id: string;
@@ -83,6 +84,9 @@ export default function WorkOrderDetailPage() {
   const router = useRouter();
   const params = useParams();
   const osId = params?.id as string;
+  // Botões de andamento da oficina só aparecem para a equipe logada;
+  // o cliente (sem login) só aprova/recusa o orçamento e paga.
+  const { isAuthenticated: isStaff } = useAuth();
 
   const [order, setOrder] = useState<WorkOrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -140,6 +144,32 @@ export default function WorkOrderDetailPage() {
       setActionMessage({
         type: 'error',
         text: err?.message || 'Erro ao atualizar status da Ordem de Serviço.',
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  // Decisão do cliente sobre o orçamento (rota pública, só vale para OS em orçamento)
+  async function handleCustomerDecision(decision: 'APPROVE' | 'REJECT', reason?: string) {
+    try {
+      setActionLoading(true);
+      setActionMessage(null);
+
+      const updated = await fetchApi<WorkOrderDetail>(`/work-orders/${osId}/customer-decision`, {
+        method: 'PATCH',
+        body: JSON.stringify({ decision, reason }),
+      });
+
+      setOrder(updated);
+      setActionMessage({
+        type: 'success',
+        text: decision === 'APPROVE' ? 'Orçamento aprovado com sucesso!' : 'Orçamento recusado.',
+      });
+    } catch (err) {
+      setActionMessage({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'Erro ao registrar a decisão sobre o orçamento.',
       });
     } finally {
       setActionLoading(false);
@@ -242,13 +272,15 @@ export default function WorkOrderDetailPage() {
     <div className="min-h-screen bg-slate-900 text-slate-100 p-6 md:p-10">
       {/* Barra de Navegação e Cabeçalho */}
       <div className="max-w-5xl mx-auto mb-8">
-        <button
-          onClick={() => router.push('/')}
-          className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white mb-4 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Voltar ao Painel Geral
-        </button>
+        {isStaff && (
+          <button
+            onClick={() => router.push('/')}
+            className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white mb-4 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Voltar ao Painel Geral
+          </button>
+        )}
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-6">
           <div>
@@ -464,7 +496,7 @@ export default function WorkOrderDetailPage() {
               {order.status === 'QUOTE' && (
                 <>
                   <button
-                    onClick={() => handleUpdateStatus('APPROVED')}
+                    onClick={() => handleCustomerDecision('APPROVE')}
                     disabled={actionLoading}
                     className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-slate-950 font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2 transition-all shadow-md"
                   >
@@ -473,8 +505,8 @@ export default function WorkOrderDetailPage() {
                   </button>
                   <button
                     onClick={() => {
-                      const reason = prompt('Informe o motivo do cancelamento:');
-                      if (reason !== null) handleUpdateStatus('CANCELLED', reason);
+                      const reason = prompt('Informe o motivo da recusa (opcional):');
+                      if (reason !== null) handleCustomerDecision('REJECT', reason || undefined);
                     }}
                     disabled={actionLoading}
                     className="w-full bg-slate-900 hover:bg-rose-950/40 text-rose-400 border border-rose-500/30 font-medium py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all"
@@ -486,7 +518,7 @@ export default function WorkOrderDetailPage() {
               )}
 
               {/* Status: APPROVED -> Iniciar Execução */}
-              {order.status === 'APPROVED' && (
+              {isStaff && order.status === 'APPROVED' && (
                 <button
                   onClick={() => handleUpdateStatus('IN_PROGRESS')}
                   disabled={actionLoading}
@@ -498,7 +530,7 @@ export default function WorkOrderDetailPage() {
               )}
 
               {/* Status: IN_PROGRESS -> Concluir ou Aguardar Peças */}
-              {order.status === 'IN_PROGRESS' && (
+              {isStaff && order.status === 'IN_PROGRESS' && (
                 <>
                   <button
                     onClick={() => handleUpdateStatus('COMPLETED')}
@@ -520,7 +552,7 @@ export default function WorkOrderDetailPage() {
               )}
 
               {/* Status: WAITING_PARTS -> Retomar Execução */}
-              {order.status === 'WAITING_PARTS' && (
+              {isStaff && order.status === 'WAITING_PARTS' && (
                 <button
                   onClick={() => handleUpdateStatus('IN_PROGRESS')}
                   disabled={actionLoading}

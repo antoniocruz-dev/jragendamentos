@@ -6,6 +6,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateWorkOrderDto } from './dto/create-work-order.dto.js';
 import { UpdateWorkOrderStatusDto } from './dto/update-status.dto.js';
+import { CustomerDecisionDto } from './dto/customer-decision.dto.js';
 import { WorkOrderStatus, WorkOrderItemType, Prisma } from '@prisma/client';
 
 @Injectable()
@@ -204,6 +205,23 @@ export class WorkOrdersService {
     [WorkOrderStatus.BILLED]: [], // Estado final
     [WorkOrderStatus.CANCELLED]: [], // Estado final
   };
+
+  /** Decisão do cliente sobre o orçamento (rota pública). Só vale para OS em QUOTE. */
+  async customerDecision(id: string, dto: CustomerDecisionDto) {
+    const workOrder = await this.findById(id);
+
+    if (workOrder.status !== WorkOrderStatus.QUOTE) {
+      throw new BadRequestException('Este orçamento não está mais aguardando aprovação.');
+    }
+
+    await this.updateStatus(id, {
+      status: dto.decision === 'APPROVE' ? WorkOrderStatus.APPROVED : WorkOrderStatus.CANCELLED,
+      reason: dto.decision === 'REJECT' ? `Recusado pelo cliente${dto.reason ? `: ${dto.reason}` : ''}` : undefined,
+    });
+
+    // Retorna o mesmo formato detalhado usado pela página da OS
+    return this.findById(id);
+  }
 
   async updateStatus(id: string, dto: UpdateWorkOrderStatusDto) {
     const { status: targetStatus, reason } = dto;

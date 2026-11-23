@@ -9,14 +9,17 @@ import {
 } from '@nestjs/common';
 import { PaymentsService } from './payments.service.js';
 import { CreatePixPaymentDto } from './dto/create-pix-payment.dto.js';
+import { Public } from '../auth/decorators/public.decorator.js';
 
 @Controller('payments')
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
   /**
-   * Endpoint chamado pelo Front-End / Atendente para gerar o Pix de uma OS
+   * Gera o Pix de uma OS. Público porque o cliente paga pelo link da OS
+   * (identificada pelo UUID, que não é adivinhável).
    */
+  @Public()
   @Post('pix')
   async createPix(
     @Body(new ValidationPipe({ transform: true, whitelist: true })) dto: CreatePixPaymentDto,
@@ -27,6 +30,7 @@ export class PaymentsController {
   /**
    * Endpoint público chamado exclusivamente pelos servidores do Mercado Pago
    */
+  @Public()
   @Post('webhook')
   @HttpCode(HttpStatus.OK)
   async handleWebhook(
