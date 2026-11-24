@@ -22,7 +22,10 @@ import {
   ShieldCheck,
   Loader2,
   XCircle,
+  Wallet,
 } from 'lucide-react';
+import { Field, FormError, Modal, ModalActions, errorMessage as errMsg, inputCls } from '@/components/crud';
+import { PAYMENT_OPTIONS, brl, type StaffOption } from '@/services/financial';
 import { fetchApi } from '@/services/api';
 import { useAuth } from '@/services/auth';
 
@@ -38,6 +41,7 @@ interface WorkOrderDetail {
   technicalNotes?: string;
   createdAt: string;
   finishedAt?: string;
+  operator?: { id: string; name: string } | null;
   client: {
     id: string;
     name: string;
@@ -86,7 +90,9 @@ export default function WorkOrderDetailPage() {
   const osId = params?.id as string;
   // Botões de andamento da oficina só aparecem para a equipe logada;
   // o cliente (sem login) só aprova/recusa o orçamento e paga.
-  const { isAuthenticated: isStaff } = useAuth();
+  const { isAuthenticated: isStaff, user } = useAuth();
+  const canBill = isStaff && !!user?.modules?.some((m) => m === 'WORK_ORDERS' || m === 'FINANCIAL');
+  const [billingOpen, setBillingOpen] = useState(false);
 
   const [order, setOrder] = useState<WorkOrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -563,6 +569,17 @@ export default function WorkOrderDetailPage() {
                 </button>
               )}
 
+              {/* Status: COMPLETED -> equipe registra o pagamento recebido (faturamento manual) */}
+              {canBill && order.status === 'COMPLETED' && (
+                <button
+                  onClick={() => setBillingOpen(true)}
+                  className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold py-3.5 px-4 rounded-xl text-sm flex items-center justify-center gap-2 transition-all"
+                >
+                  <Wallet className="w-5 h-5" />
+                  Registrar pagamento
+                </button>
+              )}
+
               {/* Status: COMPLETED ou APPROVED -> Opção de Gerar Cobrança Pix */}
               {(order.status === 'COMPLETED' || order.status === 'APPROVED') && !pixData && (
                 <button
@@ -666,6 +683,116 @@ export default function WorkOrderDetailPage() {
           )}
         </div>
       </div>
+
+      {billingOpen && order && (
+        <BillingModal
+          order={order}
+          onClose={() => setBillingOpen(false)}
+          onBilled={() => {
+            setBillingOpen(false);
+            loadOrderDetails();
+            setActionMessage({ type: 'success', text: 'Pagamento registrado. A OS foi faturada e lançada no caixa.' });
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+/** Registro do pagamento (faturamento manual) de uma OS concluída. */
+function BillingModal({ order, onClose, onBilled }: { order: WorkOrderDetail; onClose: () => void; onBilled: () => void }) {
+  const gross = Number(order.totalServices) + Number(order.totalProducts);
+  const [staff, setStaff] = useState<StaffOption[]>([]);
+  const [form, setForm] = useState(() => {
+    const now = new Date();
+    return {
+      paymentMethod: 'PIX',
+      installments: '1',
+      // datetime-local no fuso do navegador
+      paidAt: new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16),
+      discount: String(Number(order.discount) || 0),
+      operatorId: order.operator?.id ?? '',
+      notes: '',
+    };
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  useEffect(() => {
+    fetchApi<StaffOption[]>('/work-orders/staff').then(setStaff).catch(() => setStaff([]));
+  }, []);
+
+  const discount = Math.round((Number(form.discount) || 0) * 100) / 100;
+  const total = Math.round((gross - discount) * 100) / 100;
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      setSaving(true);
+      setError(null);
+      await fetchApi(`/work-orders/${order.id}/billing`, {
+        method: 'POST',
+        body: JSON.stringify({
+          paymentMethod: form.paymentMethod,
+          installments: form.paymentMethod === 'CREDIT_CARD' ? Number(form.installments) : undefined,
+          paidAt: new Date(form.paidAt).toISOString(),
+          discount,
+          operatorId: form.operatorId,
+          notes: form.notes.trim() || undefined,
+        }),
+      });
+      onBilled();
+    } catch (err) {
+      setError(errMsg(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal title={`Registrar pagamento · OS #${order.code}`} onClose={onClose}>
+      <form onSubmit={submit} className="space-y-3">
+        <div className="grid grid-cols-2 gap-3 text-sm bg-slate-950 border border-slate-800 rounded-lg p-3">
+          <span className="text-slate-400">Peças <b className="block text-white">{brl(Number(order.totalProducts))}</b></span>
+          <span className="text-slate-400">Mão de obra <b className="block text-white">{brl(Number(order.totalServices))}</b></span>
+        </div>
+        <Field label="Mecânico responsável (base da comissão) *">
+          <select required value={form.operatorId} onChange={(e) => set('operatorId', e.target.value)} className={inputCls}>
+            <option value="">Selecione...</option>
+            {staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Forma de pagamento *">
+            <select value={form.paymentMethod} onChange={(e) => set('paymentMethod', e.target.value)} className={inputCls}>
+              {PAYMENT_OPTIONS.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
+            </select>
+          </Field>
+          {form.paymentMethod === 'CREDIT_CARD' ? (
+            <Field label="Parcelas">
+              <select value={form.installments} onChange={(e) => set('installments', e.target.value)} className={inputCls}>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x`}</option>)}
+              </select>
+            </Field>
+          ) : <div />}
+          <Field label="Data e hora do pagamento *">
+            <input type="datetime-local" required value={form.paidAt} onChange={(e) => set('paidAt', e.target.value)} className={`${inputCls} [color-scheme:dark]`} />
+          </Field>
+          <Field label="Desconto (R$)">
+            <input type="number" min={0} max={gross} step="0.01" value={form.discount} onChange={(e) => set('discount', e.target.value)} className={inputCls} />
+          </Field>
+        </div>
+        <Field label="Observações">
+          <input value={form.notes} onChange={(e) => set('notes', e.target.value)} className={inputCls} />
+        </Field>
+        <div className="flex justify-between items-center text-sm border-t border-slate-800 pt-3">
+          <span className="text-slate-400">Total a receber</span>
+          <b className="text-xl text-emerald-300">{brl(total)}</b>
+        </div>
+        <FormError message={error} />
+        <ModalActions onCancel={onClose} saving={saving} label="Confirmar pagamento" />
+      </form>
+    </Modal>
   );
 }

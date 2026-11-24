@@ -10,7 +10,11 @@ import {
   IsString,
   Length,
   MinLength,
+  IsNumber,
+  Min,
+  Max,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { StaffProfile } from '@prisma/client';
 import { SYSTEM_MODULES } from '../../auth/permissions.js';
 
@@ -58,6 +62,14 @@ export class UpdateTeamUserDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  /** Comissão do mecânico sobre a mão de obra (%) */
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 }, { message: 'Comissão inválida.' })
+  @Min(0, { message: 'A comissão não pode ser negativa.' })
+  @Max(100, { message: 'A comissão não pode passar de 100%.' })
+  commissionRate?: number;
 
   /** Redefinição de senha pelo gestor (opcional) */
   @IsOptional()

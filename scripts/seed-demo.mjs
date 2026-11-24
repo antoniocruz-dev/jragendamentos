@@ -241,10 +241,10 @@ async function main() {
 
       const items = [];
       for (const k of keys) {
-        items.push({ itemType: 'SERVICE', serviceId: services[k].id, quantity: 1, unitPrice: services[k].basePrice });
+        items.push({ itemType: 'SERVICE', serviceId: services[k].id, quantity: 1, unitPrice: services[k].basePrice, unitCost: D(0) });
         for (const [sku, qmin, qmax] of SERVICE_PARTS[k]) {
           const q = between(qmin, qmax);
-          if (q > 0) items.push({ itemType: 'PRODUCT', productId: products[sku].id, sku, quantity: q, unitPrice: products[sku].salePrice });
+          if (q > 0) items.push({ itemType: 'PRODUCT', productId: products[sku].id, sku, quantity: q, unitPrice: products[sku].salePrice, unitCost: products[sku].costPrice });
         }
       }
 
@@ -274,7 +274,10 @@ async function main() {
           const finalAmount = gross.sub(discount);
           const finished = ['COMPLETED', 'BILLED'].includes(p.status);
           const finishedAt = finished ? new Date(p.createdAt.getTime() + between(1, 3) * 86400000) : null;
-          const operatorId = ['DRAFT', 'QUOTE'].includes(p.status) ? null : pick(mechanics)?.id ?? null;
+          const operator = ['DRAFT', 'QUOTE'].includes(p.status) ? null : pick(mechanics) ?? null;
+          const operatorId = operator?.id ?? null;
+          const billed = p.status === 'BILLED';
+          const paymentMethod = billed ? pick(PAYMENT_METHODS) : null;
 
           const notes = {
             WAITING_PARTS: 'Aguardando entrega da peça pelo fornecedor.',
@@ -297,6 +300,12 @@ async function main() {
               technicalNotes: p.status === 'CANCELLED' ? `[Cancelamento]: ${pick(CANCEL_REASONS)}` : notes ?? null,
               createdAt: p.createdAt,
               finishedAt,
+              // Fechamento financeiro das OS faturadas (ISS de Parauapebas/PA: 5%)
+              billedAt: billed ? finishedAt : null,
+              paymentMethod,
+              installments: paymentMethod === 'CREDIT_CARD' ? 1 : null,
+              issRate: billed ? D(5) : null,
+              commissionRate: billed && operator ? operator.commissionRate : null,
               items: {
                 create: p.items.map(({ sku, unitPrice, ...it }) => ({
                   ...it,
@@ -314,7 +323,9 @@ async function main() {
                 type: 'INCOME',
                 category: 'FATURAMENTO_OS',
                 amount: finalAmount,
-                paymentMethod: pick(PAYMENT_METHODS),
+                paymentMethod,
+                installments: paymentMethod === 'CREDIT_CARD' ? 1 : null,
+                description: `Recebimento da OS #${wo.code}`,
                 status: 'PAID',
                 notes: `Recebimento da OS #${wo.code} (carga de demonstração)`,
                 paidAt: finishedAt,

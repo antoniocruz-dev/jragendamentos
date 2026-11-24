@@ -33,14 +33,14 @@ enum StaffProfile {
 }
 
 enum WorkOrderStatus {
-  DRAFT          // Rascunho inicial
-  QUOTE           // Orçamento aguardando aprovação
-  APPROVED        // Orçamento aprovado pelo cliente
-  IN_PROGRESS     // Em execução na oficina
-  WAITING_PARTS   // Bloqueado aguardando peças
-  COMPLETED       // Serviço concluído fisicamente
-  BILLED          // Faturado e pago
-  CANCELLED       // Cancelado
+  DRAFT // Rascunho inicial
+  QUOTE // Orçamento aguardando aprovação
+  APPROVED // Orçamento aprovado pelo cliente
+  IN_PROGRESS // Em execução na oficina
+  WAITING_PARTS // Bloqueado aguardando peças
+  COMPLETED // Serviço concluído fisicamente
+  BILLED // Faturado e pago
+  CANCELLED // Cancelado
 }
 
 enum WorkOrderItemType {
@@ -74,6 +74,20 @@ enum PaymentMethod {
   BANK_TRANSFER
 }
 
+// Quem pagou a despesa (planilha: "Quem Pagou")
+enum ExpensePayer {
+  CAIXA
+  SOCIO
+}
+
+// Regime tributário da oficina (define como o ISS é recolhido)
+enum TaxRegime {
+  SIMPLES_NACIONAL
+  LUCRO_PRESUMIDO
+  LUCRO_REAL
+  MEI
+}
+
 enum PaymentGateway {
   MERCADO_PAGO
   MANUAL
@@ -91,21 +105,24 @@ enum PaymentStatus {
 // ==========================================
 
 model User {
-  id           String    @id @default(uuid()) @db.Uuid
-  name         String    @db.VarChar(150)
-  email        String    @unique @db.VarChar(255)
-  passwordHash String    @map("password_hash") @db.VarChar(255)
-  phone        String?   @db.VarChar(20)
-  role         UserRole  @default(CLIENT)
+  id             String        @id @default(uuid()) @db.Uuid
+  name           String        @db.VarChar(150)
+  email          String        @unique @db.VarChar(255)
+  passwordHash   String        @map("password_hash") @db.VarChar(255)
+  phone          String?       @db.VarChar(20)
+  role           UserRole      @default(CLIENT)
   // Cargo do usuário da equipe (null para usuários CLIENT)
-  profile      StaffProfile?
-  isActive     Boolean   @default(true) @map("is_active")
+  profile        StaffProfile?
+  isActive       Boolean       @default(true) @map("is_active")
+  // Comissão do mecânico sobre a mão de obra (%), ajustável na tela Equipe
+  commissionRate Decimal       @default(50) @map("commission_rate") @db.Decimal(5, 2)
 
-  client       Client?
-  workOrders   WorkOrder[] @relation("OperatorWorkOrders")
+  client           Client?
+  expensesReceived CashTransaction[] @relation("ExpenseBeneficiary")
+  workOrders       WorkOrder[]       @relation("OperatorWorkOrders")
 
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([role])
   @@map("users")
@@ -115,32 +132,32 @@ model User {
 // Valores de `modules`: DASHBOARD, WORK_ORDERS, CLIENTS, CATALOG, APPOINTMENTS, FINANCIAL.
 // ADMINISTRADOR sempre tem acesso total, independentemente desta tabela.
 model ProfilePermission {
-  profile   StaffProfile @id
-  modules   String[]
+  profile StaffProfile @id
+  modules String[]
 
-  updatedAt DateTime     @updatedAt @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("profile_permissions")
 }
 
 model Client {
-  id           String    @id @default(uuid()) @db.Uuid
-  userId       String?   @unique @map("user_id") @db.Uuid
-  name         String    @db.VarChar(150)
-  document     String    @unique @db.VarChar(20) // CPF ou CNPJ (somente números)
-  phone        String    @db.VarChar(20)
-  email        String?   @db.VarChar(255)
-  address      String?   @db.VarChar(255)
-  city         String?   @db.VarChar(100)
-  state        String?   @db.Char(2)
+  id       String  @id @default(uuid()) @db.Uuid
+  userId   String? @unique @map("user_id") @db.Uuid
+  name     String  @db.VarChar(150)
+  document String  @unique @db.VarChar(20) // CPF ou CNPJ (somente números)
+  phone    String  @db.VarChar(20)
+  email    String? @db.VarChar(255)
+  address  String? @db.VarChar(255)
+  city     String? @db.VarChar(100)
+  state    String? @db.Char(2)
 
   user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
   vehicles     Vehicle[]
   workOrders   WorkOrder[]
   appointments Appointment[]
 
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([document])
   @@index([name])
@@ -148,23 +165,23 @@ model Client {
 }
 
 model Vehicle {
-  id           String    @id @default(uuid()) @db.Uuid
-  clientId     String    @map("client_id") @db.Uuid
-  licensePlate String    @unique @map("license_plate") @db.VarChar(10) // Padrão Mercosul ou Antigo
-  brand        String    @db.VarChar(60)
-  model        String    @db.VarChar(80)
+  id           String  @id @default(uuid()) @db.Uuid
+  clientId     String  @map("client_id") @db.Uuid
+  licensePlate String  @unique @map("license_plate") @db.VarChar(10) // Padrão Mercosul ou Antigo
+  brand        String  @db.VarChar(60)
+  model        String  @db.VarChar(80)
   year         Int
-  color        String?   @db.VarChar(30)
-  currentKm    Int       @default(0) @map("current_km")
-  chassis      String?   @db.VarChar(30)
-  notes        String?   @db.Text
+  color        String? @db.VarChar(30)
+  currentKm    Int     @default(0) @map("current_km")
+  chassis      String? @db.VarChar(30)
+  notes        String? @db.Text
 
   client       Client        @relation(fields: [clientId], references: [id], onDelete: Restrict)
   workOrders   WorkOrder[]
   appointments Appointment[]
 
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([licensePlate])
   @@index([clientId])
@@ -176,37 +193,37 @@ model Vehicle {
 // ==========================================
 
 model Service {
-  id               String          @id @default(uuid()) @db.Uuid
-  name             String          @db.VarChar(120)
-  description      String?         @db.Text
-  basePrice        Decimal         @map("base_price") @db.Decimal(10, 2)
-  estimatedMinutes Int             @default(60) @map("estimated_minutes")
-  isActive         Boolean         @default(true) @map("is_active")
+  id               String  @id @default(uuid()) @db.Uuid
+  name             String  @db.VarChar(120)
+  description      String? @db.Text
+  basePrice        Decimal @map("base_price") @db.Decimal(10, 2)
+  estimatedMinutes Int     @default(60) @map("estimated_minutes")
+  isActive         Boolean @default(true) @map("is_active")
 
-  items            WorkOrderItem[]
+  items WorkOrderItem[]
 
-  createdAt        DateTime        @default(now()) @map("created_at")
-  updatedAt        DateTime        @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([isActive])
   @@map("services")
 }
 
 model Product {
-  id            String          @id @default(uuid()) @db.Uuid
-  sku           String          @unique @db.VarChar(50) // Código interno ou de barras
-  name          String          @db.VarChar(150)
-  description   String?         @db.Text
-  costPrice     Decimal         @map("cost_price") @db.Decimal(10, 2)
-  salePrice     Decimal         @map("sale_price") @db.Decimal(10, 2)
-  stockQuantity Int             @default(0) @map("stock_quantity")
-  minStock      Int             @default(2) @map("min_stock")
-  isActive      Boolean         @default(true) @map("is_active")
+  id            String  @id @default(uuid()) @db.Uuid
+  sku           String  @unique @db.VarChar(50) // Código interno ou de barras
+  name          String  @db.VarChar(150)
+  description   String? @db.Text
+  costPrice     Decimal @map("cost_price") @db.Decimal(10, 2)
+  salePrice     Decimal @map("sale_price") @db.Decimal(10, 2)
+  stockQuantity Int     @default(0) @map("stock_quantity")
+  minStock      Int     @default(2) @map("min_stock")
+  isActive      Boolean @default(true) @map("is_active")
 
-  items         WorkOrderItem[]
+  items WorkOrderItem[]
 
-  createdAt     DateTime        @default(now()) @map("created_at")
-  updatedAt     DateTime        @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([sku])
   @@index([isActive])
@@ -218,32 +235,40 @@ model Product {
 // ==========================================
 
 model WorkOrder {
-  id              String            @id @default(uuid()) @db.Uuid
-  code            Int               @unique @default(autoincrement()) // OS #1001, #1002...
-  clientId        String            @map("client_id") @db.Uuid
-  vehicleId       String            @map("vehicle_id") @db.Uuid
-  operatorId      String?           @map("operator_id") @db.Uuid
-  status          WorkOrderStatus   @default(DRAFT)
+  id         String          @id @default(uuid()) @db.Uuid
+  code       Int             @unique @default(autoincrement()) // OS #1001, #1002...
+  clientId   String          @map("client_id") @db.Uuid
+  vehicleId  String          @map("vehicle_id") @db.Uuid
+  operatorId String?         @map("operator_id") @db.Uuid
+  status     WorkOrderStatus @default(DRAFT)
 
-  totalServices   Decimal           @default(0.00) @map("total_services") @db.Decimal(10, 2)
-  totalProducts   Decimal           @default(0.00) @map("total_products") @db.Decimal(10, 2)
-  discount        Decimal           @default(0.00) @db.Decimal(10, 2)
-  finalAmount     Decimal           @default(0.00) @map("final_amount") @db.Decimal(10, 2)
+  totalServices Decimal @default(0.00) @map("total_services") @db.Decimal(10, 2)
+  totalProducts Decimal @default(0.00) @map("total_products") @db.Decimal(10, 2)
+  discount      Decimal @default(0.00) @db.Decimal(10, 2)
+  finalAmount   Decimal @default(0.00) @map("final_amount") @db.Decimal(10, 2)
 
-  reportedIssue   String?           @map("reported_issue") @db.Text // Relato do cliente
-  technicalNotes  String?           @map("technical_notes") @db.Text // Diagnóstico mecânico
+  reportedIssue  String? @map("reported_issue") @db.Text // Relato do cliente
+  technicalNotes String? @map("technical_notes") @db.Text // Diagnóstico mecânico
 
-  client          Client            @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  vehicle         Vehicle           @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
-  operator        User?             @relation("OperatorWorkOrders", fields: [operatorId], references: [id], onDelete: SetNull)
-  items           WorkOrderItem[]
-  transactions    CashTransaction[]
-  paymentLogs     PaymentLog[]
+  client       Client            @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  vehicle      Vehicle           @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  operator     User?             @relation("OperatorWorkOrders", fields: [operatorId], references: [id], onDelete: SetNull)
+  items        WorkOrderItem[]
+  transactions CashTransaction[]
+  paymentLogs  PaymentLog[]
 
-  createdAt       DateTime          @default(now()) @map("created_at")
-  updatedAt       DateTime          @updatedAt @map("updated_at")
-  finishedAt      DateTime?         @map("finished_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  finishedAt DateTime? @map("finished_at")
 
+  // Fechamento financeiro (preenchido ao registrar o pagamento; valores congelados na data)
+  billedAt       DateTime?      @map("billed_at")
+  paymentMethod  PaymentMethod? @map("payment_method")
+  installments   Int?
+  issRate        Decimal?       @map("iss_rate") @db.Decimal(5, 2)
+  commissionRate Decimal?       @map("commission_rate") @db.Decimal(5, 2)
+
+  @@index([billedAt])
   @@index([clientId])
   @@index([vehicleId])
   @@index([status])
@@ -258,13 +283,15 @@ model WorkOrderItem {
   serviceId   String?           @map("service_id") @db.Uuid
   productId   String?           @map("product_id") @db.Uuid
 
-  quantity    Int               @default(1)
-  unitPrice   Decimal           @map("unit_price") @db.Decimal(10, 2)
-  totalPrice  Decimal           @map("total_price") @db.Decimal(10, 2)
+  quantity   Int     @default(1)
+  unitPrice  Decimal @map("unit_price") @db.Decimal(10, 2)
+  totalPrice Decimal @map("total_price") @db.Decimal(10, 2)
+  // Custo unitário da peça no momento da OS (custo de saída). Serviços: 0
+  unitCost   Decimal @default(0) @map("unit_cost") @db.Decimal(10, 2)
 
-  workOrder   WorkOrder         @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
-  service     Service?          @relation(fields: [serviceId], references: [id], onDelete: Restrict)
-  product     Product?          @relation(fields: [productId], references: [id], onDelete: Restrict)
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  service   Service?  @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  product   Product?  @relation(fields: [productId], references: [id], onDelete: Restrict)
 
   @@index([workOrderId])
   @@index([serviceId])
@@ -284,11 +311,11 @@ model Appointment {
   status       AppointmentStatus @default(PENDING)
   notes        String?           @db.Text
 
-  client       Client            @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  vehicle      Vehicle           @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  client  Client  @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
 
-  createdAt    DateTime          @default(now()) @map("created_at")
-  updatedAt    DateTime          @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([scheduledFor])
   @@index([clientId])
@@ -310,11 +337,17 @@ model CashTransaction {
   status        TransactionStatus @default(PENDING)
   notes         String?           @db.Text
   paidAt        DateTime?         @map("paid_at")
+  // Despesas: descrição, quem pagou e o mecânico beneficiado (pagamento de comissão)
+  description   String?           @db.VarChar(255)
+  paidBy        ExpensePayer?     @map("paid_by")
+  beneficiaryId String?           @map("beneficiary_id") @db.Uuid
+  installments  Int?
 
-  workOrder     WorkOrder?        @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+  workOrder   WorkOrder? @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+  beneficiary User?      @relation("ExpenseBeneficiary", fields: [beneficiaryId], references: [id], onDelete: SetNull)
 
-  createdAt     DateTime          @default(now()) @map("created_at")
-  updatedAt     DateTime          @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([type])
   @@index([status])
@@ -329,14 +362,29 @@ model PaymentLog {
   externalPaymentId String?        @unique @map("external_payment_id") @db.VarChar(100) // ID retornado pelo Mercado Pago
   gateway           PaymentGateway @default(MERCADO_PAGO)
   status            PaymentStatus  @default(PENDING)
-  payload           Json?          // Webhook bruto recebido para auditoria e idempotência
+  payload           Json? // Webhook bruto recebido para auditoria e idempotência
 
-  workOrder         WorkOrder      @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
 
-  createdAt         DateTime       @default(now()) @map("created_at")
-  updatedAt         DateTime       @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([workOrderId])
   @@index([externalPaymentId])
   @@map("payment_logs")
+}
+
+// Configuração fiscal da oficina (linha única, id = 1)
+model FinancialSettings {
+  id           Int       @id @default(1)
+  taxRegime    TaxRegime @default(SIMPLES_NACIONAL) @map("tax_regime")
+  // Alíquota de ISS aplicada sobre a mão de obra (%). Parauapebas/PA, item 14.01 da LC 116/2003: 5%
+  issRate      Decimal   @default(5) @map("iss_rate") @db.Decimal(5, 2)
+  municipality String    @default("Parauapebas/PA") @db.VarChar(100)
+  serviceCode  String    @default("14.01") @map("service_code") @db.VarChar(10)
+  companyName  String    @default("JR Garage Center") @map("company_name") @db.VarChar(150)
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("financial_settings")
 }

@@ -1,0 +1,12 @@
+# Arquivos que NÃO sobem em deploys feitos pela CLI da Vercel (segredos e artefatos locais)
+.env*
+!.env.example
+**/.env*
+!**/.env.example
+node_modules
+**/node_modules
+dist
+**/.next
+.claude
+.vercel
+*.tsbuildinfo

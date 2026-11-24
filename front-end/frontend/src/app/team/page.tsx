@@ -29,6 +29,7 @@ interface TeamUser {
   phone: string | null;
   profile: StaffProfile | null;
   isActive: boolean;
+  commissionRate: string | number;
   createdAt: string;
 }
 
@@ -196,6 +197,7 @@ function UsersTab() {
                   <th className="py-3 px-5">Nome</th>
                   <th className="py-3 px-5">Contato</th>
                   <th className="py-3 px-5">Perfil</th>
+                  <th className="py-3 px-5">Comissão</th>
                   <th className="py-3 px-5">Situação</th>
                   <th className="py-3 px-5 text-right">Ações</th>
                 </tr>
@@ -239,6 +241,9 @@ function UsersTab() {
                             ))}
                           </select>
                         )}
+                      </td>
+                      <td className="py-3 px-5 tabular-nums" title="Comissão sobre a mão de obra das OS faturadas">
+                        {Number(u.commissionRate).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%
                       </td>
                       <td className="py-3 px-5">
                         <span
@@ -464,7 +469,7 @@ function NewUserModal({
 }
 
 function EditUserModal({ user, onClose, onSaved }: { user: TeamUser; onClose: () => void; onSaved: () => void }) {
-  const [form, setForm] = useState({ name: user.name, email: user.email, phone: user.phone ?? '' });
+  const [form, setForm] = useState({ name: user.name, email: user.email, phone: user.phone ?? '', commissionRate: String(Number(user.commissionRate)) });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -475,7 +480,7 @@ function EditUserModal({ user, onClose, onSaved }: { user: TeamUser; onClose: ()
       setSaving(true);
       await fetchApi(`/team/users/${user.id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim() }),
+        body: JSON.stringify({ name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim(), commissionRate: Number(form.commissionRate) }),
       });
       onSaved();
     } catch (err) {
@@ -512,6 +517,11 @@ function EditUserModal({ user, onClose, onSaved }: { user: TeamUser; onClose: ()
               <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={`${inputCls} mt-1`} />
             </label>
           </div>
+          <label className="block">
+            <span className="text-xs font-semibold text-slate-400">Comissão sobre a mão de obra (%)</span>
+            <input type="number" required min={0} max={100} step="0.01" value={form.commissionRate} onChange={(e) => setForm({ ...form, commissionRate: e.target.value })} className={`${inputCls} mt-1`} />
+            <span className="text-[11px] text-slate-500">Padrão 50%. Vale para as próximas OS faturadas; as já faturadas mantêm a % da data do faturamento.</span>
+          </label>
           <p className="text-[11px] text-slate-500">Perfil, senha e situação são alterados direto na tabela.</p>
           {error && <div className="text-sm text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-xl p-3">{error}</div>}
         </div>

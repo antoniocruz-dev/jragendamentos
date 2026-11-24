@@ -140,6 +140,13 @@ export class PaymentsService {
           data: {
             status: WorkOrderStatus.BILLED,
             finishedAt: workOrder.finishedAt || new Date(),
+            // Fechamento financeiro: valores congelados na data do pagamento
+            billedAt: new Date(),
+            paymentMethod: PaymentMethod.PIX,
+            issRate: (await tx.financialSettings.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } })).issRate,
+            commissionRate: workOrder.operatorId
+              ? ((await tx.user.findUnique({ where: { id: workOrder.operatorId }, select: { commissionRate: true } }))?.commissionRate ?? null)
+              : null,
           },
         });
 

@@ -2,12 +2,22 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateWorkOrderDto } from './dto/create-work-order.dto.js';
 import { UpdateWorkOrderStatusDto } from './dto/update-status.dto.js';
 import { CustomerDecisionDto } from './dto/customer-decision.dto.js';
-import { WorkOrderStatus, WorkOrderItemType, Prisma } from '@prisma/client';
+import {
+  WorkOrderStatus,
+  WorkOrderItemType,
+  Prisma,
+  PaymentMethod,
+  TransactionStatus,
+  TransactionType,
+  UserRole,
+} from '@prisma/client';
+import { BillWorkOrderDto } from '../financial/dto/financial.dto.js';
 
 @Injectable()
 export class WorkOrdersService {
@@ -45,6 +55,7 @@ export class WorkOrdersService {
         quantity: number;
         unitPrice: Prisma.Decimal;
         totalPrice: Prisma.Decimal;
+        unitCost: Prisma.Decimal;
       }> = [];
 
       for (const item of items) {
@@ -70,6 +81,7 @@ export class WorkOrdersService {
             quantity: item.quantity,
             unitPrice: service.basePrice,
             totalPrice: itemTotal,
+            unitCost: new Prisma.Decimal(0),
           });
         } else if (item.itemType === WorkOrderItemType.PRODUCT) {
           if (!item.productId) {
@@ -100,6 +112,8 @@ export class WorkOrdersService {
             quantity: item.quantity,
             unitPrice: product.salePrice,
             totalPrice: itemTotal,
+            // Custo de saída congelado na OS (base do custo das peças no financeiro)
+            unitCost: product.costPrice,
           });
 
           // Baixa atômica no estoque da peça
@@ -153,20 +167,52 @@ export class WorkOrdersService {
     });
   }
 
+  /**
+   * Detalhe da OS. É a mesma rota pública aberta pelo cliente: NÃO expõe custos de peças,
+   * comissões, ISS nem dados internos da equipe.
+   */
   async findById(id: string) {
     const workOrder = await this.prisma.workOrder.findUnique({
       where: { id },
-      include: {
-        client: true,
-        vehicle: true,
-        operator: { select: { id: true, name: true, email: true } },
+      select: {
+        id: true,
+        code: true,
+        clientId: true,
+        vehicleId: true,
+        operatorId: true,
+        status: true,
+        totalServices: true,
+        totalProducts: true,
+        discount: true,
+        finalAmount: true,
+        reportedIssue: true,
+        technicalNotes: true,
+        createdAt: true,
+        updatedAt: true,
+        finishedAt: true,
+        billedAt: true,
+        paymentMethod: true,
+        installments: true,
+        client: { select: { id: true, name: true, phone: true, email: true, document: true } },
+        vehicle: { select: { id: true, licensePlate: true, brand: true, model: true, year: true, color: true, currentKm: true } },
+        operator: { select: { id: true, name: true } },
         items: {
-          include: {
-            service: true,
-            product: true,
+          select: {
+            id: true,
+            itemType: true,
+            serviceId: true,
+            productId: true,
+            quantity: true,
+            unitPrice: true,
+            totalPrice: true,
+            service: { select: { id: true, name: true, description: true } },
+            product: { select: { id: true, name: true, sku: true } },
           },
         },
-        transactions: true,
+        transactions: {
+          where: { type: 'INCOME', status: { not: 'CANCELLED' } },
+          select: { id: true, amount: true, paymentMethod: true, installments: true, status: true, paidAt: true },
+        },
       },
     });
 
@@ -246,6 +292,11 @@ export class WorkOrdersService {
         return workOrder;
       }
 
+      // O faturamento tem fluxo próprio (forma de pagamento, lançamento no caixa e valores congelados)
+      if (targetStatus === WorkOrderStatus.BILLED) {
+        throw new BadRequestException('Para faturar a OS, use "Registrar pagamento".');
+      }
+
       // 3. Validação da transição na máquina de estados
       const allowed = this.allowedTransitions[currentStatus];
       if (!allowed || !allowed.includes(targetStatus)) {
@@ -302,6 +353,113 @@ export class WorkOrdersService {
       });
 
       return updatedWorkOrder;
+    });
+  }
+
+  // ==========================================
+  // FATURAMENTO (registro do pagamento)
+  // ==========================================
+
+  /**
+   * Registra o pagamento de uma OS concluída: muda para BILLED, lança a entrada no caixa e
+   * congela a alíquota de ISS e a comissão do mecânico vigentes na data.
+   */
+  async bill(id: string, dto: BillWorkOrderDto) {
+    return this.prisma.$transaction(async (tx) => {
+      const wo = await tx.workOrder.findUnique({ where: { id } });
+      if (!wo) throw new NotFoundException('Ordem de Serviço não encontrada.');
+      if (wo.status !== WorkOrderStatus.COMPLETED) {
+        throw new BadRequestException('Só é possível registrar o pagamento de uma OS concluída.');
+      }
+
+      const operator = await tx.user.findUnique({ where: { id: dto.operatorId } });
+      if (!operator || operator.role === UserRole.CLIENT || !operator.isActive) {
+        throw new BadRequestException('Mecânico responsável não encontrado ou inativo.');
+      }
+
+      const gross = wo.totalServices.add(wo.totalProducts);
+      const discount = dto.discount !== undefined ? new Prisma.Decimal(dto.discount) : wo.discount;
+      if (discount.gt(gross)) throw new BadRequestException('O desconto não pode ser maior que o valor da OS.');
+      const finalAmount = gross.sub(discount);
+
+      const paidAt = dto.paidAt ? new Date(dto.paidAt) : new Date();
+      if (paidAt.getTime() > Date.now() + 5 * 60000) throw new BadRequestException('A data do pagamento não pode ser futura.');
+      if (paidAt < wo.createdAt) throw new BadRequestException('A data do pagamento não pode ser anterior à abertura da OS.');
+
+      const installments = dto.paymentMethod === PaymentMethod.CREDIT_CARD ? (dto.installments ?? 1) : null;
+      const settings = await tx.financialSettings.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } });
+
+      // Atualização condicionada ao status: impede faturar a mesma OS duas vezes
+      const updated = await tx.workOrder.updateMany({
+        where: { id, status: WorkOrderStatus.COMPLETED },
+        data: {
+          status: WorkOrderStatus.BILLED,
+          billedAt: paidAt,
+          paymentMethod: dto.paymentMethod,
+          installments,
+          discount,
+          finalAmount,
+          operatorId: operator.id,
+          issRate: settings.issRate,
+          commissionRate: operator.commissionRate,
+          finishedAt: wo.finishedAt ?? paidAt,
+        },
+      });
+      if (updated.count !== 1) throw new ConflictException('Esta OS já foi faturada por outra pessoa.');
+
+      await tx.cashTransaction.create({
+        data: {
+          workOrderId: id,
+          type: TransactionType.INCOME,
+          category: 'FATURAMENTO_OS',
+          amount: finalAmount,
+          paymentMethod: dto.paymentMethod,
+          installments,
+          status: TransactionStatus.PAID,
+          paidAt,
+          description: `Recebimento da OS #${wo.code}`,
+          notes: dto.notes || null,
+        },
+      });
+
+      return tx.workOrder.findUnique({ where: { id }, select: { id: true, code: true, status: true, billedAt: true, finalAmount: true } });
+    });
+  }
+
+  /** Estorno do faturamento (só gestores): volta para Concluída e cancela a entrada no caixa. */
+  async reverseBilling(id: string, reason: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const wo = await tx.workOrder.findUnique({ where: { id } });
+      if (!wo) throw new NotFoundException('Ordem de Serviço não encontrada.');
+      if (wo.status !== WorkOrderStatus.BILLED) throw new BadRequestException('Só é possível estornar uma OS faturada.');
+
+      await tx.cashTransaction.updateMany({
+        where: { workOrderId: id, type: TransactionType.INCOME, status: { not: TransactionStatus.CANCELLED } },
+        data: { status: TransactionStatus.CANCELLED, notes: `Estornado: ${reason}` },
+      });
+      const previousNotes = wo.technicalNotes ? `${wo.technicalNotes}\n` : '';
+      await tx.workOrder.update({
+        where: { id },
+        data: {
+          status: WorkOrderStatus.COMPLETED,
+          billedAt: null,
+          paymentMethod: null,
+          installments: null,
+          issRate: null,
+          commissionRate: null,
+          technicalNotes: `${previousNotes}[Estorno do faturamento]: ${reason}`,
+        },
+      });
+      return { reversed: true };
+    });
+  }
+
+  /** Equipe ativa para escolher o mecânico responsável. */
+  listStaff() {
+    return this.prisma.user.findMany({
+      where: { role: { in: [UserRole.ADMIN, UserRole.OPERATOR] }, isActive: true },
+      select: { id: true, name: true, profile: true },
+      orderBy: { name: 'asc' },
     });
   }
 }

@@ -8,6 +8,7 @@ import { AppointmentsModule } from './appointments/appointments.module.js';
 import { TeamModule } from './team/team.module.js';
 import { CatalogModule } from './catalog/catalog.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
+import { FinancialModule } from './financial/financial.module.js';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { DashboardModule } from './dashboard/dashboard.module.js';
     TeamModule,
     CatalogModule,
     DashboardModule,
+    FinancialModule,
   ],
   controllers: [],
   providers: [],

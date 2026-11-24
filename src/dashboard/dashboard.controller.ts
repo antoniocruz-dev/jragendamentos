@@ -14,7 +14,7 @@ function parseDate(value: string | undefined, fallback: Date, name: string) {
 /**
  * Números agregados do Dashboard para um período.
  * - OS: pela data de abertura (createdAt)
- * - Faturamento: OS com status BILLED (faturada e paga) abertas no período — só para quem tem o módulo Financeiro
+ * - Faturamento: OS com status BILLED (faturada e paga) pagas no período — só para quem tem o módulo Financeiro
  * - Agendamentos: pela data agendada (scheduledFor)
  */
 @RequireModules('DASHBOARD')
@@ -45,7 +45,8 @@ export class DashboardController {
       }),
       user.modules.includes('FINANCIAL')
         ? this.prisma.workOrder.aggregate({
-            where: { ...createdInRange, status: WorkOrderStatus.BILLED },
+            // Faturamento pela data do pagamento (mesma regra do módulo Financeiro)
+            where: { status: WorkOrderStatus.BILLED, billedAt: { gte: from, lte: to } },
             _sum: { totalServices: true, totalProducts: true, discount: true, finalAmount: true },
             _count: { _all: true },
           })

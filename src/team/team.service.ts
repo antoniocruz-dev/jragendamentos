@@ -29,6 +29,7 @@ const USER_SELECT = {
   role: true,
   profile: true,
   isActive: true,
+  commissionRate: true,
   createdAt: true,
 } satisfies Prisma.UserSelect;
 
@@ -106,6 +107,8 @@ export class TeamService {
       data.email = email;
     }
     if (dto.phone !== undefined) data.phone = dto.phone || null;
+    // Comissão (%): vale para as próximas OS faturadas (as já faturadas mantêm a % da data)
+    if (dto.commissionRate !== undefined) data.commissionRate = new Prisma.Decimal(dto.commissionRate);
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
     if (dto.profile) {
       data.profile = dto.profile;
