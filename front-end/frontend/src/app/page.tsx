@@ -1,220 +1,489 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
-import { 
-  Wrench, 
-  Car, 
-  DollarSign, 
-  Clock, 
-  CheckCircle2, 
-  AlertCircle,
-  QrCode,
-  Search,
-  Plus
-} from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { LayoutDashboard, Plus, ClipboardList, DollarSign, Calendar, Loader2, AlertCircle } from 'lucide-react';
 import { fetchApi } from '@/services/api';
+import { useAuth } from '@/services/auth';
+import { hasModule, type AppModule } from '@/services/permissions';
 
-interface WorkOrderSummary {
-  id: string;
-  code: number;
-  status: string;
-  finalAmount: string;
-  createdAt: string;
-  client: { name: string; phone: string };
-  vehicle: { licensePlate: string; model: string };
+// ==========================================
+// Tipos da API /dashboard/summary
+// ==========================================
+
+interface Summary {
+  period: { from: string; to: string };
+  workOrders: { status: string; count: number; amount: number }[];
+  appointments: { status: string; count: number }[];
+  revenue: { orders: number; services: number; products: number; discount: number; total: number } | null;
 }
 
+interface Slice {
+  key: string;
+  label: string;
+  value: number;
+  color: string;
+  href: string;
+}
+
+// Paleta categórica (ordem fixa, validada para fundo escuro). A cor segue a entidade, nunca a posição.
+const SERIES = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#0ca30c', '#9085e9', '#e66767'];
+const SURFACE = '#0f172a'; // fundo dos cartões (slate-900): separa as fatias
+
+const WO_STATUS: { key: string; label: string }[] = [
+  { key: 'DRAFT', label: 'Rascunho' },
+  { key: 'QUOTE', label: 'Orçamento' },
+  { key: 'APPROVED', label: 'Aprovada' },
+  { key: 'IN_PROGRESS', label: 'Em execução' },
+  { key: 'WAITING_PARTS', label: 'Aguardando peças' },
+  { key: 'COMPLETED', label: 'Concluída' },
+  { key: 'BILLED', label: 'Faturada / paga' },
+  { key: 'CANCELLED', label: 'Cancelada' },
+];
+
+const APPT_STATUS: { key: string; label: string }[] = [
+  { key: 'PENDING', label: 'Pendente' },
+  { key: 'CONFIRMED', label: 'Confirmado' },
+  { key: 'ATTENDED', label: 'Compareceu' },
+  { key: 'CANCELLED', label: 'Cancelado' },
+];
+
+const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const int = (v: number) => v.toLocaleString('pt-BR');
+
+// ==========================================
+// Período
+// ==========================================
+
+type Preset = 'today' | '7d' | 'month' | '30d' | 'year' | 'custom';
+
+const PRESETS: { key: Preset; label: string }[] = [
+  { key: 'today', label: 'Hoje' },
+  { key: '7d', label: '7 dias' },
+  { key: 'month', label: 'Este mês' },
+  { key: '30d', label: '30 dias' },
+  { key: 'year', label: 'Este ano' },
+  { key: 'custom', label: 'Personalizado' },
+];
+
+function toInputDate(d: Date) {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function presetRange(preset: Exclude<Preset, 'custom'>): { from: string; to: string } {
+  const today = new Date();
+  const start = new Date(today);
+  if (preset === '7d') start.setDate(today.getDate() - 6);
+  if (preset === '30d') start.setDate(today.getDate() - 29);
+  if (preset === 'month') start.setDate(1);
+  if (preset === 'year') start.setMonth(0, 1);
+  return { from: toInputDate(start), to: toInputDate(today) };
+}
+
+/** Datas do filtro (AAAA-MM-DD, fuso local) → intervalo ISO do dia inteiro. */
+function toIsoRange(from: string, to: string) {
+  const [fy, fm, fd] = from.split('-').map(Number);
+  const [ty, tm, td] = to.split('-').map(Number);
+  return {
+    from: new Date(fy, fm - 1, fd, 0, 0, 0, 0).toISOString(),
+    to: new Date(ty, tm - 1, td, 23, 59, 59, 999).toISOString(),
+  };
+}
+
+// ==========================================
+// Página
+// ==========================================
+
+const subscribeNoop = () => () => {};
+
 export default function DashboardPage() {
-  const [workOrders, setWorkOrders] = useState<WorkOrderSummary[]>([]);
+  // Datas só existem no navegador (o prerender não pode usar o relógio)
+  const isClient = useSyncExternalStore(subscribeNoop, () => true, () => false);
+  if (!isClient) return <LoadingBlock />;
+  return <Dashboard />;
+}
+
+function LoadingBlock() {
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center text-slate-400">
+      <Loader2 className="w-6 h-6 animate-spin" />
+    </div>
+  );
+}
+
+function Dashboard() {
+  const { user } = useAuth();
+  const modules = user?.modules;
+  const can = (m: AppModule) => hasModule(modules, m);
+
+  const [preset, setPreset] = useState<Preset>('month');
+  const [range, setRange] = useState(() => presetRange('month'));
+  const [data, setData] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filterPlate, setFilterPlate] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const invalidRange = !range.from || !range.to || range.from > range.to;
 
   useEffect(() => {
-    loadOrders();
-  }, []);
+    if (invalidRange) return;
+    let cancelled = false;
+    const params = new URLSearchParams(toIsoRange(range.from, range.to));
+    fetchApi<Summary>(`/dashboard/summary?${params}`)
+      .then((d) => {
+        if (cancelled) return;
+        setData(d);
+        setError(null);
+      })
+      .catch((err) => !cancelled && setError(err instanceof Error ? err.message : 'Falha ao carregar o Dashboard.'))
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [range, invalidRange, reloadKey]);
 
-  async function loadOrders() {
-    try {
+  function choosePreset(p: Preset) {
+    setPreset(p);
+    if (p !== 'custom') {
       setLoading(true);
-      setError(null);
-      const data = await fetchApi<WorkOrderSummary[]>('/work-orders');
-      setWorkOrders(data);
-    } catch (err: any) {
-      console.error('Erro ao carregar Ordens de Serviço:', err);
-      setError(err?.message || 'Falha ao conectar com o backend.');
-    } finally {
-      setLoading(false);
+      setRange(presetRange(p));
     }
   }
 
-  // Métricas rápidas calculadas do estado atual
-  const totalBilled = workOrders
-    .filter((wo) => wo.status === 'BILLED')
-    .reduce((acc, wo) => acc + Number(wo.finalAmount), 0);
+  function changeDate(field: 'from' | 'to', value: string) {
+    setPreset('custom');
+    setLoading(true);
+    setRange((r) => ({ ...r, [field]: value }));
+  }
 
-  const inProgressCount = workOrders.filter(
-    (wo) => wo.status === 'IN_PROGRESS' || wo.status === 'APPROVED'
-  ).length;
-
-  const quoteCount = workOrders.filter((wo) => wo.status === 'QUOTE').length;
-
-  const filteredOrders = workOrders.filter((wo) =>
-    wo.vehicle.licensePlate.toLowerCase().includes(filterPlate.toLowerCase()) ||
-    wo.client.name.toLowerCase().includes(filterPlate.toLowerCase())
+  const woSlices: Slice[] = useMemo(
+    () =>
+      WO_STATUS.map((s, i) => ({
+        key: s.key,
+        label: s.label,
+        value: data?.workOrders.find((w) => w.status === s.key)?.count ?? 0,
+        color: SERIES[i],
+        href: `/work-orders?status=${s.key}`,
+      })),
+    [data],
   );
 
+  const revenueSlices: Slice[] = useMemo(
+    () =>
+      data?.revenue
+        ? [
+            { key: 'services', label: 'Serviços (mão de obra)', value: data.revenue.services, color: SERIES[0], href: '/work-orders?status=BILLED' },
+            { key: 'products', label: 'Peças', value: data.revenue.products, color: SERIES[1], href: '/work-orders?status=BILLED' },
+          ]
+        : [],
+    [data],
+  );
+
+  // Semana que a Agenda abre: hoje, se estiver no período; senão o início do período
+  const today = toInputDate(new Date());
+  const agendaDate = today >= range.from && today <= range.to ? today : range.from;
+
+  const apptSlices: Slice[] = useMemo(
+    () =>
+      APPT_STATUS.map((s, i) => ({
+        key: s.key,
+        label: s.label,
+        value: data?.appointments.find((a) => a.status === s.key)?.count ?? 0,
+        color: SERIES[i],
+        href: `/appointments?status=${s.key}&date=${agendaDate}`,
+      })),
+    [data, agendaDate],
+  );
+
+  const totalOrders = woSlices.reduce((a, s) => a + s.value, 0);
+  const inShop = woSlices
+    .filter((s) => ['APPROVED', 'IN_PROGRESS', 'WAITING_PARTS'].includes(s.key))
+    .reduce((a, s) => a + s.value, 0);
+  const totalAppts = apptSlices.reduce((a, s) => a + s.value, 0);
+
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 p-6 md:p-10">
-      <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white flex items-center gap-3">
-            <Wrench className="w-8 h-8 text-amber-500" />
-            JR Agendamentos
-          </h1>
-          <p className="text-slate-400 mt-1 text-sm">
-            Painel Operacional da Oficina Mecânica
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link
-            href="/work-orders/new"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-lg transition-colors shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            Nova Ordem de Serviço
-          </Link>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            Oficina Conectada
-          </span>
-        </div>
-      </header>
-
-      {/* Cards de Métricas */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-slate-800/80 border border-slate-700/60 rounded-xl p-5 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-sm font-medium">Carros no Pátio / Em Serviço</span>
-            <Car className="w-5 h-5 text-sky-400" />
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 lg:p-10">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-3">
+              <LayoutDashboard className="w-8 h-8 text-amber-500" />
+              Dashboard
+            </h1>
+            <p className="text-sm text-slate-400 mt-1">
+              Visão do período. Clique numa fatia ou na legenda para abrir a tela correspondente.
+            </p>
           </div>
-          <div className="text-3xl font-extrabold text-white">{inProgressCount}</div>
-          <p className="text-xs text-slate-400 mt-1">Autorizados ou em execução</p>
-        </div>
+          {can('WORK_ORDERS') && (
+            <Link
+              href="/work-orders/new"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm rounded-lg self-start"
+            >
+              <Plus className="w-4 h-4" />
+              Nova Ordem de Serviço
+            </Link>
+          )}
+        </header>
 
-        <div className="bg-slate-800/80 border border-slate-700/60 rounded-xl p-5 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-sm font-medium">Orçamentos Aguardando</span>
-            <Clock className="w-5 h-5 text-amber-400" />
+        {/* Filtro de período */}
+        <div className="flex flex-col lg:flex-row lg:items-center gap-3 bg-slate-900 border border-slate-800 rounded-2xl p-3">
+          <div className="flex flex-wrap gap-1.5">
+            {PRESETS.map((p) => (
+              <button
+                key={p.key}
+                onClick={() => choosePreset(p.key)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                  preset === p.key
+                    ? 'bg-amber-500 text-slate-950 border-amber-500'
+                    : 'bg-slate-800/80 text-slate-300 border-slate-700/60 hover:bg-slate-700'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
           </div>
-          <div className="text-3xl font-extrabold text-white">{quoteCount}</div>
-          <p className="text-xs text-slate-400 mt-1">Pendentes de aprovação pelo cliente</p>
-        </div>
-
-        <div className="bg-slate-800/80 border border-slate-700/60 rounded-xl p-5 shadow-sm">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-sm font-medium">Faturamento Concluído</span>
-            <DollarSign className="w-5 h-5 text-emerald-400" />
-          </div>
-          <div className="text-3xl font-extrabold text-emerald-400">
-            R$ {totalBilled.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-          </div>
-          <p className="text-xs text-slate-400 mt-1">OSs quitadas e baixadas</p>
-        </div>
-      </section>
-
-      {/* Tabela de Ordens de Serviço */}
-      <section className="bg-slate-800/60 border border-slate-700/60 rounded-xl overflow-hidden shadow-sm">
-        <div className="p-5 border-b border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h2 className="text-lg font-semibold text-white">Ordens de Serviço Ativas</h2>
-          <div className="relative w-full sm:w-72">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Buscar por placa ou cliente..."
-              value={filterPlate}
-              onChange={(e) => setFilterPlate(e.target.value)}
-              className="w-full bg-slate-900/80 border border-slate-700 text-sm rounded-lg pl-9 pr-4 py-2 text-slate-200 placeholder-slate-400 focus:outline-none focus:border-amber-500"
-            />
+          <div className="flex items-center gap-2 lg:ml-auto text-sm">
+            <label className="flex items-center gap-1.5 text-slate-400">
+              De
+              <input
+                type="date"
+                value={range.from}
+                max={range.to}
+                onChange={(e) => changeDate('from', e.target.value)}
+                className="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200 [color-scheme:dark]"
+              />
+            </label>
+            <label className="flex items-center gap-1.5 text-slate-400">
+              até
+              <input
+                type="date"
+                value={range.to}
+                min={range.from}
+                onChange={(e) => changeDate('to', e.target.value)}
+                className="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200 [color-scheme:dark]"
+              />
+            </label>
           </div>
         </div>
 
-        {loading ? (
-          <div className="p-12 text-center text-slate-400">Carregando dados da oficina...</div>
+        {invalidRange ? (
+          <Notice text="Escolha uma data inicial anterior à data final." />
         ) : error ? (
-          <div className="p-8 text-center">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-500/10 text-red-400 mb-3">
-              <AlertCircle className="w-6 h-6" />
-            </div>
-            <div className="text-white font-medium mb-1">Não foi possível carregar os dados</div>
-            <div className="text-slate-400 text-sm max-w-md mx-auto mb-4">{error}</div>
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center space-y-3">
+            <AlertCircle className="w-8 h-8 text-rose-400 mx-auto" />
+            <p className="text-sm text-slate-300">{error}</p>
             <button
-              onClick={loadOrders}
-              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold text-xs rounded-lg transition-colors"
+              onClick={() => {
+                setLoading(true);
+                setReloadKey((k) => k + 1);
+              }}
+              className="text-sm font-semibold text-amber-400 hover:text-amber-300"
             >
               Tentar novamente
             </button>
           </div>
-        ) : filteredOrders.length === 0 ? (
-          <div className="p-12 text-center text-slate-400">Nenhuma ordem de serviço encontrada.</div>
+        ) : !data ? (
+          <LoadingBlock />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-300">
-              <thead className="bg-slate-900/60 text-xs uppercase text-slate-400 border-b border-slate-700">
-                <tr>
-                  <th className="py-3 px-4">OS #</th>
-                  <th className="py-3 px-4">Placa / Veículo</th>
-                  <th className="py-3 px-4">Cliente</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4">Valor Total</th>
-                  <th className="py-3 px-4 text-right">Ação</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-700/60">
-                {filteredOrders.map((wo) => (
-                  <tr key={wo.id} className="hover:bg-slate-700/30 transition-colors">
-                    <td className="py-3.5 px-4 font-mono font-bold text-amber-400">
-                      #{wo.code}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <div className="font-semibold text-white uppercase">{wo.vehicle.licensePlate}</div>
-                      <div className="text-xs text-slate-400">{wo.vehicle.model}</div>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <div className="text-white font-medium">{wo.client.name}</div>
-                      <div className="text-xs text-slate-400">{wo.client.phone}</div>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-                        wo.status === 'BILLED'
-                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                          : wo.status === 'QUOTE'
-                          ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                          : 'bg-sky-500/10 text-sky-400 border border-sky-500/30'
-                      }`}>
-                        {wo.status}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 font-semibold text-white">
-                      R$ {Number(wo.finalAmount).toFixed(2)}
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <a
-                        href={`/os/${wo.id}`}
-                        className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-400 hover:text-amber-300 hover:underline"
-                      >
-                        <QrCode className="w-3.5 h-3.5" />
-                        Ver / Cobrar
-                      </a>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className={`grid gap-6 md:grid-cols-2 ${data.revenue ? 'xl:grid-cols-3' : ''} transition-opacity ${loading ? 'opacity-50' : ''}`}>
+            <PieCard
+              title="Ordens de Serviço por status"
+              subtitle="OS abertas no período"
+              icon={ClipboardList}
+              slices={woSlices}
+              format={int}
+              centerValue={int(totalOrders)}
+              centerLabel="OS no período"
+              footer={`${int(inShop)} no pátio (aprovadas, em execução ou aguardando peças)`}
+              canOpen={can('WORK_ORDERS')}
+              emptyText="Nenhuma OS aberta neste período."
+            />
+            {data.revenue && (
+              <PieCard
+                title="Faturamento"
+                subtitle={`${int(data.revenue.orders)} OS faturadas e pagas no período`}
+                icon={DollarSign}
+                slices={revenueSlices}
+                format={brl}
+                centerValue={brl(data.revenue.total)}
+                centerLabel="líquido"
+                footer={data.revenue.discount > 0 ? `Descontos concedidos: ${brl(data.revenue.discount)}` : 'Somente OS com status Faturada / paga'}
+                canOpen={can('WORK_ORDERS')}
+                emptyText="Nenhuma OS faturada neste período."
+              />
+            )}
+            <PieCard
+              title="Agendamentos por status"
+              subtitle="Pela data agendada"
+              icon={Calendar}
+              slices={apptSlices}
+              format={int}
+              centerValue={int(totalAppts)}
+              centerLabel={totalAppts === 1 ? 'agendamento' : 'agendamentos'}
+              footer={`${int(apptSlices.find((s) => s.key === 'ATTENDED')?.value ?? 0)} compareceram`}
+              canOpen={can('APPOINTMENTS')}
+              emptyText="Nenhum agendamento neste período."
+            />
           </div>
         )}
-      </section>
+      </div>
     </div>
+  );
+}
+
+function Notice({ text }: { text: string }) {
+  return <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center text-sm text-slate-400">{text}</div>;
+}
+
+// ==========================================
+// Gráfico de pizza (rosca) clicável
+// ==========================================
+
+function arcPath(cx: number, cy: number, r: number, inner: number, start: number, end: number) {
+  const pt = (radius: number, angle: number) => [cx + radius * Math.sin(angle), cy - radius * Math.cos(angle)];
+  const large = end - start > Math.PI ? 1 : 0;
+  const [x1, y1] = pt(r, start);
+  const [x2, y2] = pt(r, end);
+  const [x3, y3] = pt(inner, end);
+  const [x4, y4] = pt(inner, start);
+  return `M${x1} ${y1}A${r} ${r} 0 ${large} 1 ${x2} ${y2}L${x3} ${y3}A${inner} ${inner} 0 ${large} 0 ${x4} ${y4}Z`;
+}
+
+function PieCard({
+  title,
+  subtitle,
+  icon: Icon,
+  slices,
+  format,
+  centerValue,
+  centerLabel,
+  footer,
+  canOpen,
+  emptyText,
+}: {
+  title: string;
+  subtitle: string;
+  icon: React.ComponentType<{ className?: string }>;
+  slices: Slice[];
+  format: (v: number) => string;
+  centerValue: string;
+  centerLabel: string;
+  footer: string;
+  canOpen: boolean;
+  emptyText: string;
+}) {
+  const router = useRouter();
+  const [hover, setHover] = useState<string | null>(null);
+  const total = slices.reduce((a, s) => a + s.value, 0);
+  const visible = slices.filter((s) => s.value > 0);
+
+  const size = 220;
+  const c = size / 2;
+  const r = c - 4;
+  const inner = r * 0.6;
+
+  const arcs = visible.reduce<(Slice & { start: number; end: number })[]>((acc, s) => {
+    const start = acc.length ? acc[acc.length - 1].end : 0;
+    acc.push({ ...s, start, end: start + (s.value / total) * Math.PI * 2 });
+    return acc;
+  }, []);
+
+  const hovered = visible.find((s) => s.key === hover);
+  const pct = (v: number) => (total ? `${((v / total) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%` : '0%');
+  const open = (s: Slice) => canOpen && router.push(s.href);
+
+  return (
+    <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col">
+      <div className="flex items-start gap-3 mb-4">
+        <div className="bg-slate-800 border border-slate-700 p-2 rounded-lg text-slate-300">
+          <Icon className="w-4 h-4" />
+        </div>
+        <div>
+          <h2 className="font-bold text-white">{title}</h2>
+          <p className="text-xs text-slate-400">{subtitle}</p>
+        </div>
+      </div>
+
+      {total === 0 ? (
+        <div className="flex-1 flex items-center justify-center py-16 text-sm text-slate-500 text-center">{emptyText}</div>
+      ) : (
+        <>
+          <div className="relative mx-auto" style={{ width: size, height: size }}>
+            <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} role="img" aria-label={`${title}: ${centerValue}`}>
+              {arcs.length === 1 ? (
+                <path
+                  d={`M${c} ${c - r}A${r} ${r} 0 1 1 ${c - 0.01} ${c - r}L${c - 0.01} ${c - inner}A${inner} ${inner} 0 1 0 ${c} ${c - inner}Z`}
+                  fill={arcs[0].color}
+                  className={canOpen ? 'cursor-pointer' : ''}
+                  onMouseEnter={() => setHover(arcs[0].key)}
+                  onMouseLeave={() => setHover(null)}
+                  onClick={() => open(arcs[0])}
+                />
+              ) : (
+                arcs.map((a) => (
+                  <path
+                    key={a.key}
+                    d={arcPath(c, c, hover === a.key ? r + 3 : r, inner, a.start, a.end)}
+                    fill={a.color}
+                    stroke={SURFACE}
+                    strokeWidth={2}
+                    strokeLinejoin="round"
+                    opacity={hover && hover !== a.key ? 0.45 : 1}
+                    className={`transition-opacity ${canOpen ? 'cursor-pointer' : ''}`}
+                    onMouseEnter={() => setHover(a.key)}
+                    onMouseLeave={() => setHover(null)}
+                    onClick={() => open(a)}
+                  >
+                    <title>{`${a.label}: ${format(a.value)} (${pct(a.value)})`}</title>
+                  </path>
+                ))
+              )}
+            </svg>
+            {/* Centro: total ou fatia sob o mouse */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-12">
+              <div className="text-lg font-extrabold text-white leading-tight">
+                {hovered ? format(hovered.value) : centerValue}
+              </div>
+              <div className="text-[11px] text-slate-400 leading-tight">
+                {hovered ? `${hovered.label} · ${pct(hovered.value)}` : centerLabel}
+              </div>
+            </div>
+          </div>
+
+          {/* Legenda = tabela de valores (também clicável) */}
+          <ul className="mt-5 space-y-1">
+            {slices.map((s) => {
+              const disabled = s.value === 0 || !canOpen;
+              return (
+                <li key={s.key}>
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => open(s)}
+                    onMouseEnter={() => setHover(s.key)}
+                    onMouseLeave={() => setHover(null)}
+                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-left ${
+                      disabled ? 'cursor-default' : 'hover:bg-slate-800'
+                    } ${hover === s.key ? 'bg-slate-800' : ''} ${s.value === 0 ? 'opacity-40' : ''}`}
+                  >
+                    <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: s.color }} />
+                    <span className="flex-1 text-slate-300 truncate">{s.label}</span>
+                    <span className="font-semibold text-white tabular-nums">{format(s.value)}</span>
+                    <span className="w-12 text-right text-xs text-slate-500 tabular-nums">{pct(s.value)}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
+
+      <p className="mt-4 pt-3 border-t border-slate-800 text-xs text-slate-500">
+        {footer}
+        {!canOpen && ' · Seu perfil não acessa a tela de detalhes.'}
+      </p>
+    </section>
   );
 }

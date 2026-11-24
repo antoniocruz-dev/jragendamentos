@@ -6,6 +6,8 @@ import { WorkOrdersModule } from './work-orders/work-orders.module.js';
 import { PaymentsModule } from './payments/payments.module.js';
 import { AppointmentsModule } from './appointments/appointments.module.js';
 import { TeamModule } from './team/team.module.js';
+import { CatalogModule } from './catalog/catalog.module.js';
+import { DashboardModule } from './dashboard/dashboard.module.js';
 
 @Module({
   imports: [
@@ -16,6 +18,8 @@ import { TeamModule } from './team/team.module.js';
     PaymentsModule,
     AppointmentsModule,
     TeamModule,
+    CatalogModule,
+    DashboardModule,
   ],
   controllers: [],
   providers: [],

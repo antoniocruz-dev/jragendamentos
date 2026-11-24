@@ -44,6 +44,10 @@ export class UpdateTeamUserDto {
   name?: string;
 
   @IsOptional()
+  @IsEmail({}, { message: 'Forneça um e-mail válido.' })
+  email?: string;
+
+  @IsOptional()
   @IsString()
   phone?: string;
 

@@ -56,3 +56,11 @@ export function hasModule(modules: string[] | undefined, module: AppModule | nul
 export function firstAllowedPath(modules: string[] | undefined): string | null {
   return MODULE_HOME.find(([m]) => modules?.includes(m))?.[1] ?? null;
 }
+
+/** Perfis que podem excluir ou inativar cadastros (mesma regra da API). */
+export const RECORD_MANAGER_PROFILES: StaffProfile[] = ['ADMINISTRADOR', 'GERENTE_GERAL'];
+
+export function canManageRecords(user: { profile?: StaffProfile | null } | null | undefined) {
+  return !!user?.profile && RECORD_MANAGER_PROFILES.includes(user.profile);
+}
+

@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, ParseEnumPipe, ParseUUIDPipe, Patch, Post, Put } from '@nestjs/common';
+import { ManagersOnly } from '../auth/decorators/managers-only.decorator.js';
+import { Body, Controller, Delete, Get, Param, ParseEnumPipe, ParseUUIDPipe, Patch, Post, Put } from '@nestjs/common';
 import { StaffProfile } from '@prisma/client';
 import { TeamService } from './team.service.js';
 import { CreateTeamUserDto, UpdateProfilePermissionsDto, UpdateTeamUserDto } from './dto/team.dto.js';
@@ -32,6 +33,12 @@ export class TeamController {
     @Body() dto: UpdateTeamUserDto,
   ) {
     return this.teamService.updateUser(actor, id, dto);
+  }
+
+  @ManagersOnly()
+  @Delete('users/:id')
+  removeUser(@CurrentUser() actor: AuthenticatedUser, @Param('id', new ParseUUIDPipe()) id: string) {
+    return this.teamService.removeUser(actor, id);
   }
 
   @Get('profiles')

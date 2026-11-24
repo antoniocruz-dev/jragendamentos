@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Patch,
+  Delete,
   Param,
   Body,
   Query,
@@ -14,6 +15,7 @@ import { CreateAppointmentDto } from './dto/create-appointment.dto.js';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto.js';
 import { UpdateAppointmentStatusDto } from './dto/update-appointment-status.dto.js';
 import { RequireModules } from '../auth/decorators/require-modules.decorator.js';
+import { ManagersOnly } from '../auth/decorators/managers-only.decorator.js';
 
 @RequireModules('APPOINTMENTS')
 @Controller('appointments')
@@ -49,6 +51,12 @@ export class AppointmentsController {
     @Body() dto: UpdateAppointmentDto,
   ) {
     return this.appointmentsService.update(id, dto);
+  }
+
+  @ManagersOnly()
+  @Delete(':id')
+  async remove(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.appointmentsService.remove(id);
   }
 
   @Patch(':id/status')

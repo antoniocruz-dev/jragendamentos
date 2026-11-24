@@ -104,6 +104,13 @@ export class AppointmentsService {
     return appointment;
   }
 
+  /** Exclusão definitiva (só gestores). Para desmarcar normalmente, use o status CANCELLED. */
+  async remove(id: string) {
+    await this.findById(id);
+    await this.prisma.appointment.delete({ where: { id } });
+    return { deleted: true };
+  }
+
   async update(id: string, dto: UpdateAppointmentDto) {
     const appointment = await this.findById(id);
 

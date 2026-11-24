@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Wrench, 
@@ -43,23 +43,30 @@ interface SelectedItem {
   productId?: string;
 }
 
-// Catálogo padrão sincronizado com o banco de dados
-const AVAILABLE_SERVICES = [
-  { id: '59031abc-9374-424f-bdfb-e0f0aad7e26c', name: 'Troca de Óleo 100% Sintético e Filtro', price: 80.00 },
-  { id: '4edce51b-4a9f-459f-ab75-aab1da5b784c', name: 'Alinhamento Técnico 3D e Balanceamento', price: 130.00 },
-  { id: '636593a0-52f9-4540-88a6-435872118ac1', name: 'Revisão do Sistema de Freios Dianteiros', price: 150.00 },
-  { id: '57942543-4486-485c-b252-694da4de1ccd', name: 'Diagnóstico Eletrônico Computadorizado (Scanner)', price: 120.00 },
-];
-
-const AVAILABLE_PRODUCTS = [
-  { id: 'd44713b1-d7bb-4b26-bbb6-f82294bf7d86', name: 'Óleo Motor 5W30 Sintético 1L', price: 54.00, stock: 56 },
-  { id: '1244e010-c877-418c-8c50-cdfa8860cbc2', name: 'Filtro de Óleo Blindado', price: 38.00, stock: 24 },
-  { id: 'b6cb57b3-c59d-4562-8cb3-705e4041e5a0', name: 'Jogo de Pastilhas de Freio Cerâmica', price: 180.00, stock: 12 },
-  { id: 'daa2adaf-784a-4ee1-bc44-3bfba030818a', name: 'Fluido de Freio DOT 4 500ml', price: 45.00, stock: 18 },
-];
+interface CatalogOption {
+  id: string;
+  name: string;
+  price: number;
+  stock?: number;
+}
 
 export default function NewWorkOrderPage() {
   const router = useRouter();
+
+  // Catálogo ativo (cadastrado na tela Peças & Serviços)
+  const [availableServices, setAvailableServices] = useState<CatalogOption[]>([]);
+  const [availableProducts, setAvailableProducts] = useState<CatalogOption[]>([]);
+
+  useEffect(() => {
+    fetchApi<{ id: string; name: string; basePrice: string }[]>('/catalog/services')
+      .then((list) => setAvailableServices(list.map((s) => ({ id: s.id, name: s.name, price: Number(s.basePrice) }))))
+      .catch(() => setAvailableServices([]));
+    fetchApi<{ id: string; name: string; salePrice: string; stockQuantity: number }[]>('/catalog/products')
+      .then((list) =>
+        setAvailableProducts(list.map((p) => ({ id: p.id, name: p.name, price: Number(p.salePrice), stock: p.stockQuantity }))),
+      )
+      .catch(() => setAvailableProducts([]));
+  }, []);
 
   // Estados de busca de veículo/cliente
   const [plateInput, setPlateInput] = useState('');
@@ -298,7 +305,7 @@ export default function NewWorkOrderPage() {
                 <label className="text-xs text-slate-400 block mb-1">Adicionar Serviço:</label>
                 <select
                   onChange={(e) => {
-                    const srv = AVAILABLE_SERVICES.find((s) => s.id === e.target.value);
+                    const srv = availableServices.find((s) => s.id === e.target.value);
                     if (srv) handleAddService(srv.name, srv.price, srv.id);
                     e.target.value = '';
                   }}
@@ -306,7 +313,7 @@ export default function NewWorkOrderPage() {
                   className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-amber-500"
                 >
                   <option value="" disabled>Selecione um serviço...</option>
-                  {AVAILABLE_SERVICES.map((s) => (
+                  {availableServices.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name} (R$ {s.price.toFixed(2)})
                     </option>
@@ -318,7 +325,7 @@ export default function NewWorkOrderPage() {
                 <label className="text-xs text-slate-400 block mb-1">Adicionar Peça / Produto:</label>
                 <select
                   onChange={(e) => {
-                    const prod = AVAILABLE_PRODUCTS.find((p) => p.id === e.target.value);
+                    const prod = availableProducts.find((p) => p.id === e.target.value);
                     if (prod) handleAddProduct(prod.name, prod.price, prod.id);
                     e.target.value = '';
                   }}
@@ -326,7 +333,7 @@ export default function NewWorkOrderPage() {
                   className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-amber-500"
                 >
                   <option value="" disabled>Selecione uma peça...</option>
-                  {AVAILABLE_PRODUCTS.map((p) => (
+                  {availableProducts.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name} (R$ {p.price.toFixed(2)} - Est: {p.stock})
                     </option>

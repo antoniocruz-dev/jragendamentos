@@ -11,6 +11,8 @@ import {
   Loader2,
   KeyRound,
   Users,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import { fetchApi } from '@/services/api';
 import { useAuth } from '@/services/auth';
@@ -109,6 +111,7 @@ function UsersTab() {
   const [reloadKey, setReloadKey] = useState(0);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [editingUser, setEditingUser] = useState<TeamUser | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -135,6 +138,19 @@ function UsersTab() {
     try {
       setBusyId(u.id);
       await fetchApi(`/team/users/${u.id}`, { method: 'PATCH', body: JSON.stringify(data) });
+      reload();
+    } catch (err) {
+      alert(errorMessage(err));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function removeUser(u: TeamUser) {
+    if (!confirm(`Excluir definitivamente ${u.name}? As OS em que atuou ficam sem operador. Para só bloquear o acesso, use Desativar.`)) return;
+    try {
+      setBusyId(u.id);
+      await fetchApi(`/team/users/${u.id}`, { method: 'DELETE' });
       reload();
     } catch (err) {
       alert(errorMessage(err));
@@ -239,6 +255,17 @@ function UsersTab() {
                         <div className="flex justify-end gap-2">
                           {!locked && (
                             <button
+                              onClick={() => setEditingUser(u)}
+                              disabled={busy}
+                              title="Editar dados"
+                              className="inline-flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                              Editar
+                            </button>
+                          )}
+                          {!locked && (
+                            <button
                               onClick={() => handleResetPassword(u)}
                               disabled={busy}
                               title="Redefinir senha"
@@ -261,6 +288,17 @@ function UsersTab() {
                               {u.isActive ? 'Desativar' : 'Reativar'}
                             </button>
                           )}
+                          {!locked && !isSelf && (
+                            <button
+                              onClick={() => removeUser(u)}
+                              disabled={busy}
+                              title="Excluir usuário"
+                              className="inline-flex items-center gap-1.5 bg-rose-600/10 hover:bg-rose-600/20 text-rose-300 border border-rose-500/30 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              Excluir
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -271,6 +309,17 @@ function UsersTab() {
           </div>
         )}
       </div>
+
+      {editingUser && (
+        <EditUserModal
+          user={editingUser}
+          onClose={() => setEditingUser(null)}
+          onSaved={() => {
+            setEditingUser(null);
+            reload();
+          }}
+        />
+      )}
 
       {showForm && (
         <NewUserModal
@@ -414,6 +463,71 @@ function NewUserModal({
   );
 }
 
+function EditUserModal({ user, onClose, onSaved }: { user: TeamUser; onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = useState({ name: user.name, email: user.email, phone: user.phone ?? '' });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    try {
+      setSaving(true);
+      await fetchApi(`/team/users/${user.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim() }),
+      });
+      onSaved();
+    } catch (err) {
+      setError(errorMessage(err));
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
+      <form
+        onSubmit={handleSubmit}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl"
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+          <h3 className="text-lg font-bold text-white">Editar usuário</h3>
+          <button type="button" onClick={onClose} className="text-slate-400 hover:text-white">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          <label className="block">
+            <span className="text-xs font-semibold text-slate-400">Nome</span>
+            <input required minLength={3} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={`${inputCls} mt-1`} />
+          </label>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <label className="block">
+              <span className="text-xs font-semibold text-slate-400">E-mail (login)</span>
+              <input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={`${inputCls} mt-1`} />
+            </label>
+            <label className="block">
+              <span className="text-xs font-semibold text-slate-400">Telefone</span>
+              <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={`${inputCls} mt-1`} />
+            </label>
+          </div>
+          <p className="text-[11px] text-slate-500">Perfil, senha e situação são alterados direto na tabela.</p>
+          {error && <div className="text-sm text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-xl p-3">{error}</div>}
+        </div>
+        <div className="flex justify-end gap-2 px-6 py-4 border-t border-slate-800">
+          <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm font-semibold text-slate-300">
+            Cancelar
+          </button>
+          <button type="submit" disabled={saving} className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-sm font-bold disabled:opacity-50">
+            {saving ? 'Salvando...' : 'Salvar'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 // ==========================================
 // Aba: Perfis e permissões
 // ==========================================
@@ -494,6 +608,7 @@ function ProfilesTab() {
                 </th>
               ))}
               <th className="py-3 px-3 text-center whitespace-nowrap">Equipe</th>
+              <th className="py-3 px-3 text-center whitespace-nowrap">Excluir / Inativar</th>
               <th className="py-3 px-5" />
             </tr>
           </thead>
@@ -526,6 +641,19 @@ function ProfilesTab() {
                   <td className="py-3 px-3 text-center" title="Fixo: só Administrador e Gerente Geral gerenciam a equipe">
                     <input type="checkbox" checked={p.canManageTeam} disabled readOnly className="w-4 h-4 accent-amber-500" />
                   </td>
+                  <td
+                    className="py-3 px-3 text-center"
+                    title="Fixo: só Administrador e Gerente Geral excluem ou inativam cadastros"
+                  >
+                    <input
+                      type="checkbox"
+                      aria-label={`${p.label}: excluir ou inativar cadastros`}
+                      checked={p.canManageTeam}
+                      disabled
+                      readOnly
+                      className="w-4 h-4 accent-amber-500"
+                    />
+                  </td>
                   <td className="py-3 px-5 text-right whitespace-nowrap">
                     {p.locked ? (
                       <span className="text-[11px] text-slate-500">Acesso total</span>
@@ -554,7 +682,8 @@ function ProfilesTab() {
       </div>
       <p className="text-xs text-slate-500">
         O Administrador sempre tem acesso total. A coluna &quot;Equipe&quot; (cadastro de usuários e configuração de perfis) é
-        fixa: somente Administrador e Gerente Geral. As alterações valem na próxima ação de cada usuário.
+        fixa: somente Administrador e Gerente Geral. A coluna &quot;Excluir / Inativar&quot; também é fixa: só esses dois
+        perfis excluem ou inativam cadastros (clientes, veículos, peças, serviços, agendamentos e usuários). As alterações valem na próxima ação de cada usuário.
       </p>
     </div>
   );

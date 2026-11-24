@@ -14,8 +14,12 @@ import {
   Pencil,
   Wrench,
   X,
+  Trash2,
 } from 'lucide-react';
 import { fetchApi } from '@/services/api';
+import { useAuth } from '@/services/auth';
+import { canManageRecords } from '@/services/permissions';
+import { useSearchParams } from 'next/navigation';
 
 type AppointmentStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'ATTENDED';
 
@@ -89,12 +93,19 @@ const rangeFmt = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'shor
 
 const noopSubscribe = () => () => {};
 
+function parseDateParam(value: string | null): Date | null {
+  const m = value?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
+}
+
 export default function AppointmentsPage() {
   // A data atual só é lida no navegador: no Next 16, `new Date()` durante o prerender é proibido
   // e o fuso do servidor pode diferir do fuso do usuário.
   const isClient = useSyncExternalStore(noopSubscribe, () => true, () => false);
   const [selectedWeekMs, setSelectedWeekMs] = useState<number | null>(null);
-  const weekStartMs = selectedWeekMs ?? (isClient ? startOfWeek(new Date()).getTime() : null);
+  // ?date=AAAA-MM-DD (vindo do Dashboard) abre a agenda na semana dessa data
+  const dateParam = useSearchParams().get('date');
+  const weekStartMs = selectedWeekMs ?? (isClient ? startOfWeek(parseDateParam(dateParam) ?? new Date()).getTime() : null);
 
   if (weekStartMs === null) {
     return <LoadingState />;
@@ -123,7 +134,14 @@ function AppointmentsAgenda({
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<'ALL' | AppointmentStatus>('ALL');
+  // ?status=PENDING (vindo do Dashboard) pré-seleciona o filtro
+  const statusParam = useSearchParams().get('status');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | AppointmentStatus>(() => {
+    const s = statusParam;
+    return s && s in STATUS_CONFIG ? (s as AppointmentStatus) : 'ALL';
+  });
+  const isManager = canManageRecords(useAuth().user);
+
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
   // Modal (criar / reagendar)
@@ -208,6 +226,19 @@ function AppointmentsAgenda({
       reload();
     } catch (err) {
       alert(`Erro ao atualizar status: ${errorMessage(err)}`);
+    } finally {
+      setActionLoadingId(null);
+    }
+  }
+
+  async function removeAppointment(a: Appointment) {
+    if (!confirm(`Excluir definitivamente o agendamento de ${a.client.name} (${a.vehicle.licensePlate})? Para desmarcar, prefira Cancelar.`)) return;
+    try {
+      setActionLoadingId(a.id);
+      await fetchApi(`/appointments/${a.id}`, { method: 'DELETE' });
+      reload();
+    } catch (err) {
+      alert(`Erro ao excluir: ${errorMessage(err)}`);
     } finally {
       setActionLoadingId(null);
     }
@@ -432,6 +463,15 @@ function AppointmentsAgenda({
                                     label="Cancelar"
                                   />
                                 </>
+                              )}
+                              {isManager && (
+                                <ActionButton
+                                  onClick={() => removeAppointment(a)}
+                                  disabled={busy}
+                                  color="rose"
+                                  icon={<Trash2 className="w-3.5 h-3.5" />}
+                                  label="Excluir"
+                                />
                               )}
                             </div>
                           </li>

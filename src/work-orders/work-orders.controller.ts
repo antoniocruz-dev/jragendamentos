@@ -29,8 +29,8 @@ export class WorkOrdersController {
     return this.workOrdersService.create(dto);
   }
 
-  // Lista também usada pelo Dashboard
-  @RequireModules('WORK_ORDERS', 'DASHBOARD')
+  // Lista de OS (o Dashboard usa /dashboard/summary)
+  @RequireModules('WORK_ORDERS')
   @Get()
   async listAll(@Query('status') status?: WorkOrderStatus) {
     return this.workOrdersService.listAll(status);

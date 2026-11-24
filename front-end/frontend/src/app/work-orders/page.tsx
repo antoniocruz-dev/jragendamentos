@@ -16,16 +16,19 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { fetchApi } from '@/services/api';
+import { useSearchParams } from 'next/navigation';
 
 // Dicionário de tradução semântica dos status para PT-BR
 const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string; border: string }> = {
   ALL: { label: 'Todos os Status', bg: 'bg-slate-800', text: 'text-slate-300', border: 'border-slate-700' },
+  DRAFT: { label: 'Rascunho', bg: 'bg-slate-500/10', text: 'text-slate-300', border: 'border-slate-500/30' },
   QUOTE: { label: 'Orçamento', bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/30' },
   APPROVED: { label: 'Aprovado', bg: 'bg-sky-500/10', text: 'text-sky-400', border: 'border-sky-500/30' },
   IN_PROGRESS: { label: 'Em Execução', bg: 'bg-purple-500/10', text: 'text-purple-400', border: 'border-purple-500/30' },
+  WAITING_PARTS: { label: 'Aguardando Peças', bg: 'bg-orange-500/10', text: 'text-orange-400', border: 'border-orange-500/30' },
   COMPLETED: { label: 'Finalizado', bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30' },
   BILLED: { label: 'Pago e Faturado', bg: 'bg-emerald-500/20', text: 'text-emerald-300', border: 'border-emerald-500/50' },
-  CANCELED: { label: 'Cancelado', bg: 'bg-rose-500/10', text: 'text-rose-400', border: 'border-rose-500/30' },
+  CANCELLED: { label: 'Cancelado', bg: 'bg-rose-500/10', text: 'text-rose-400', border: 'border-rose-500/30' },
 };
 
 interface WorkOrder {
@@ -42,7 +45,12 @@ interface WorkOrder {
 export default function WorkOrdersGeneralPage() {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  // ?status=QUOTE (vindo do Dashboard) pré-seleciona o filtro
+  const statusParam = useSearchParams().get('status');
+  const [statusFilter, setStatusFilter] = useState<string>(() => {
+    const s = statusParam;
+    return s && s in STATUS_CONFIG ? s : 'ALL';
+  });
   const [searchTerm, setSearchTerm] = useState('');
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 

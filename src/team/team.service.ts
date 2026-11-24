@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -98,6 +99,12 @@ export class TeamService {
 
     const data: Prisma.UserUpdateInput = {};
     if (dto.name !== undefined) data.name = dto.name;
+    if (dto.email !== undefined) {
+      const email = dto.email.trim().toLowerCase();
+      const conflict = await this.prisma.user.findFirst({ where: { email, id: { not: id } } });
+      if (conflict) throw new ConflictException('Este e-mail já está em uso por outro usuário.');
+      data.email = email;
+    }
     if (dto.phone !== undefined) data.phone = dto.phone || null;
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
     if (dto.profile) {
@@ -108,6 +115,40 @@ export class TeamService {
 
     const updated = await this.prisma.user.update({ where: { id }, data, select: USER_SELECT });
     return { ...updated, profile: effectiveProfile(updated.role, updated.profile) };
+  }
+
+  /**
+   * Exclui o usuário da equipe. As OS em que ele era o operador ficam sem operador
+   * (o histórico da OS é mantido). Mesmas travas da desativação.
+   */
+  async removeUser(actor: AuthenticatedUser, id: string) {
+    const target = await this.prisma.user.findUnique({ where: { id }, select: USER_SELECT });
+    if (!target || target.role === UserRole.CLIENT) {
+      throw new NotFoundException('Usuário da equipe não encontrado.');
+    }
+    if (actor.id === id) {
+      throw new BadRequestException('Você não pode excluir a sua própria conta.');
+    }
+
+    const profile = effectiveProfile(target.role, target.profile);
+    if (profile === StaffProfile.ADMINISTRADOR) {
+      if (actor.profile !== StaffProfile.ADMINISTRADOR) {
+        throw new ForbiddenException('Somente um Administrador pode excluir outro Administrador.');
+      }
+      const otherAdmins = await this.prisma.user.count({
+        where: {
+          id: { not: id },
+          isActive: true,
+          OR: [{ profile: StaffProfile.ADMINISTRADOR }, { role: UserRole.ADMIN, profile: null }],
+        },
+      });
+      if (otherAdmins === 0) {
+        throw new BadRequestException('O sistema precisa de pelo menos um Administrador ativo.');
+      }
+    }
+
+    await this.prisma.user.delete({ where: { id } });
+    return { deleted: true };
   }
 
   // ==========================================
