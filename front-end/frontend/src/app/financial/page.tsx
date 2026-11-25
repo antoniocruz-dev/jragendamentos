@@ -98,7 +98,7 @@ export default function FinancialPage() {
 
 function Spinner() {
   return (
-    <div className="min-h-[50vh] flex items-center justify-center text-slate-400">
+    <div className="min-h-[50vh] flex items-center justify-center text-brand-brown">
       <Loader2 className="w-6 h-6 animate-spin" />
     </div>
   );
@@ -196,15 +196,15 @@ function Financial() {
   }
 
   return (
-    <div className="min-h-full bg-slate-950 text-slate-100 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+    <div className="min-h-full bg-surface-offwhite text-brand-brown-dark px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
       <div className="max-w-7xl mx-auto space-y-5">
-        <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-800 pb-5">
+        <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-line-soft pb-5">
           <div>
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white flex items-center gap-2.5">
-              <Wallet className="w-6 h-6 sm:w-7 sm:h-7 text-amber-500 shrink-0" />
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-brand-brown-dark flex items-center gap-2.5">
+              <Wallet className="w-6 h-6 sm:w-7 sm:h-7 text-neon-deep shrink-0" />
               Financeiro
             </h1>
-            <p className="text-xs sm:text-sm text-slate-400 mt-1">
+            <p className="text-xs sm:text-sm text-brand-brown mt-1">
               Gestão interna: faturamento, custo de peças, mão de obra, ISS, comissões e despesas. Não compartilhe com clientes.
             </p>
           </div>
@@ -212,7 +212,7 @@ function Financial() {
             <button
               onClick={() => runExport('excel')}
               disabled={!report || !!exporting}
-              className="inline-flex items-center justify-center gap-2 px-3 py-2.5 sm:py-2 rounded-lg text-sm font-semibold bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-600/30 disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 px-3 py-2.5 sm:py-2 rounded-lg text-sm font-semibold bg-emerald-600/20 text-emerald-700 border border-emerald-500/30 hover:bg-emerald-600/30 disabled:opacity-50"
             >
               {exporting === 'excel' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
               Excel
@@ -220,7 +220,7 @@ function Financial() {
             <button
               onClick={() => runExport('pdf')}
               disabled={!report || !!exporting}
-              className="inline-flex items-center justify-center gap-2 px-3 py-2.5 sm:py-2 rounded-lg text-sm font-semibold bg-rose-600/15 text-rose-300 border border-rose-500/30 hover:bg-rose-600/25 disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 px-3 py-2.5 sm:py-2 rounded-lg text-sm font-semibold bg-rose-600/15 text-rose-700 border border-rose-500/30 hover:bg-rose-600/25 disabled:opacity-50"
             >
               {exporting === 'pdf' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
               PDF
@@ -229,7 +229,7 @@ function Financial() {
         </header>
 
         {/* Filtros */}
-        <section className="bg-slate-900 border border-slate-800 rounded-2xl p-3 space-y-3">
+        <section className="bg-surface-white border border-line-soft rounded-2xl p-3 space-y-3">
           <div className="flex flex-col xl:flex-row xl:items-center gap-3">
             <div className="flex gap-1.5 scroll-x -mx-3 px-3 sm:mx-0 sm:px-0 sm:flex-wrap pb-1 sm:pb-0">
               {PRESETS.map((p) => (
@@ -237,7 +237,7 @@ function Financial() {
                   key={p.key}
                   onClick={() => choosePreset(p.key)}
                   className={`shrink-0 whitespace-nowrap px-3 py-2 sm:py-1.5 rounded-lg text-xs font-semibold border ${
-                    preset === p.key ? 'bg-amber-500 text-slate-950 border-amber-500' : 'bg-slate-800/80 text-slate-300 border-slate-700/60 hover:bg-slate-700'
+                    preset === p.key ? 'bg-neon-primary text-brand-brown-dark border-neon-deep' : 'bg-surface-muted/80 text-brand-brown border-line/60 hover:bg-surface-strong'
                   }`}
                 >
                   {p.label}
@@ -245,13 +245,13 @@ function Financial() {
               ))}
             </div>
             <div className="grid grid-cols-2 gap-2 xl:flex xl:items-center xl:ml-auto text-sm">
-              <label className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-slate-400 min-w-0">
+              <label className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-brand-brown min-w-0">
                 De
-                <input type="date" value={range.from} max={range.to} onChange={(e) => { setPreset('custom'); setLoading(true); setRange((r) => ({ ...r, from: e.target.value })); }} className="w-full min-w-0 bg-slate-950 border border-slate-700 rounded-lg px-2 py-2 sm:py-1.5 text-slate-200 [color-scheme:dark]" />
+                <input type="date" value={range.from} max={range.to} onChange={(e) => { setPreset('custom'); setLoading(true); setRange((r) => ({ ...r, from: e.target.value })); }} className="w-full min-w-0 bg-surface-offwhite border border-line rounded-lg px-2 py-2 sm:py-1.5 text-brand-brown-dark [color-scheme:light]" />
               </label>
-              <label className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-slate-400 min-w-0">
+              <label className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-brand-brown min-w-0">
                 até
-                <input type="date" value={range.to} min={range.from} onChange={(e) => { setPreset('custom'); setLoading(true); setRange((r) => ({ ...r, to: e.target.value })); }} className="w-full min-w-0 bg-slate-950 border border-slate-700 rounded-lg px-2 py-2 sm:py-1.5 text-slate-200 [color-scheme:dark]" />
+                <input type="date" value={range.to} min={range.from} onChange={(e) => { setPreset('custom'); setLoading(true); setRange((r) => ({ ...r, to: e.target.value })); }} className="w-full min-w-0 bg-surface-offwhite border border-line rounded-lg px-2 py-2 sm:py-1.5 text-brand-brown-dark [color-scheme:light]" />
               </label>
             </div>
           </div>
@@ -280,7 +280,7 @@ function Financial() {
               key={key}
               onClick={() => setTab(key)}
               className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold border whitespace-nowrap ${
-                tab === key ? 'bg-amber-500 text-slate-950 border-amber-500' : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
+                tab === key ? 'bg-neon-primary text-brand-brown-dark border-neon-deep' : 'bg-surface-white text-brand-brown border-line-soft hover:bg-surface-muted'
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -297,9 +297,9 @@ function Financial() {
           <Box>Escolha uma data inicial anterior à data final.</Box>
         ) : error ? (
           <Box>
-            <AlertCircle className="w-6 h-6 text-rose-400 mx-auto mb-2" />
-            <p className="text-rose-300">{error}</p>
-            <button onClick={reload} className="mt-2 text-sm font-semibold text-amber-400">Tentar novamente</button>
+            <AlertCircle className="w-6 h-6 text-rose-700 mx-auto mb-2" />
+            <p className="text-rose-700">{error}</p>
+            <button onClick={reload} className="mt-2 text-sm font-semibold text-brand-brown">Tentar novamente</button>
           </Box>
         ) : !report ? (
           <Spinner />
@@ -317,16 +317,16 @@ function Financial() {
 }
 
 function Box({ children }: { children: React.ReactNode }) {
-  return <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center text-sm text-slate-400">{children}</div>;
+  return <div className="bg-surface-white border border-line-soft rounded-2xl p-8 text-center text-sm text-brand-brown">{children}</div>;
 }
 
 function Card({ label, value, hint, tone = 'neutral' }: { label: string; value: string; hint?: string; tone?: 'neutral' | 'good' | 'bad' }) {
-  const color = tone === 'good' ? 'text-emerald-300' : tone === 'bad' ? 'text-rose-300' : 'text-white';
+  const color = tone === 'good' ? 'text-emerald-700' : tone === 'bad' ? 'text-rose-700' : 'text-brand-brown-dark';
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-      <div className="text-[11px] font-bold tracking-wide text-slate-400 uppercase">{label}</div>
+    <div className="bg-surface-white border border-line-soft rounded-xl p-4">
+      <div className="text-[11px] font-bold tracking-wide text-brand-brown uppercase">{label}</div>
       <div className={`text-xl font-extrabold mt-1 tabular-nums ${color}`}>{value}</div>
-      {hint && <div className="text-[11px] text-slate-500 mt-0.5">{hint}</div>}
+      {hint && <div className="text-[11px] text-brand-brown-light mt-0.5">{hint}</div>}
     </div>
   );
 }
@@ -364,54 +364,54 @@ function SummaryTab({ report }: { report: FinancialReport }) {
       </div>
 
       <div className="grid lg:grid-cols-5 gap-5">
-        <section className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-          <h2 className="px-4 py-3 font-bold text-white border-b border-slate-800">Demonstrativo do resultado (gerencial)</h2>
+        <section className="lg:col-span-2 bg-surface-white border border-line-soft rounded-2xl overflow-hidden">
+          <h2 className="px-4 py-3 font-bold text-brand-brown-dark border-b border-line-soft">Demonstrativo do resultado (gerencial)</h2>
           <table className="w-full text-sm">
-            <tbody className="divide-y divide-slate-800/80">
+            <tbody className="divide-y divide-line-soft/80">
               {dre.map((r) => (
-                <tr key={r.label} className={r.strong ? 'bg-slate-800/40' : ''}>
-                  <td className={`px-4 py-2 ${r.strong ? 'font-bold text-white' : 'text-slate-300'}`}>
+                <tr key={r.label} className={r.strong ? 'bg-surface-muted/40' : ''}>
+                  <td className={`px-4 py-2 ${r.strong ? 'font-bold text-brand-brown-dark' : 'text-brand-brown'}`}>
                     {r.label}
-                    {r.hint && <div className="text-[11px] text-slate-500 font-normal">{r.hint}</div>}
+                    {r.hint && <div className="text-[11px] text-brand-brown-light font-normal">{r.hint}</div>}
                   </td>
-                  <td className={`px-4 py-2 text-right tabular-nums whitespace-nowrap ${r.strong ? 'font-bold text-white' : 'text-slate-200'}`}>
-                    {r.value === null ? <span className="text-slate-500 text-xs">n/a (filtrado)</span> : brl(r.value)}
+                  <td className={`px-4 py-2 text-right tabular-nums whitespace-nowrap ${r.strong ? 'font-bold text-brand-brown-dark' : 'text-brand-brown-dark'}`}>
+                    {r.value === null ? <span className="text-brand-brown-light text-xs">n/a (filtrado)</span> : brl(r.value)}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
           {report.filtersApplied && (
-            <p className="px-4 py-3 text-[11px] text-amber-300/80 border-t border-slate-800">
+            <p className="px-4 py-3 text-[11px] text-brand-brown/80 border-t border-line-soft">
               Com filtro de mecânico, pagamento ou busca, as despesas fixas não entram no resultado (elas não pertencem a uma OS).
             </p>
           )}
         </section>
 
-        <section className="lg:col-span-3 bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-          <h2 className="px-4 py-3 font-bold text-white border-b border-slate-800">
+        <section className="lg:col-span-3 bg-surface-white border border-line-soft rounded-2xl overflow-hidden">
+          <h2 className="px-4 py-3 font-bold text-brand-brown-dark border-b border-line-soft">
             ISS e resultado por {GROUP_LABELS[report.period.groupBy].toLowerCase()}
           </h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="text-[11px] uppercase text-slate-400 bg-slate-950/60">
+              <thead className="text-[11px] uppercase text-brand-brown bg-surface-offwhite/60">
                 <tr>
                   {[GROUP_LABELS[report.period.groupBy], 'OS', 'Faturado', 'Mão de obra', 'ISS', 'Lucro bruto', 'Comissões', 'Despesas', 'Resultado'].map((h, i) => (
                     <th key={h} className={`px-3 py-2 ${i > 1 ? 'text-right' : 'text-left'} whitespace-nowrap`}>{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/80 tabular-nums">
+              <tbody className="divide-y divide-line-soft/80 tabular-nums">
                 {report.periods.length === 0 && (
-                  <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-500">Nenhum faturamento ou despesa no período.</td></tr>
+                  <tr><td colSpan={9} className="px-3 py-6 text-center text-brand-brown-light">Nenhum faturamento ou despesa no período.</td></tr>
                 )}
                 {report.periods.map((p) => (
                   <tr key={p.key}>
-                    <td className="px-3 py-2 whitespace-nowrap text-slate-200">{p.label}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-brand-brown-dark">{p.label}</td>
                     <td className="px-3 py-2">{p.orders}</td>
                     <td className="px-3 py-2 text-right">{brl(p.totalBilled)}</td>
                     <td className="px-3 py-2 text-right">{brl(p.labor)}</td>
-                    <td className="px-3 py-2 text-right font-semibold text-amber-200">{brl(p.iss)}</td>
+                    <td className="px-3 py-2 text-right font-semibold text-brand-brown-dark">{brl(p.iss)}</td>
                     <td className="px-3 py-2 text-right">{brl(p.grossProfit)}</td>
                     <td className="px-3 py-2 text-right">{brl(p.commission)}</td>
                     <td className="px-3 py-2 text-right">{p.expenses === null ? 'n/a' : brl(p.expenses)}</td>
@@ -420,13 +420,13 @@ function SummaryTab({ report }: { report: FinancialReport }) {
                 ))}
               </tbody>
               {report.periods.length > 0 && (
-                <tfoot className="bg-slate-800/50 font-bold text-white tabular-nums">
+                <tfoot className="bg-surface-muted/50 font-bold text-brand-brown-dark tabular-nums">
                   <tr>
                     <td className="px-3 py-2">Total</td>
                     <td className="px-3 py-2">{s.orders}</td>
                     <td className="px-3 py-2 text-right">{brl(s.totalBilled)}</td>
                     <td className="px-3 py-2 text-right">{brl(s.labor)}</td>
-                    <td className="px-3 py-2 text-right text-amber-200">{brl(s.iss)}</td>
+                    <td className="px-3 py-2 text-right text-brand-brown-dark">{brl(s.iss)}</td>
                     <td className="px-3 py-2 text-right">{brl(s.grossProfit)}</td>
                     <td className="px-3 py-2 text-right">{brl(s.commission)}</td>
                     <td className="px-3 py-2 text-right">{s.operationalExpenses === null ? 'n/a' : brl(s.operationalExpenses)}</td>
@@ -439,7 +439,7 @@ function SummaryTab({ report }: { report: FinancialReport }) {
         </section>
       </div>
 
-      <p className="flex gap-2 text-xs text-slate-500">
+      <p className="flex gap-2 text-xs text-brand-brown-light">
         <Info className="w-4 h-4 shrink-0" />
         Faturamento pela data do pagamento da OS. ISS calculado só sobre a mão de obra líquida de descontos (peças: ICMS), com a alíquota
         congelada em cada OS no faturamento — regime atual: {st.taxRegimeLabel}. ISS e comissão são arredondados por OS (como em cada nota fiscal) e
@@ -486,21 +486,21 @@ function OrdersTab({ report, isManager, onChanged }: { report: FinancialReport; 
 
   const cols = ['Data', 'OS', 'Veículo / Placa (Serviço)', 'Cliente', 'Custo peça', 'Venda peça', 'Mecânico', 'Mão de obra', 'Desconto', 'Total cobrado', 'Lucro oficina', 'ISS', 'Comissão', 'Pagamento', ''];
   return (
-    <section className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+    <section className="bg-surface-white border border-line-soft rounded-2xl overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
-          <thead className="uppercase text-slate-400 bg-slate-950/60">
+          <thead className="uppercase text-brand-brown bg-surface-offwhite/60">
             <tr>{cols.map((h, i) => <th key={i} className={`px-2.5 py-2.5 whitespace-nowrap ${[4, 5, 7, 8, 9, 10, 11, 12].includes(i) ? 'text-right' : 'text-left'}`}>{h}</th>)}</tr>
           </thead>
-          <tbody className="divide-y divide-slate-800/80 tabular-nums">
-            {report.orders.length === 0 && <tr><td colSpan={cols.length} className="py-8 text-center text-slate-500">Nenhuma OS faturada com esses filtros.</td></tr>}
+          <tbody className="divide-y divide-line-soft/80 tabular-nums">
+            {report.orders.length === 0 && <tr><td colSpan={cols.length} className="py-8 text-center text-brand-brown-light">Nenhuma OS faturada com esses filtros.</td></tr>}
             {report.orders.map((o) => (
-              <tr key={o.id} className="hover:bg-slate-800/40">
+              <tr key={o.id} className="hover:bg-surface-muted/40">
                 <td className="px-2.5 py-2 whitespace-nowrap">{brDate(o.date)}</td>
-                <td className="px-2.5 py-2 font-mono font-bold text-amber-400"><Link href={`/os/${o.id}`}>#{o.code}</Link></td>
+                <td className="px-2.5 py-2 font-mono font-bold text-brand-brown"><Link href={`/os/${o.id}`}>#{o.code}</Link></td>
                 <td className="px-2.5 py-2 min-w-56">
-                  <div className="text-white">{o.vehicle} / <span className="font-mono">{o.plate}</span></div>
-                  <div className="text-slate-500">{o.services}</div>
+                  <div className="text-brand-brown-dark">{o.vehicle} / <span className="font-mono">{o.plate}</span></div>
+                  <div className="text-brand-brown-light">{o.services}</div>
                 </td>
                 <td className="px-2.5 py-2">{o.client}</td>
                 <td className="px-2.5 py-2 text-right">{brl(o.partsCost)}</td>
@@ -508,9 +508,9 @@ function OrdersTab({ report, isManager, onChanged }: { report: FinancialReport; 
                 <td className="px-2.5 py-2 whitespace-nowrap">{o.mechanic}</td>
                 <td className="px-2.5 py-2 text-right">{brl(o.labor)}</td>
                 <td className="px-2.5 py-2 text-right">{o.discount ? brl(o.discount) : '-'}</td>
-                <td className="px-2.5 py-2 text-right font-semibold text-white">{brl(o.totalBilled)}</td>
-                <td className="px-2.5 py-2 text-right text-emerald-300">{brl(o.grossProfit)}</td>
-                <td className="px-2.5 py-2 text-right text-amber-200" title={`${o.issRate}%`}>{brl(o.iss)}</td>
+                <td className="px-2.5 py-2 text-right font-semibold text-brand-brown-dark">{brl(o.totalBilled)}</td>
+                <td className="px-2.5 py-2 text-right text-emerald-700">{brl(o.grossProfit)}</td>
+                <td className="px-2.5 py-2 text-right text-brand-brown-dark" title={`${o.issRate}%`}>{brl(o.iss)}</td>
                 <td className="px-2.5 py-2 text-right" title={`${o.commissionRate}%`}>{brl(o.commission)}</td>
                 <td className="px-2.5 py-2 whitespace-nowrap">{o.payment}</td>
                 <td className="px-2.5 py-2">
@@ -523,7 +523,7 @@ function OrdersTab({ report, isManager, onChanged }: { report: FinancialReport; 
             ))}
           </tbody>
           {report.orders.length > 0 && (
-            <tfoot className="bg-slate-800/50 font-bold text-white tabular-nums">
+            <tfoot className="bg-surface-muted/50 font-bold text-brand-brown-dark tabular-nums">
               <tr>
                 <td className="px-2.5 py-2" colSpan={4}>Totais ({s.orders} OS)</td>
                 <td className="px-2.5 py-2 text-right">{brl(s.partsCost)}</td>
@@ -555,24 +555,24 @@ function MechanicsTab({ report, staff, meta, onChanged }: { report: FinancialRep
   if (report.mechanics.length === 0) return <Box>Nenhuma produção ou pagamento de comissão no período.</Box>;
   return (
     <div className="space-y-4">
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-brand-brown-light">
         Comissão sobre a mão de obra líquida de descontos, com a % de cada mecânico na data do faturamento (ajuste a % em Equipe → Editar).
         &quot;Pago no período&quot; soma as despesas da categoria &quot;Pagamento de comissão&quot;.
       </p>
       {report.mechanics.map((m) => (
-        <section key={m.id ?? 'none'} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-4 py-3 border-b border-slate-800">
-            <h2 className="font-bold text-white">{m.name}</h2>
+        <section key={m.id ?? 'none'} className="bg-surface-white border border-line-soft rounded-2xl overflow-hidden">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-4 py-3 border-b border-line-soft">
+            <h2 className="font-bold text-brand-brown-dark">{m.name}</h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-1 text-sm tabular-nums">
-              <span className="text-slate-400">Mão de obra <b className="text-white block">{brl(m.labor)}</b></span>
-              <span className="text-slate-400">Comissão {m.commissionRates.length ? `(${m.commissionRates.map(pctFmt).join(' / ')})` : ''} <b className="text-white block">{brl(m.commission)}</b></span>
-              <span className="text-slate-400">Pago no período <b className="text-white block">{brl(m.paid)}</b></span>
-              <span className="text-slate-400">Saldo a pagar <b className={`block ${m.balance > 0 ? 'text-amber-300' : m.balance < 0 ? 'text-rose-300' : 'text-emerald-300'}`}>{brl(m.balance)}</b></span>
+              <span className="text-brand-brown">Mão de obra <b className="text-brand-brown-dark block">{brl(m.labor)}</b></span>
+              <span className="text-brand-brown">Comissão {m.commissionRates.length ? `(${m.commissionRates.map(pctFmt).join(' / ')})` : ''} <b className="text-brand-brown-dark block">{brl(m.commission)}</b></span>
+              <span className="text-brand-brown">Pago no período <b className="text-brand-brown-dark block">{brl(m.paid)}</b></span>
+              <span className="text-brand-brown">Saldo a pagar <b className={`block ${m.balance > 0 ? 'text-brand-brown' : m.balance < 0 ? 'text-rose-700' : 'text-emerald-700'}`}>{brl(m.balance)}</b></span>
             </div>
             {m.id && m.balance > 0 && (
               <button
                 onClick={() => setPaying({ id: m.id!, amount: m.balance, name: m.name })}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 hover:bg-amber-400 self-start"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-neon-primary text-brand-brown-dark hover:bg-neon-soft self-start"
               >
                 <Wallet className="w-3.5 h-3.5" />
                 Registrar pagamento
@@ -582,16 +582,16 @@ function MechanicsTab({ report, staff, meta, onChanged }: { report: FinancialRep
           {m.items.length > 0 && (
             <div className="overflow-x-auto">
               <table className="w-full text-xs tabular-nums">
-                <thead className="uppercase text-slate-400 bg-slate-950/60">
+                <thead className="uppercase text-brand-brown bg-surface-offwhite/60">
                   <tr><th className="px-3 py-2 text-left">Data</th><th className="px-3 py-2 text-left">OS</th><th className="px-3 py-2 text-left">Veículo / Placa</th><th className="px-3 py-2 text-left">Serviço</th><th className="px-3 py-2 text-right">Mão de obra</th><th className="px-3 py-2 text-right">Comissão</th></tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/80">
+                <tbody className="divide-y divide-line-soft/80">
                   {m.items.map((it) => (
                     <tr key={it.id}>
                       <td className="px-3 py-1.5">{brDate(it.date)}</td>
-                      <td className="px-3 py-1.5 font-mono text-amber-400">#{it.code}</td>
+                      <td className="px-3 py-1.5 font-mono text-brand-brown">#{it.code}</td>
                       <td className="px-3 py-1.5">{it.vehicle}</td>
-                      <td className="px-3 py-1.5 text-slate-400">{it.services}</td>
+                      <td className="px-3 py-1.5 text-brand-brown">{it.services}</td>
                       <td className="px-3 py-1.5 text-right">{brl(it.labor)}</td>
                       <td className="px-3 py-1.5 text-right" title={`${it.commissionRate}%`}>{brl(it.commission)}</td>
                     </tr>
@@ -645,25 +645,25 @@ function ExpensesTab({ report, staff, meta, isManager, onChanged }: { report: Fi
           <Card label="Pago por sócios" value={brl(e.paidByPartner)} />
           <Card label="Pagamentos de comissão" value={brl(e.commissionPayments)} hint="Quitam o saldo dos mecânicos" />
         </div>
-        <button onClick={() => setEditing(null)} className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm rounded-lg self-start">
+        <button onClick={() => setEditing(null)} className="inline-flex items-center gap-2 px-4 py-2 bg-neon-primary hover:bg-neon-soft text-brand-brown-dark font-bold text-sm rounded-lg self-start">
           <Plus className="w-4 h-4" />
           Nova despesa
         </button>
       </div>
 
-      <section className="bg-slate-900 border border-slate-800 rounded-2xl overflow-x-auto">
+      <section className="bg-surface-white border border-line-soft rounded-2xl overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="text-[11px] uppercase text-slate-400 bg-slate-950/60">
+          <thead className="text-[11px] uppercase text-brand-brown bg-surface-offwhite/60">
             <tr><th className="px-3 py-2 text-left">Data</th><th className="px-3 py-2 text-left">Descrição</th><th className="px-3 py-2 text-left">Categoria</th><th className="px-3 py-2 text-right">Valor</th><th className="px-3 py-2 text-left">Quem pagou</th><th className="px-3 py-2 text-left">Pagamento</th><th className="px-3 py-2" /></tr>
           </thead>
-          <tbody className="divide-y divide-slate-800/80 tabular-nums">
-            {e.rows.length === 0 && <tr><td colSpan={7} className="py-8 text-center text-slate-500">Nenhuma despesa lançada no período.</td></tr>}
+          <tbody className="divide-y divide-line-soft/80 tabular-nums">
+            {e.rows.length === 0 && <tr><td colSpan={7} className="py-8 text-center text-brand-brown-light">Nenhuma despesa lançada no período.</td></tr>}
             {e.rows.map((x) => (
               <tr key={x.id}>
                 <td className="px-3 py-2 whitespace-nowrap">{brDate(x.date)}</td>
-                <td className="px-3 py-2 text-white">{x.description}{x.beneficiary && <span className="text-slate-500"> • {x.beneficiary}</span>}</td>
-                <td className="px-3 py-2 text-slate-300">{x.categoryLabel}</td>
-                <td className="px-3 py-2 text-right font-semibold text-white">{brl(x.amount)}</td>
+                <td className="px-3 py-2 text-brand-brown-dark">{x.description}{x.beneficiary && <span className="text-brand-brown-light"> • {x.beneficiary}</span>}</td>
+                <td className="px-3 py-2 text-brand-brown">{x.categoryLabel}</td>
+                <td className="px-3 py-2 text-right font-semibold text-brand-brown-dark">{brl(x.amount)}</td>
                 <td className="px-3 py-2">{x.paidBy === 'SOCIO' ? 'Sócio' : 'Caixa da oficina'}</td>
                 <td className="px-3 py-2">{x.payment}</td>
                 <td className="px-3 py-2">
@@ -679,11 +679,11 @@ function ExpensesTab({ report, staff, meta, isManager, onChanged }: { report: Fi
       </section>
 
       {e.byCategory.length > 0 && (
-        <section className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-          <h3 className="text-sm font-bold text-white mb-2">Por categoria</h3>
+        <section className="bg-surface-white border border-line-soft rounded-2xl p-4">
+          <h3 className="text-sm font-bold text-brand-brown-dark mb-2">Por categoria</h3>
           <ul className="grid sm:grid-cols-2 gap-x-8 gap-y-1 text-sm">
             {e.byCategory.map((c) => (
-              <li key={c.key} className="flex justify-between border-b border-slate-800/60 py-1"><span className="text-slate-300">{c.label}</span><b className="tabular-nums">{brl(c.amount)}</b></li>
+              <li key={c.key} className="flex justify-between border-b border-line-soft/60 py-1"><span className="text-brand-brown">{c.label}</span><b className="tabular-nums">{brl(c.amount)}</b></li>
             ))}
           </ul>
         </section>
@@ -764,7 +764,7 @@ function ExpenseModal({
       <form onSubmit={submit} className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
           <Field label="Data *">
-            <input type="date" required value={form.paidAt} onChange={(e) => set('paidAt', e.target.value)} className={`${inputCls} [color-scheme:dark]`} />
+            <input type="date" required value={form.paidAt} onChange={(e) => set('paidAt', e.target.value)} className={`${inputCls} [color-scheme:light]`} />
           </Field>
           <Field label="Valor (R$) *">
             <input type="number" required min="0.01" step="0.01" value={form.amount} onChange={(e) => set('amount', e.target.value)} className={inputCls} />
@@ -852,8 +852,8 @@ function SettingsTab({ isManager, meta, onSaved }: { isManager: boolean; meta: F
 
   return (
     <div className="grid lg:grid-cols-2 gap-5">
-      <form onSubmit={save} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
-        <h2 className="font-bold text-white">Dados fiscais da oficina</h2>
+      <form onSubmit={save} className="bg-surface-white border border-line-soft rounded-2xl p-5 space-y-3">
+        <h2 className="font-bold text-brand-brown-dark">Dados fiscais da oficina</h2>
         <Field label="Nome da oficina (cabeçalho dos relatórios)">
           <input disabled={!isManager} value={form.companyName ?? ''} onChange={(e) => set('companyName', e.target.value)} className={inputCls} />
         </Field>
@@ -873,16 +873,16 @@ function SettingsTab({ isManager, meta, onSaved }: { isManager: boolean; meta: F
             <input disabled={!isManager} type="number" min={0} max={5} step="0.01" value={form.issRate ?? ''} onChange={(e) => set('issRate', e.target.value)} className={inputCls} />
           </Field>
         </div>
-        {message && <div className={`text-sm rounded-lg px-3 py-2 border ${message.ok ? 'text-emerald-300 bg-emerald-500/10 border-emerald-500/30' : 'text-rose-300 bg-rose-500/10 border-rose-500/30'}`}>{message.text}</div>}
+        {message && <div className={`text-sm rounded-lg px-3 py-2 border ${message.ok ? 'text-emerald-700 bg-emerald-500/10 border-emerald-500/30' : 'text-rose-700 bg-rose-500/10 border-rose-500/30'}`}>{message.text}</div>}
         {isManager ? (
           <ModalActions onCancel={() => setForm({ taxRegime: settings.taxRegime, issRate: String(settings.issRate), municipality: settings.municipality, serviceCode: settings.serviceCode, companyName: settings.companyName })} saving={saving} />
         ) : (
-          <p className="text-xs text-slate-500">Somente o Administrador ou o Gerente Geral alteram a configuração fiscal.</p>
+          <p className="text-xs text-brand-brown-light">Somente o Administrador ou o Gerente Geral alteram a configuração fiscal.</p>
         )}
       </form>
 
-      <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3 text-sm text-slate-300 leading-relaxed">
-        <h2 className="font-bold text-white">Como o ISS é calculado</h2>
+      <section className="bg-surface-white border border-line-soft rounded-2xl p-5 space-y-3 text-sm text-brand-brown leading-relaxed">
+        <h2 className="font-bold text-brand-brown-dark">Como o ISS é calculado</h2>
         <ul className="list-disc pl-5 space-y-1.5">
           <li>O ISS é municipal (LC 116/2003). Conserto e manutenção de veículos é o <b>item 14.01</b>; em <b>Parauapebas/PA</b> a alíquota é <b>5%</b> (Código Tributário Municipal).</li>
           <li>A base é só a <b>mão de obra</b>, líquida de descontos. Peças e partes empregadas ficam fora da base do ISS (sujeitas ao ICMS, estadual).</li>
@@ -891,7 +891,7 @@ function SettingsTab({ isManager, meta, onSaved }: { isManager: boolean; meta: F
           <li>Reforma tributária (EC 132/2023): o ISS continua integral até 2028 e é reduzido gradualmente de 2029 a 2032, quando é substituído pelo IBS.</li>
           <li>O ISS aparece somente nos relatórios de gestão. A página da OS enviada ao cliente nunca mostra ISS, custos nem comissões.</li>
         </ul>
-        <p className="text-xs text-slate-500">Valores gerenciais estimados. A apuração oficial é a da nota fiscal de serviço (NFS-e) e do seu contador.</p>
+        <p className="text-xs text-brand-brown-light">Valores gerenciais estimados. A apuração oficial é a da nota fiscal de serviço (NFS-e) e do seu contador.</p>
       </section>
     </div>
   );
@@ -946,13 +946,13 @@ function RefundsTab({ isAdmin, onChanged }: { isAdmin: boolean; onChanged: () =>
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-slate-400 max-w-2xl">
+        <p className="text-xs text-brand-brown max-w-2xl">
           OS faturadas que foram canceladas. O caixa e as peças não são revertidos automaticamente: confira o que foi devolvido ao
           cliente e registre aqui. Enquanto pendente, o valor continua como receita.
         </p>
-        <div className="grid grid-cols-2 bg-slate-900 border border-slate-800 rounded-lg p-1 text-xs font-semibold">
+        <div className="grid grid-cols-2 bg-surface-white border border-line-soft rounded-lg p-1 text-xs font-semibold">
           {(['PENDING', 'ALL'] as const).map((k) => (
-            <button key={k} onClick={() => setStatus(k)} className={`px-3 py-1.5 rounded-md ${status === k ? 'bg-amber-500 text-slate-950' : 'text-slate-300'}`}>
+            <button key={k} onClick={() => setStatus(k)} className={`px-3 py-1.5 rounded-md ${status === k ? 'bg-neon-primary text-brand-brown-dark' : 'text-brand-brown'}`}>
               {k === 'PENDING' ? 'Pendentes' : 'Todas'}
             </button>
           ))}
@@ -964,42 +964,42 @@ function RefundsTab({ isAdmin, onChanged }: { isAdmin: boolean; onChanged: () =>
       ) : !rows ? (
         <ListSkeleton rows={2} />
       ) : rows.length === 0 ? (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center text-sm text-slate-400">Nenhuma pendência de estorno.</div>
+        <div className="bg-surface-white border border-line-soft rounded-2xl p-8 text-center text-sm text-brand-brown">Nenhuma pendência de estorno.</div>
       ) : (
         <ul className="space-y-3">
           {rows.map((r) => (
-            <li key={r.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
+            <li key={r.id} className="bg-surface-white border border-line-soft rounded-2xl p-4 space-y-2">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="font-bold text-white">
-                    <Link href={`/os/${r.id}`} className="font-mono text-amber-400 hover:underline">#{r.code}</Link> · {r.client.name}
+                  <div className="font-bold text-brand-brown-dark">
+                    <Link href={`/os/${r.id}`} className="font-mono text-brand-brown hover:underline">#{r.code}</Link> · {r.client.name}
                   </div>
-                  <div className="text-xs text-slate-400">
+                  <div className="text-xs text-brand-brown">
                     {r.vehicle.licensePlate} {r.vehicle.model} · pago em {brDate(r.billedAt)} ({r.payment}) · cancelada em {brDate(r.cancelledAt)}
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-lg font-extrabold text-white">{brl(r.finalAmount)}</div>
-                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${r.refundStatus === 'PENDING' ? 'text-rose-300 border-rose-500/40' : 'text-slate-300 border-slate-600'}`}>
+                  <div className="text-lg font-extrabold text-brand-brown-dark">{brl(r.finalAmount)}</div>
+                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${r.refundStatus === 'PENDING' ? 'text-rose-700 border-rose-500/40' : 'text-brand-brown border-brand-brown-light'}`}>
                     {REFUND_LABEL[r.refundStatus]}
                   </span>
                 </div>
               </div>
-              <p className="text-sm text-slate-300"><span className="text-slate-500">Motivo:</span> {r.cancelReason}</p>
-              {r.parts.length > 0 && <p className="text-xs text-slate-400">Peças da OS: {r.parts.join(', ')}</p>}
+              <p className="text-sm text-brand-brown"><span className="text-brand-brown-light">Motivo:</span> {r.cancelReason}</p>
+              {r.parts.length > 0 && <p className="text-xs text-brand-brown">Peças da OS: {r.parts.join(', ')}</p>}
               {r.refundStatus !== 'PENDING' && (
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-brand-brown">
                   Resolvido por {r.refundResolvedBy} em {brDate(r.refundResolvedAt)}: {r.refundNotes}
                 </p>
               )}
               {r.refundStatus === 'PENDING' &&
                 (isAdmin ? (
-                  <button onClick={() => setResolving(r)} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-bold">
+                  <button onClick={() => setResolving(r)} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-neon-primary hover:bg-neon-soft text-brand-brown-dark text-sm font-bold">
                     <Undo2 className="w-4 h-4" />
                     Registrar resolução
                   </button>
                 ) : (
-                  <p className="text-xs text-slate-500">Somente o Administrador registra a resolução do estorno.</p>
+                  <p className="text-xs text-brand-brown-light">Somente o Administrador registra a resolução do estorno.</p>
                 ))}
             </li>
           ))}
@@ -1055,18 +1055,18 @@ function ResolveRefundModal({ row, onClose }: { row: RefundRow; onClose: (change
             ['REFUNDED', 'Estorno feito', 'O valor foi devolvido ao cliente: a entrada no caixa é cancelada.'],
             ['WAIVED', 'Sem estorno', 'Nada foi devolvido: a receita permanece nos relatórios.'],
           ] as const).map(([key, label, help]) => (
-            <label key={key} className={`flex gap-3 rounded-xl border p-3 cursor-pointer ${resolution === key ? 'border-amber-500 bg-amber-500/10' : 'border-slate-700'}`}>
-              <input type="radio" name="resolution" checked={resolution === key} onChange={() => setResolution(key)} className="mt-1 accent-amber-500" />
+            <label key={key} className={`flex gap-3 rounded-xl border p-3 cursor-pointer ${resolution === key ? 'border-neon-deep bg-neon-primary/10' : 'border-line'}`}>
+              <input type="radio" name="resolution" checked={resolution === key} onChange={() => setResolution(key)} className="mt-1 accent-brand-brown" />
               <span>
-                <span className="block text-sm font-semibold text-white">{label}</span>
-                <span className="block text-xs text-slate-400">{help}</span>
+                <span className="block text-sm font-semibold text-brand-brown-dark">{label}</span>
+                <span className="block text-xs text-brand-brown">{help}</span>
               </span>
             </label>
           ))}
         </div>
         {resolution === 'REFUNDED' && row.stockReserved && row.parts.length > 0 && (
-          <label className="flex items-center gap-2 text-sm text-slate-300">
-            <input type="checkbox" checked={returnStock} onChange={(e) => setReturnStock(e.target.checked)} className="w-4 h-4 accent-amber-500" />
+          <label className="flex items-center gap-2 text-sm text-brand-brown">
+            <input type="checkbox" checked={returnStock} onChange={(e) => setReturnStock(e.target.checked)} className="w-4 h-4 accent-brand-brown" />
             Devolver as peças ao estoque ({row.parts.join(', ')})
           </label>
         )}

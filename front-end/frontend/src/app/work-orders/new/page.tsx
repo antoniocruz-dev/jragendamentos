@@ -29,7 +29,7 @@ interface VehicleFound {
     id: string;
     name: string;
     phone: string;
-    document: string;
+    document: string | null;
   };
 }
 
@@ -207,22 +207,22 @@ export default function NewWorkOrderPage() {
   }
 
   return (
-    <div className="min-h-full bg-slate-950 text-slate-100 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+    <div className="min-h-full bg-surface-offwhite text-brand-brown-dark px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
       {/* Cabeçalho */}
       <div className="max-w-5xl mx-auto mb-5 sm:mb-8">
         <button
           onClick={() => router.push('/')}
-          className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white mb-4 transition-colors"
+          className="inline-flex items-center gap-2 text-sm text-brand-brown hover:text-brand-brown-dark mb-4 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Voltar para o Painel Geral
         </button>
 
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white flex items-center gap-2.5">
-          <Wrench className="w-6 h-6 sm:w-7 sm:h-7 text-amber-500 shrink-0" />
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-brand-brown-dark flex items-center gap-2.5">
+          <Wrench className="w-6 h-6 sm:w-7 sm:h-7 text-neon-deep shrink-0" />
           Abertura de Ordem de Serviço (Balcão)
         </h1>
-        <p className="text-slate-400 mt-1">
+        <p className="text-brand-brown mt-1">
           Identifique o carro pela placa, registre a queixa e monte o orçamento.
         </p>
       </div>
@@ -231,55 +231,55 @@ export default function NewWorkOrderPage() {
         {/* Coluna 1 & 2: Formulário Operacional */}
         <div className="lg:col-span-2 space-y-5 sm:space-y-6">
           {/* Etapa 1: Busca do Carro */}
-          <div className="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-4 sm:p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-white flex items-center gap-2 mb-4">
-              <Car className="w-5 h-5 text-amber-500" />
+          <div className="bg-surface-muted/80 border border-line/60 rounded-2xl p-4 sm:p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-brand-brown-dark flex items-center gap-2 mb-4">
+              <Car className="w-5 h-5 text-neon-deep" />
               1. Identificação do Veículo
             </h2>
 
             <form onSubmit={handleSearchPlate} className="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-4">
               <div className="relative flex-1">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-brand-brown" />
                 <input
                   type="text"
                   placeholder="Ex: BRA2E19 ou MER8I90"
                   value={plateInput}
                   onChange={(e) => setPlateInput(e.target.value.toUpperCase())}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-4 py-2.5 font-mono text-sm tracking-wider uppercase text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                  className="w-full bg-surface-white border border-line rounded-lg pl-9 pr-4 py-2.5 font-mono text-sm tracking-wider uppercase text-brand-brown-dark placeholder-brand-brown-light focus:outline-none focus:border-neon-deep"
                 />
               </div>
               <button
                 type="submit"
                 disabled={searchingPlate || !plateInput}
-                className="bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-950 font-bold px-5 py-2.5 rounded-lg text-sm transition-all"
+                className="bg-neon-primary hover:bg-neon-deep disabled:opacity-50 text-brand-brown-dark font-bold px-5 py-2.5 rounded-lg text-sm transition-all"
               >
                 {searchingPlate ? 'Buscando...' : 'Consultar Placa'}
               </button>
             </form>
 
             {searchError && (
-              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center gap-2">
+              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-700 text-xs flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 {searchError}
               </div>
             )}
 
             {vehicle && (
-              <div className="mt-4 p-4 rounded-lg bg-slate-900/90 border border-emerald-500/30 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <div className="mt-4 p-4 rounded-lg bg-surface-white/90 border border-emerald-500/30 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="text-xs text-slate-400 block">Veículo Confirmado</span>
-                  <div className="font-bold text-white text-base">
+                  <span className="text-xs text-brand-brown block">Veículo Confirmado</span>
+                  <div className="font-bold text-brand-brown-dark text-base">
                     {vehicle.brand} {vehicle.model} ({vehicle.year})
                   </div>
-                  <div className="text-xs text-amber-400 font-mono mt-0.5">
+                  <div className="text-xs text-brand-brown font-mono mt-0.5">
                     Placa: {vehicle.licensePlate} • {vehicle.currentKm ? `${vehicle.currentKm} km` : 'Km não informada'}
                   </div>
                 </div>
                 <div>
-                  <span className="text-xs text-slate-400 block">Proprietário</span>
-                  <div className="font-bold text-white text-base">{vehicle.client.name}</div>
-                  <div className="text-xs text-slate-400">
-                    Tel: {vehicle.client.phone} • Doc: {vehicle.client.document}
+                  <span className="text-xs text-brand-brown block">Proprietário</span>
+                  <div className="font-bold text-brand-brown-dark text-base">{vehicle.client.name}</div>
+                  <div className="text-xs text-brand-brown">
+                    Tel: {vehicle.client.phone} • Doc: {vehicle.client.document || 'não informado'}
                   </div>
                 </div>
               </div>
@@ -287,9 +287,9 @@ export default function NewWorkOrderPage() {
           </div>
 
           {/* Etapa 2: Queixa do Cliente */}
-          <div className="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-4 sm:p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-white flex items-center gap-2 mb-4">
-              <FileText className="w-5 h-5 text-amber-500" />
+          <div className="bg-surface-muted/80 border border-line/60 rounded-2xl p-4 sm:p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-brand-brown-dark flex items-center gap-2 mb-4">
+              <FileText className="w-5 h-5 text-neon-deep" />
               2. Queixa / Relato do Cliente
             </h2>
             <textarea
@@ -297,15 +297,15 @@ export default function NewWorkOrderPage() {
               placeholder="Descreva o que o cliente relatou (ex: barulho ao frear, luz da injeção acesa, revisão preventiva...)"
               value={reportedIssue}
               onChange={(e) => setReportedIssue(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+              className="w-full bg-surface-white border border-line rounded-lg p-3 text-sm text-brand-brown-dark placeholder-brand-brown-light focus:outline-none focus:border-neon-deep"
             />
           </div>
 
           {/* Etapa 3: Itens da OS */}
-          <div className="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-4 sm:p-6 shadow-sm">
+          <div className="bg-surface-muted/80 border border-line/60 rounded-2xl p-4 sm:p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                <Package className="w-5 h-5 text-amber-500" />
+              <h2 className="text-lg font-semibold text-brand-brown-dark flex items-center gap-2">
+                <Package className="w-5 h-5 text-neon-deep" />
                 3. Serviços e Peças do Orçamento
               </h2>
             </div>
@@ -313,7 +313,7 @@ export default function NewWorkOrderPage() {
             {/* Adicionador Rápido */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
               <div>
-                <label className="text-xs text-slate-400 block mb-1">Adicionar Serviço:</label>
+                <label className="text-xs text-brand-brown block mb-1">Adicionar Serviço:</label>
                 <select
                   onChange={(e) => {
                     const srv = availableServices.find((s) => s.id === e.target.value);
@@ -321,7 +321,7 @@ export default function NewWorkOrderPage() {
                     e.target.value = '';
                   }}
                   defaultValue=""
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-amber-500"
+                  className="w-full bg-surface-white border border-line rounded-lg px-3 py-2 text-sm text-brand-brown-dark focus:outline-none focus:border-neon-deep"
                 >
                   <option value="" disabled>Selecione um serviço...</option>
                   {availableServices.map((s) => (
@@ -333,7 +333,7 @@ export default function NewWorkOrderPage() {
               </div>
 
               <div>
-                <label className="text-xs text-slate-400 block mb-1">Adicionar Peça / Produto:</label>
+                <label className="text-xs text-brand-brown block mb-1">Adicionar Peça / Produto:</label>
                 <select
                   onChange={(e) => {
                     const prod = availableProducts.find((p) => p.id === e.target.value);
@@ -341,7 +341,7 @@ export default function NewWorkOrderPage() {
                     e.target.value = '';
                   }}
                   defaultValue=""
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-amber-500"
+                  className="w-full bg-surface-white border border-line rounded-lg px-3 py-2 text-sm text-brand-brown-dark focus:outline-none focus:border-neon-deep"
                 >
                   <option value="" disabled>Selecione uma peça...</option>
                   {availableProducts.map((p) => (
@@ -355,47 +355,47 @@ export default function NewWorkOrderPage() {
 
             {/* Lista de Itens Adicionados */}
             {items.length === 0 ? (
-              <div className="p-8 text-center text-slate-500 border border-dashed border-slate-700 rounded-lg text-sm">
+              <div className="p-8 text-center text-brand-brown-light border border-dashed border-line rounded-lg text-sm">
                 Nenhum serviço ou peça inserido. Selecione nos campos acima.
               </div>
             ) : (
-              <div className="divide-y divide-slate-700/60 border border-slate-700/60 rounded-lg overflow-hidden">
+              <div className="divide-y divide-line/60 border border-line/60 rounded-lg overflow-hidden">
                 {items.map((it, idx) => (
-                  <div key={it.id} className="p-3 bg-slate-900/50 flex items-center justify-between gap-3 text-sm">
+                  <div key={it.id} className="p-3 bg-surface-white/50 flex items-center justify-between gap-3 text-sm">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${
-                          it.itemType === 'SERVICE' ? 'bg-sky-500/20 text-sky-400' : 'bg-emerald-500/20 text-emerald-400'
+                          it.itemType === 'SERVICE' ? 'bg-sky-500/20 text-sky-700' : 'bg-emerald-500/20 text-emerald-700'
                         }`}>
                           {it.itemType === 'SERVICE' ? 'Serviço' : 'Peça'}
                         </span>
-                        <span className="font-medium text-white">{it.name}</span>
+                        <span className="font-medium text-brand-brown-dark">{it.name}</span>
                       </div>
-                      <div className="text-xs text-slate-400 mt-0.5">
+                      <div className="text-xs text-brand-brown mt-0.5">
                         R$ {it.unitPrice.toFixed(2)} un.
                       </div>
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-1.5 bg-slate-800 border border-slate-700 rounded-md px-2 py-1">
-                        <span className="text-xs text-slate-400">Qtd:</span>
+                      <div className="flex items-center gap-1.5 bg-surface-muted border border-line rounded-md px-2 py-1">
+                        <span className="text-xs text-brand-brown">Qtd:</span>
                         <input
                           type="number"
                           min={1}
                           value={it.quantity}
                           onChange={(e) => handleUpdateQuantity(idx, parseInt(e.target.value) || 1)}
-                          className="w-12 bg-transparent text-center text-white text-sm focus:outline-none"
+                          className="w-12 bg-transparent text-center text-brand-brown-dark text-sm focus:outline-none"
                         />
                       </div>
 
-                      <div className="w-24 text-right font-semibold text-white">
+                      <div className="w-24 text-right font-semibold text-brand-brown-dark">
                         R$ {(it.unitPrice * it.quantity).toFixed(2)}
                       </div>
 
                       <button
                         type="button"
                         onClick={() => handleRemoveItem(idx)}
-                        className="text-red-400 hover:text-red-300 p-1.5 transition-colors"
+                        className="text-red-700 hover:text-red-700 p-1.5 transition-colors"
                         title="Remover item"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -410,35 +410,35 @@ export default function NewWorkOrderPage() {
 
         {/* Coluna 3: Resumo Financeiro & Ação */}
         <div className="space-y-6">
-          <div className="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-4 sm:p-6 shadow-sm lg:sticky lg:top-20">
-            <h2 className="text-lg font-semibold text-white flex items-center gap-2 mb-4">
-              <DollarSign className="w-5 h-5 text-emerald-400" />
+          <div className="bg-surface-muted/80 border border-line/60 rounded-2xl p-4 sm:p-6 shadow-sm lg:sticky lg:top-20">
+            <h2 className="text-lg font-semibold text-brand-brown-dark flex items-center gap-2 mb-4">
+              <DollarSign className="w-5 h-5 text-emerald-700" />
               Resumo do Orçamento
             </h2>
 
-            <div className="space-y-3 text-sm border-b border-slate-700 pb-4 mb-4">
-              <div className="flex justify-between text-slate-400">
+            <div className="space-y-3 text-sm border-b border-line pb-4 mb-4">
+              <div className="flex justify-between text-brand-brown">
                 <span>Total em Serviços:</span>
-                <span className="font-medium text-slate-200">R$ {totalServices.toFixed(2)}</span>
+                <span className="font-medium text-brand-brown-dark">R$ {totalServices.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-slate-400">
+              <div className="flex justify-between text-brand-brown">
                 <span>Total em Peças/Materiais:</span>
-                <span className="font-medium text-slate-200">R$ {totalProducts.toFixed(2)}</span>
+                <span className="font-medium text-brand-brown-dark">R$ {totalProducts.toFixed(2)}</span>
               </div>
-              <label className="flex items-center justify-between gap-3 text-slate-400">
+              <label className="flex items-center justify-between gap-3 text-brand-brown">
                 <span>Desconto (R$):</span>
                 <input
                   inputMode="decimal"
                   value={discountInput}
                   onChange={(e) => setDiscountInput(e.target.value.replace(/[^0-9.,]/g, ''))}
                   placeholder="0,00"
-                  className="w-28 text-right bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200 focus:outline-none focus:border-amber-500"
+                  className="w-28 text-right bg-surface-white border border-line rounded-lg px-2 py-1.5 text-brand-brown-dark focus:outline-none focus:border-neon-deep"
                 />
               </label>
-              {discount > grossTotal && <p className="text-xs text-rose-300">O desconto passa do valor total.</p>}
+              {discount > grossTotal && <p className="text-xs text-rose-700">O desconto passa do valor total.</p>}
             </div>
 
-            <div className="grid grid-cols-2 gap-1 bg-slate-900 border border-slate-700 rounded-lg p-1 mb-4 text-xs font-semibold">
+            <div className="grid grid-cols-2 gap-1 bg-surface-white border border-line rounded-lg p-1 mb-4 text-xs font-semibold">
               {([
                 ['QUOTE', 'Orçamento'],
                 ['DRAFT', 'Rascunho'],
@@ -447,7 +447,7 @@ export default function NewWorkOrderPage() {
                   key={key}
                   type="button"
                   onClick={() => setInitialStatus(key)}
-                  className={`py-2 rounded-md ${initialStatus === key ? 'bg-amber-500 text-slate-950' : 'text-slate-300'}`}
+                  className={`py-2 rounded-md ${initialStatus === key ? 'bg-neon-primary text-brand-brown-dark' : 'text-brand-brown'}`}
                 >
                   {label}
                 </button>
@@ -455,14 +455,14 @@ export default function NewWorkOrderPage() {
             </div>
 
             <div className="flex justify-between items-baseline mb-6">
-              <span className="text-base font-bold text-white">Valor Total da OS:</span>
-              <span className="text-2xl font-extrabold text-emerald-400">
+              <span className="text-base font-bold text-brand-brown-dark">Valor Total da OS:</span>
+              <span className="text-2xl font-extrabold text-emerald-700">
                 R$ {Math.max(0, finalTotal).toFixed(2)}
               </span>
             </div>
 
             {submitError && (
-              <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center gap-2">
+              <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-700 text-xs flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 {submitError}
               </div>
@@ -472,7 +472,7 @@ export default function NewWorkOrderPage() {
               type="button"
               onClick={handleSubmitOrder}
               disabled={submitting || !vehicle || items.length === 0}
-              className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-slate-950 font-extrabold py-3.5 px-4 rounded-xl text-base flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20"
+              className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-brand-brown-dark font-extrabold py-3.5 px-4 rounded-xl text-base flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20"
             >
               {submitting ? (
                 'Gerando Ordem de Serviço...'
@@ -484,7 +484,7 @@ export default function NewWorkOrderPage() {
               )}
             </button>
 
-            <p className="text-[11px] text-slate-500 text-center mt-3">
+            <p className="text-[11px] text-brand-brown-light text-center mt-3">
               {initialStatus === 'DRAFT'
                 ? 'O rascunho fica só com a equipe; envie ao cliente quando estiver pronto.'
                 : 'O orçamento fica aguardando aprovação. As peças só saem do estoque quando a OS é aprovada.'}

@@ -31,6 +31,13 @@ export function observationRole(user: { role: string; profile?: string | null })
   return specRole(user) as ObservationAuthorRole;
 }
 
+/** Telefone BR com DDD: 10 (fixo) ou 11 dígitos (celular). Aceita +55 na frente. */
+export function normalizePhone(value: string | undefined | null): string | null {
+  let d = (value ?? '').replace(/\D/g, '');
+  if ((d.length === 12 || d.length === 13) && d.startsWith('55')) d = d.slice(2);
+  return /^[1-9]{2}(9\d{8}|[2-8]\d{7})$/.test(d) ? d : null;
+}
+
 /** WhatsApp BR: 11 dígitos (DDD + 9 + número). Aceita +55 na frente. */
 export function normalizeWhatsapp(value: string | undefined | null): string | null {
   let d = (value ?? '').replace(/\D/g, '');

@@ -82,9 +82,9 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     return (
       <div
         {...(light ? { 'data-area': '' } : {})}
-        className={`min-h-[60vh] flex flex-col items-center justify-center gap-3 ${light ? 'text-brand-brown-light' : 'text-slate-400'}`}
+        className={`min-h-[60vh] flex flex-col items-center justify-center gap-3 ${light ? 'text-brand-brown-light' : 'text-brand-brown'}`}
       >
-        <Wrench className="w-8 h-8 text-amber-500 animate-spin" />
+        <Wrench className="w-8 h-8 text-neon-deep animate-spin" />
         <span>Verificando acesso...</span>
       </div>
     );
@@ -94,14 +94,14 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     const home = firstAllowedPath(user?.modules);
     return (
       <div className="min-h-[60vh] flex items-center justify-center p-4">
-        <div className="max-w-sm text-center bg-slate-900 border border-slate-800 rounded-2xl p-8 space-y-3">
-          <ShieldOff className="w-10 h-10 text-rose-400 mx-auto" />
-          <h1 className="text-lg font-bold text-white">Sem acesso a este módulo</h1>
-          <p className="text-sm text-slate-400">
+        <div className="max-w-sm text-center bg-surface-white border border-line-soft rounded-2xl p-8 space-y-3">
+          <ShieldOff className="w-10 h-10 text-rose-700 mx-auto" />
+          <h1 className="text-lg font-bold text-brand-brown-dark">Sem acesso a este módulo</h1>
+          <p className="text-sm text-brand-brown">
             Seu perfil não tem permissão para esta tela. Fale com o Administrador ou o Gerente Geral.
           </p>
           {home && (
-            <Link href={home} className="inline-block text-sm font-semibold text-amber-400 hover:text-amber-300">
+            <Link href={home} className="inline-block text-sm font-semibold text-brand-brown hover:text-brand-brown">
               Ir para a minha tela inicial
             </Link>
           )}

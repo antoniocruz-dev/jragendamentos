@@ -18,23 +18,19 @@ import { loadUserModules, roleForProfile } from './permissions.js';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { FirstAccessDto } from './dto/first-access.dto.js';
-import { WhatsappService } from '../notifications/whatsapp.service.js';
-import { normalizeWhatsapp, specRole } from '../common/roles.js';
+import { ClientEntryDto } from './dto/client-entry.dto.js';
+import { normalizePhone, normalizeWhatsapp, specRole } from '../common/roles.js';
 
 /** Limite contra força bruta: 5 tentativas FALHAS por IP e por código a cada 15 minutos. */
 const LOGIN_MAX_FAILURES = 5;
 const LOGIN_WINDOW_MINUTES = 15;
 
-export function appPublicUrl() {
-  return (process.env.APP_PUBLIC_URL || 'https://app.jrgaragecenter.com.br').replace(/\/$/, '');
-}
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
-    private readonly whatsapp: WhatsappService,
   ) {}
 
   /** Cria um usuário. Com `profile`, o papel técnico (role) é derivado do cargo. */
@@ -168,17 +164,18 @@ export class AuthService {
     if (!user || !isPasswordValid) {
       throw new UnauthorizedException(dto.accessCode ? 'Usuário ou senha inválidos.' : 'E-mail ou senha inválidos.');
     }
-    // Aba errada (só depois da senha válida, para não revelar o tipo da conta)
-    if (dto.tab === 'CLIENTE' && user.role !== UserRole.CLIENT) {
-      throw new UnauthorizedException('Este usuário é da equipe da oficina. Use a aba "Equipe".');
-    }
-    if (dto.tab === 'EQUIPE' && user.role === UserRole.CLIENT) {
-      throw new UnauthorizedException('Este usuário é de cliente. Use a aba "Cliente".');
+    // Login com senha é só da equipe: o cliente entra pela aba Cliente (nome, e-mail e contato)
+    if (user.role === UserRole.CLIENT) {
+      throw new UnauthorizedException('Clientes entram pela aba "Cliente", com nome, e-mail e contato.');
     }
     if (!user.isActive) {
       throw new UnauthorizedException('Conta desativada. Fale com a oficina para reativar o acesso.');
     }
+    return this.issueSession(user);
+  }
 
+  /** Gera o token e os dados da sessão (equipe ou cliente). */
+  private async issueSession(user: { id: string; name: string; email: string; role: UserRole; profile: StaffProfile | null; accessCode: string }) {
     const payload = {
       sub: user.id,
       email: user.email,
@@ -211,101 +208,120 @@ export class AuthService {
   }
 
   // ==========================================
-  // PRIMEIRO ACESSO
+  // ENTRADA DO CLIENTE (sem senha)
   // ==========================================
 
   /**
-   * Primeiro acesso (público). O banco gera o código de 4 dígitos e as credenciais vão para o WhatsApp.
-   * - Cliente: o WhatsApp precisa ser o telefone do cadastro feito pela oficina (as credenciais só chegam
-   *   ao dono daquele número); cria o login e vincula ao cadastro.
-   * - Equipe: só para quem o gestor cadastrou sem senha (convite pendente) com este e-mail.
-   * O usuário (código) nunca volta na resposta: só pelo WhatsApp (ou com a equipe, em Clientes/Equipe).
-   * A senha é sempre a que a própria pessoa cadastra aqui: a equipe não define senhas.
+   * O cliente entra no painel informando nome completo, e-mail e contato (sem senha).
+   * - Contato e/ou e-mail já cadastrados pela oficina: os dois precisam conferir com o mesmo cadastro
+   *   (se um deles apontar para outro cliente, a entrada é recusada e conta como falha).
+   * - Cliente novo: o cadastro é criado com esses dados (CPF/CNPJ fica para a oficina completar).
+   * Limite: 5 falhas por IP a cada 15 minutos; 10 cadastros novos por IP na mesma janela.
+   */
+  async clientEntry(dto: ClientEntryDto, ip: string | undefined) {
+    const ipKey = (ip || 'desconhecido').slice(0, 90);
+    const failKey = `client-entry:fail:${ipKey}`;
+    const failures = await this.hit(failKey);
+    if (failures > LOGIN_MAX_FAILURES) throw this.tooMany();
+
+    const phone = normalizePhone(dto.phone);
+    if (!phone) {
+      throw new UnprocessableEntityException('Contato inválido: informe o telefone com DDD (10 ou 11 dígitos).');
+    }
+    const email = dto.email.trim().toLowerCase();
+
+    const byPhone = await this.prisma.$queryRaw<{ id: string; email: string | null }[]>`
+      SELECT "id", "email" FROM "clients"
+       WHERE regexp_replace("phone", '[^0-9]', '', 'g') IN (${phone}, ${'55' + phone})
+       ORDER BY "created_at" ASC LIMIT 1`;
+    const byEmail = await this.prisma.client.findFirst({
+      where: { email: { equals: email, mode: 'insensitive' } },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true },
+    });
+
+    const mismatch = () =>
+      new UnauthorizedException(
+        'Os dados não conferem com o cadastro da oficina. Confira o e-mail e o contato ou fale com a oficina.',
+      );
+    let clientId: string;
+    if (byPhone[0]) {
+      const c = byPhone[0];
+      if ((c.email && c.email.toLowerCase() !== email) || (byEmail && byEmail.id !== c.id)) throw mismatch();
+      clientId = c.id;
+      if (!c.email) await this.prisma.client.update({ where: { id: c.id }, data: { email } });
+    } else if (byEmail) {
+      throw mismatch();
+    } else {
+      if ((await this.hit(`client-entry:new:${ipKey}`)) > 10) throw this.tooMany();
+      const created = await this.prisma.client.create({
+        data: { name: dto.name, email, phone },
+        select: { id: true },
+      });
+      clientId = created.id;
+    }
+
+    const user = await this.ensureClientUser(clientId, email);
+    if (!user.isActive) {
+      throw new UnauthorizedException('Seu acesso está bloqueado. Fale com a oficina.');
+    }
+    await this.release(failKey);
+    return this.issueSession(user);
+  }
+
+  /** Login técnico do cliente (papel CLIENT), criado na primeira entrada e vinculado ao cadastro. */
+  private async ensureClientUser(clientId: string, email: string) {
+    return this.prisma.$transaction(async (tx) => {
+      // Trava o cadastro: duas entradas simultâneas não criam dois logins
+      await tx.$queryRaw`SELECT id FROM "clients" WHERE id = ${clientId}::uuid FOR UPDATE`;
+      const client = await tx.client.findUniqueOrThrow({ where: { id: clientId }, select: { name: true, phone: true, userId: true } });
+      if (client.userId) return tx.user.findUniqueOrThrow({ where: { id: client.userId } });
+      // users.email é único (também usado no login da equipe): se já estiver em uso, usa um endereço interno
+      const taken = await tx.user.findUnique({ where: { email }, select: { id: true } });
+      const user = await tx.user.create({
+        data: {
+          name: client.name,
+          email: taken ? `cliente-${clientId}@clientes.local` : email,
+          phone: client.phone,
+          passwordHash: await bcrypt.hash(randomBytes(24).toString('hex'), 10),
+          role: UserRole.CLIENT,
+        },
+      });
+      await tx.client.update({ where: { id: clientId }, data: { userId: user.id } });
+      return user;
+    });
+  }
+
+  // ==========================================
+  // PRIMEIRO ACESSO DA EQUIPE
+  // ==========================================
+
+  /**
+   * Quem o gestor cadastrou na tela Equipe (convite pendente) cadastra a própria senha com o e-mail
+   * do convite. A resposta traz o usuário (código de 4 dígitos), para entrar com código ou e-mail.
    */
   async firstAccess(dto: FirstAccessDto, ip: string | undefined) {
     if ((await this.hit(`first-access:ip:${(ip || 'desconhecido').slice(0, 90)}`)) > LOGIN_MAX_FAILURES) throw this.tooMany();
-
-    const whatsapp = normalizeWhatsapp(dto.whatsapp);
-    if (!whatsapp) {
-      throw new UnprocessableEntityException('WhatsApp inválido: informe DDD + número de celular (11 dígitos).');
-    }
     if (dto.password !== dto.passwordConfirmation) {
       throw new UnprocessableEntityException('A confirmação não confere com a senha.');
     }
     const email = dto.email.trim().toLowerCase();
-    const passwordHash = await bcrypt.hash(dto.password, 10);
-
-    let user: { id: string; name: string; accessCode: string };
-    if (dto.tab === 'CLIENTE') {
-
-      const matches = await this.prisma.$queryRaw<{ id: string; name: string; user_id: string | null }[]>`
-        SELECT "id", "name", "user_id" FROM "clients"
-         WHERE right(regexp_replace("phone", '[^0-9]', '', 'g'), 11) = ${whatsapp}
-         ORDER BY "created_at" ASC LIMIT 1`;
-      if (matches.length === 0) {
-        throw new NotFoundException(
-          'Não encontramos um cadastro com este WhatsApp. Fale com a oficina para registrar seu número.',
-        );
-      }
-      const client = matches[0];
-      const linkedUser = client.user_id
-        ? await this.prisma.user.findUnique({ where: { id: client.user_id }, select: { id: true, firstAccessPending: true, isActive: true } })
-        : null;
-      if (linkedUser && (!linkedUser.firstAccessPending || !linkedUser.isActive)) {
-        throw new ConflictException('Este cadastro já tem acesso. Entre com seu usuário e senha, ou peça à oficina para redefinir o acesso.');
-      }
-      const emailOwner = await this.prisma.user.findUnique({ where: { email }, select: { id: true } });
-      if (emailOwner && emailOwner.id !== linkedUser?.id) {
-        throw new ConflictException('Já existe um acesso com este e-mail. Entre com seu usuário e senha.');
-      }
-      if (linkedUser) {
-        // Acesso redefinido pela oficina: a pessoa cadastra a própria senha de novo (o usuário/código continua o mesmo)
-        const res = await this.prisma.user.updateMany({
-          where: { id: linkedUser.id, firstAccessPending: true },
-          data: { email, whatsapp, phone: whatsapp, passwordHash, firstAccessPending: false },
-        });
-        if (res.count !== 1) throw new ConflictException('Este primeiro acesso já foi concluído. Entre com seu usuário e senha.');
-        user = await this.prisma.user.findUniqueOrThrow({ where: { id: linkedUser.id }, select: { id: true, name: true, accessCode: true } });
-      } else user = await this.prisma.$transaction(async (tx) => {
-        const created = await tx.user.create({
-          data: { name: client.name, email, whatsapp, phone: whatsapp, passwordHash, role: UserRole.CLIENT },
-          select: { id: true, name: true, accessCode: true },
-        });
-        // Condicional: dois cadastros simultâneos não vinculam o mesmo cliente
-        const linked = await tx.client.updateMany({ where: { id: client.id, userId: null }, data: { userId: created.id } });
-        if (linked.count !== 1) throw new ConflictException('Este cadastro acabou de receber um acesso. Entre com seu usuário e senha.');
-        return created;
-      });
-    } else {
-      const staff = await this.prisma.user.findUnique({
-        where: { email },
-        select: { id: true, role: true, isActive: true, firstAccessPending: true },
-      });
-      if (!staff || staff.role === UserRole.CLIENT || !staff.isActive || !staff.firstAccessPending) {
-        throw new NotFoundException(
-          'Não há convite de primeiro acesso para este e-mail. Peça ao gestor para cadastrar você na tela Equipe.',
-        );
-      }
-      const res = await this.prisma.user.updateMany({
-        where: { id: staff.id, firstAccessPending: true },
-        data: { passwordHash, whatsapp, phone: whatsapp, firstAccessPending: false },
-      });
-      if (res.count !== 1) throw new ConflictException('Este primeiro acesso já foi concluído. Entre com seu usuário e senha.');
-      user = await this.prisma.user.findUniqueOrThrow({ where: { id: staff.id }, select: { id: true, name: true, accessCode: true } });
-    }
-
-    const link = `${appPublicUrl()}/login?aba=${dto.tab === 'CLIENTE' ? 'cliente' : 'equipe'}`;
-    const delivery = await this.whatsapp.sendCredentials(whatsapp, {
-      name: user.name.split(' ')[0],
-      accessCode: user.accessCode,
-      password: dto.password,
-      link,
+    const staff = await this.prisma.user.findUnique({
+      where: { email },
+      select: { id: true, role: true, isActive: true, firstAccessPending: true },
     });
-    return {
-      created: true,
-      whatsappSent: delivery.sent,
-      whatsappMasked: `(${whatsapp.slice(0, 2)}) *****-${whatsapp.slice(-4)}`,
-      accessLink: link,
-    };
+    if (!staff || staff.role === UserRole.CLIENT || !staff.isActive || !staff.firstAccessPending) {
+      throw new NotFoundException(
+        'Não há convite de primeiro acesso para este e-mail. Peça ao gestor para cadastrar você na tela Equipe.',
+      );
+    }
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const res = await this.prisma.user.updateMany({
+      where: { id: staff.id, firstAccessPending: true },
+      data: { passwordHash, firstAccessPending: false },
+    });
+    if (res.count !== 1) throw new ConflictException('Este primeiro acesso já foi concluído. Entre com seu usuário e senha.');
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: staff.id }, select: { name: true, accessCode: true } });
+    return { created: true, name: user.name, accessCode: user.accessCode };
   }
 }

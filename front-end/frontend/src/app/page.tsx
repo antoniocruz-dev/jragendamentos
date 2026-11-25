@@ -39,15 +39,15 @@ function AlertsPanel({ alerts, onResolved }: { alerts: NonNullable<Summary['aler
   }
 
   return (
-    <section className="bg-slate-900 border border-amber-500/30 rounded-2xl p-4 sm:p-5 space-y-3" aria-label="Alertas">
-      <h2 className="flex items-center gap-2 text-sm font-bold text-amber-300">
+    <section className="bg-surface-white border border-neon-deep/30 rounded-2xl p-4 sm:p-5 space-y-3" aria-label="Alertas">
+      <h2 className="flex items-center gap-2 text-sm font-bold text-brand-brown">
         <AlertTriangle className="w-4 h-4" />
         Alertas ({total})
       </h2>
       <ul className="space-y-2 text-sm">
         {alerts.pendingRefunds > 0 && (
           <li>
-            <Link href="/financial?tab=refunds" className="flex items-center gap-2.5 bg-rose-500/10 border border-rose-500/30 rounded-xl px-3 py-2.5 text-rose-200 hover:border-rose-400">
+            <Link href="/financial?tab=refunds" className="flex items-center gap-2.5 bg-rose-500/10 border border-rose-500/30 rounded-xl px-3 py-2.5 text-rose-800 hover:border-rose-400">
               <Undo2 className="w-4 h-4 shrink-0" />
               <span className="flex-1">
                 {alerts.pendingRefunds} OS faturada(s) cancelada(s) aguardando estorno manual
@@ -56,29 +56,29 @@ function AlertsPanel({ alerts, onResolved }: { alerts: NonNullable<Summary['aler
           </li>
         )}
         {alerts.items.map((a) => (
-          <li key={a.id} className="flex items-start gap-2.5 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5">
-            <AlertCircle className={`w-4 h-4 shrink-0 mt-0.5 ${a.type === 'PAYMENT_REJECTED' ? 'text-rose-400' : 'text-orange-400'}`} />
+          <li key={a.id} className="flex items-start gap-2.5 bg-surface-offwhite border border-line-soft rounded-xl px-3 py-2.5">
+            <AlertCircle className={`w-4 h-4 shrink-0 mt-0.5 ${a.type === 'PAYMENT_REJECTED' ? 'text-rose-700' : 'text-orange-700'}`} />
             {a.workOrderId ? (
-              <Link href={`/os/${a.workOrderId}`} className="flex-1 min-w-0 text-slate-200 hover:text-white break-words">
+              <Link href={`/os/${a.workOrderId}`} className="flex-1 min-w-0 text-brand-brown-dark hover:text-brand-brown-dark break-words">
                 {a.message}
               </Link>
             ) : (
-              <span className="flex-1 min-w-0 text-slate-200 break-words">{a.message}</span>
+              <span className="flex-1 min-w-0 text-brand-brown-dark break-words">{a.message}</span>
             )}
-            <button onClick={() => dismiss(a.id)} className="shrink-0 p-1 -m-1 text-slate-500 hover:text-white" aria-label="Marcar alerta como resolvido">
+            <button onClick={() => dismiss(a.id)} className="shrink-0 p-1 -m-1 text-brand-brown-light hover:text-brand-brown-dark" aria-label="Marcar alerta como resolvido">
               <X className="w-4 h-4" />
             </button>
           </li>
         ))}
         {alerts.lowStock.length > 0 && (
-          <li className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5">
-            <Link href="/catalog?tab=products" className="flex items-center gap-2.5 text-orange-200 hover:text-white">
+          <li className="bg-surface-offwhite border border-line-soft rounded-xl px-3 py-2.5">
+            <Link href="/catalog?tab=products" className="flex items-center gap-2.5 text-orange-800 hover:text-brand-brown-dark">
               <PackageX className="w-4 h-4 shrink-0" />
               <span className="font-semibold">Estoque baixo ({alerts.lowStock.length})</span>
             </Link>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {alerts.lowStock.map((p) => (
-                <span key={p.id} className={`text-xs px-2 py-1 rounded-lg border ${p.stockQuantity <= 0 ? 'border-rose-500/40 text-rose-300' : 'border-orange-500/30 text-orange-200'}`}>
+                <span key={p.id} className={`text-xs px-2 py-1 rounded-lg border ${p.stockQuantity <= 0 ? 'border-rose-500/40 text-rose-700' : 'border-orange-500/30 text-orange-800'}`}>
                   {p.name}: {p.stockQuantity} (mín. {p.minStock})
                 </span>
               ))}
@@ -98,9 +98,9 @@ interface Slice {
   href: string;
 }
 
-// Paleta categórica (ordem fixa, validada para fundo escuro). A cor segue a entidade, nunca a posição.
+// Paleta categórica (ordem fixa, tons médios legíveis no fundo claro). A cor segue a entidade, nunca a posição.
 const SERIES = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#0ca30c', '#9085e9', '#e66767'];
-const SURFACE = '#0f172a'; // fundo dos cartões (slate-900): separa as fatias
+const SURFACE = '#ffffff'; // fundo dos cartões (surface-white): separa as fatias
 
 const WO_STATUS: { key: string; label: string }[] = [
   { key: 'DRAFT', label: 'Rascunho' },
@@ -179,7 +179,7 @@ export default function DashboardPage() {
 
 function LoadingBlock() {
   return (
-    <div className="min-h-[60vh] flex items-center justify-center text-slate-400">
+    <div className="min-h-[60vh] flex items-center justify-center text-brand-brown">
       <Loader2 className="w-6 h-6 animate-spin" />
     </div>
   );
@@ -276,22 +276,22 @@ function Dashboard() {
   const totalAppts = apptSlices.reduce((a, s) => a + s.value, 0);
 
   return (
-    <div className="min-h-full bg-slate-950 text-slate-100 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+    <div className="min-h-full bg-surface-offwhite text-brand-brown-dark px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
       <div className="max-w-7xl mx-auto space-y-5 sm:space-y-6">
-        <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4 border-b border-slate-800 pb-4 sm:pb-6">
+        <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4 border-b border-line-soft pb-4 sm:pb-6">
           <div>
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white flex items-center gap-2.5">
-              <LayoutDashboard className="w-6 h-6 sm:w-7 sm:h-7 text-amber-500 shrink-0" />
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-brand-brown-dark flex items-center gap-2.5">
+              <LayoutDashboard className="w-6 h-6 sm:w-7 sm:h-7 text-neon-deep shrink-0" />
               Dashboard
             </h1>
-            <p className="text-xs sm:text-sm text-slate-400 mt-1">
+            <p className="text-xs sm:text-sm text-brand-brown mt-1">
               Visão do período. Clique numa fatia ou na legenda para abrir a tela correspondente.
             </p>
           </div>
           {can('WORK_ORDERS') && (
             <Link
               href="/work-orders/new"
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm rounded-xl sm:self-end"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-neon-primary hover:bg-neon-soft text-brand-brown-dark font-bold text-sm rounded-xl sm:self-end"
             >
               <Plus className="w-4 h-4" />
               Nova Ordem de Serviço
@@ -300,7 +300,7 @@ function Dashboard() {
         </header>
 
         {/* Filtro de período */}
-        <div className="flex flex-col lg:flex-row lg:items-center gap-3 bg-slate-900 border border-slate-800 rounded-2xl p-3">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-3 bg-surface-white border border-line-soft rounded-2xl p-3">
           <div className="flex gap-1.5 scroll-x -mx-3 px-3 sm:mx-0 sm:px-0 sm:flex-wrap pb-1 sm:pb-0">
             {PRESETS.map((p) => (
               <button
@@ -308,8 +308,8 @@ function Dashboard() {
                 onClick={() => choosePreset(p.key)}
                 className={`shrink-0 whitespace-nowrap px-3 py-2 sm:py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
                   preset === p.key
-                    ? 'bg-amber-500 text-slate-950 border-amber-500'
-                    : 'bg-slate-800/80 text-slate-300 border-slate-700/60 hover:bg-slate-700'
+                    ? 'bg-neon-primary text-brand-brown-dark border-neon-deep'
+                    : 'bg-surface-muted/80 text-brand-brown border-line/60 hover:bg-surface-strong'
                 }`}
               >
                 {p.label}
@@ -317,24 +317,24 @@ function Dashboard() {
             ))}
           </div>
           <div className="grid grid-cols-2 gap-2 lg:flex lg:items-center lg:ml-auto text-sm">
-            <label className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-slate-400 min-w-0">
+            <label className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-brand-brown min-w-0">
               De
               <input
                 type="date"
                 value={range.from}
                 max={range.to}
                 onChange={(e) => changeDate('from', e.target.value)}
-                className="w-full min-w-0 bg-slate-950 border border-slate-700 rounded-lg px-2 py-2 sm:py-1.5 text-slate-200 [color-scheme:dark]"
+                className="w-full min-w-0 bg-surface-offwhite border border-line rounded-lg px-2 py-2 sm:py-1.5 text-brand-brown-dark [color-scheme:light]"
               />
             </label>
-            <label className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-slate-400 min-w-0">
+            <label className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-brand-brown min-w-0">
               até
               <input
                 type="date"
                 value={range.to}
                 min={range.from}
                 onChange={(e) => changeDate('to', e.target.value)}
-                className="w-full min-w-0 bg-slate-950 border border-slate-700 rounded-lg px-2 py-2 sm:py-1.5 text-slate-200 [color-scheme:dark]"
+                className="w-full min-w-0 bg-surface-offwhite border border-line rounded-lg px-2 py-2 sm:py-1.5 text-brand-brown-dark [color-scheme:light]"
               />
             </label>
           </div>
@@ -345,15 +345,15 @@ function Dashboard() {
         {invalidRange ? (
           <Notice text="Escolha uma data inicial anterior à data final." />
         ) : error ? (
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center space-y-3">
-            <AlertCircle className="w-8 h-8 text-rose-400 mx-auto" />
-            <p className="text-sm text-slate-300">{error}</p>
+          <div className="bg-surface-white border border-line-soft rounded-2xl p-8 text-center space-y-3">
+            <AlertCircle className="w-8 h-8 text-rose-700 mx-auto" />
+            <p className="text-sm text-brand-brown">{error}</p>
             <button
               onClick={() => {
                 setLoading(true);
                 setReloadKey((k) => k + 1);
               }}
-              className="text-sm font-semibold text-amber-400 hover:text-amber-300"
+              className="text-sm font-semibold text-brand-brown hover:text-brand-brown"
             >
               Tentar novamente
             </button>
@@ -408,7 +408,7 @@ function Dashboard() {
 }
 
 function Notice({ text }: { text: string }) {
-  return <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center text-sm text-slate-400">{text}</div>;
+  return <div className="bg-surface-white border border-line-soft rounded-2xl p-8 text-center text-sm text-brand-brown">{text}</div>;
 }
 
 // ==========================================
@@ -469,19 +469,19 @@ function PieCard({
   const open = (s: Slice) => canOpen && router.push(s.href);
 
   return (
-    <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col">
+    <section className="bg-surface-white border border-line-soft rounded-2xl p-5 flex flex-col">
       <div className="flex items-start gap-3 mb-4">
-        <div className="bg-slate-800 border border-slate-700 p-2 rounded-lg text-slate-300">
+        <div className="bg-surface-muted border border-line p-2 rounded-lg text-brand-brown">
           <Icon className="w-4 h-4" />
         </div>
         <div>
-          <h2 className="font-bold text-white">{title}</h2>
-          <p className="text-xs text-slate-400">{subtitle}</p>
+          <h2 className="font-bold text-brand-brown-dark">{title}</h2>
+          <p className="text-xs text-brand-brown">{subtitle}</p>
         </div>
       </div>
 
       {total === 0 ? (
-        <div className="flex-1 flex items-center justify-center py-16 text-sm text-slate-500 text-center">{emptyText}</div>
+        <div className="flex-1 flex items-center justify-center py-16 text-sm text-brand-brown-light text-center">{emptyText}</div>
       ) : (
         <>
           <div className="relative mx-auto" style={{ width: size, height: size }}>
@@ -517,10 +517,10 @@ function PieCard({
             </svg>
             {/* Centro: total ou fatia sob o mouse */}
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-12">
-              <div className="text-lg font-extrabold text-white leading-tight">
+              <div className="text-lg font-extrabold text-brand-brown-dark leading-tight">
                 {hovered ? format(hovered.value) : centerValue}
               </div>
-              <div className="text-[11px] text-slate-400 leading-tight">
+              <div className="text-[11px] text-brand-brown leading-tight">
                 {hovered ? `${hovered.label} · ${pct(hovered.value)}` : centerLabel}
               </div>
             </div>
@@ -539,13 +539,13 @@ function PieCard({
                     onMouseEnter={() => setHover(s.key)}
                     onMouseLeave={() => setHover(null)}
                     className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-left ${
-                      disabled ? 'cursor-default' : 'hover:bg-slate-800'
-                    } ${hover === s.key ? 'bg-slate-800' : ''} ${s.value === 0 ? 'opacity-40' : ''}`}
+                      disabled ? 'cursor-default' : 'hover:bg-surface-muted'
+                    } ${hover === s.key ? 'bg-surface-muted' : ''} ${s.value === 0 ? 'opacity-40' : ''}`}
                   >
                     <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: s.color }} />
-                    <span className="flex-1 text-slate-300 truncate">{s.label}</span>
-                    <span className="font-semibold text-white tabular-nums">{format(s.value)}</span>
-                    <span className="w-12 text-right text-xs text-slate-500 tabular-nums">{pct(s.value)}</span>
+                    <span className="flex-1 text-brand-brown truncate">{s.label}</span>
+                    <span className="font-semibold text-brand-brown-dark tabular-nums">{format(s.value)}</span>
+                    <span className="w-12 text-right text-xs text-brand-brown-light tabular-nums">{pct(s.value)}</span>
                   </button>
                 </li>
               );
@@ -554,7 +554,7 @@ function PieCard({
         </>
       )}
 
-      <p className="mt-4 pt-3 border-t border-slate-800 text-xs text-slate-500">
+      <p className="mt-4 pt-3 border-t border-line-soft text-xs text-brand-brown-light">
         {footer}
         {!canOpen && ' · Seu perfil não acessa a tela de detalhes.'}
       </p>

@@ -6,6 +6,7 @@ import { CurrentUser, AuthenticatedUser } from './decorators/current-user.decora
 import { Public } from './decorators/public.decorator.js';
 import { AnyStaff } from './decorators/mechanic-area.decorator.js';
 import { FirstAccessDto } from './dto/first-access.dto.js';
+import { ClientEntryDto } from './dto/client-entry.dto.js';
 
 @Controller('auth')
 export class AuthController {
@@ -39,7 +40,18 @@ export class AuthController {
     return this.authService.loginWithRateLimit(dto, ip);
   }
 
-  /** Primeiro acesso de cliente ou da equipe: gera o código de 4 dígitos e envia pelo WhatsApp. */
+  /** Cliente entra no painel com nome completo, e-mail e contato (sem senha). */
+  @Public()
+  @Post('client-entry')
+  @HttpCode(HttpStatus.OK)
+  async clientEntry(
+    @Ip() ip: string,
+    @Body(new ValidationPipe({ transform: true, whitelist: true })) dto: ClientEntryDto,
+  ) {
+    return this.authService.clientEntry(dto, ip);
+  }
+
+  /** Primeiro acesso da equipe: a pessoa convidada cadastra a senha e recebe o usuário (código). */
   @Public()
   @Post('first-access')
   @HttpCode(HttpStatus.CREATED)

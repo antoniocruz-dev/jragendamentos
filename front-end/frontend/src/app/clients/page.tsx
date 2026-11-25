@@ -48,7 +48,7 @@ interface Vehicle {
 interface Client {
   id: string;
   name: string;
-  document: string;
+  document: string | null;
   phone: string;
   email?: string | null;
   address?: string | null;
@@ -60,20 +60,21 @@ interface Client {
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  DRAFT: { label: 'Rascunho', color: 'text-slate-300 bg-slate-500/10 border-slate-500/30' },
-  QUOTE: { label: 'Orçamento', color: 'text-amber-400 bg-amber-500/10 border-amber-500/30' },
-  APPROVED: { label: 'Aprovado', color: 'text-sky-400 bg-sky-500/10 border-sky-500/30' },
-  IN_PROGRESS: { label: 'Em Execução', color: 'text-purple-400 bg-purple-500/10 border-purple-500/30' },
-  WAITING_PARTS: { label: 'Aguardando Peças', color: 'text-orange-400 bg-orange-500/10 border-orange-500/30' },
-  TESTING: { label: 'Em Teste', color: 'text-cyan-300 bg-cyan-500/10 border-cyan-500/30' },
-  COMPLETED: { label: 'Finalizado', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' },
-  BILLED: { label: 'Pago', color: 'text-emerald-300 bg-emerald-500/20 border-emerald-500/50' },
-  CANCELLED: { label: 'Cancelado', color: 'text-rose-400 bg-rose-500/10 border-rose-500/30' },
+  DRAFT: { label: 'Rascunho', color: 'text-brand-brown bg-brand-brown-light/10 border-brand-brown-light/30' },
+  QUOTE: { label: 'Orçamento', color: 'text-brand-brown bg-neon-primary/10 border-neon-deep/30' },
+  APPROVED: { label: 'Aprovado', color: 'text-sky-700 bg-sky-500/10 border-sky-500/30' },
+  IN_PROGRESS: { label: 'Em Execução', color: 'text-purple-700 bg-purple-500/10 border-purple-500/30' },
+  WAITING_PARTS: { label: 'Aguardando Peças', color: 'text-orange-700 bg-orange-500/10 border-orange-500/30' },
+  TESTING: { label: 'Em Teste', color: 'text-cyan-700 bg-cyan-500/10 border-cyan-500/30' },
+  COMPLETED: { label: 'Finalizado', color: 'text-emerald-700 bg-emerald-500/10 border-emerald-500/30' },
+  BILLED: { label: 'Pago', color: 'text-emerald-700 bg-emerald-500/20 border-emerald-500/50' },
+  CANCELLED: { label: 'Cancelado', color: 'text-rose-700 bg-rose-500/10 border-rose-500/30' },
 };
 
 const onlyDigits = (v: string) => v.replace(/\D/g, '');
 
-function formatDocument(doc: string) {
+function formatDocument(doc: string | null) {
+  if (!doc) return 'CPF/CNPJ não informado';
   const d = onlyDigits(doc);
   if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
   if (d.length === 14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
@@ -187,7 +188,7 @@ export default function ClientsPage() {
       />
 
         {!isManager && (
-          <p className="text-xs text-slate-500">Exclusões só podem ser feitas pelo Administrador ou Gerente Geral.</p>
+          <p className="text-xs text-brand-brown-light">Exclusões só podem ser feitas pelo Administrador ou Gerente Geral.</p>
         )}
 
         {loading && !data ? (
@@ -195,15 +196,15 @@ export default function ClientsPage() {
         ) : error && !data ? (
           <ErrorState message={error} onRetry={loadClients} />
         ) : filtered.length === 0 ? (
-          <div className="p-12 text-center text-slate-400">Nenhum cliente encontrado.</div>
+          <div className="p-12 text-center text-brand-brown">Nenhum cliente encontrado.</div>
         ) : (
           <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
             {filtered.map((client) => (
-              <article key={client.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 min-w-0">
+              <article key={client.id} className="bg-surface-white border border-line-soft rounded-2xl p-4 sm:p-5 space-y-4 min-w-0">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h2 className="text-base sm:text-lg font-bold text-white truncate">{client.name}</h2>
-                    <div className="mt-1 space-y-0.5 text-xs text-slate-400">
+                    <h2 className="text-base sm:text-lg font-bold text-brand-brown-dark truncate">{client.name}</h2>
+                    <div className="mt-1 space-y-0.5 text-xs text-brand-brown">
                       <div className="flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" />{formatDocument(client.document)}</div>
                       <div className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" />{formatPhone(client.phone)}</div>
                       {client.email && <div className="flex items-center gap-1.5 min-w-0"><Mail className="w-3.5 h-3.5 shrink-0" /><span className="truncate">{client.email}</span></div>}
@@ -230,14 +231,14 @@ export default function ClientsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  {client.vehicles.length === 0 && <p className="text-xs text-slate-500">Nenhum veículo cadastrado.</p>}
+                  {client.vehicles.length === 0 && <p className="text-xs text-brand-brown-light">Nenhum veículo cadastrado.</p>}
                   {client.vehicles.map((v) => (
-                    <div key={v.id} className="flex flex-wrap items-center justify-between gap-2 bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2">
+                    <div key={v.id} className="flex flex-wrap items-center justify-between gap-2 bg-surface-offwhite/60 border border-line-soft rounded-lg px-3 py-2">
                       <div className="flex items-center gap-3 min-w-0">
-                        <Car className="w-4 h-4 text-sky-400 shrink-0" />
+                        <Car className="w-4 h-4 text-sky-700 shrink-0" />
                         <div className="min-w-0">
-                          <div className="font-mono font-bold text-amber-400 text-sm">{v.licensePlate}</div>
-                          <div className="text-xs text-slate-400 truncate">
+                          <div className="font-mono font-bold text-brand-brown text-sm">{v.licensePlate}</div>
+                          <div className="text-xs text-brand-brown truncate">
                             {v.brand} {v.model} · {v.year}
                             {v.currentKm ? <span className="inline-flex items-center gap-1 ml-2"><Gauge className="w-3 h-3" />{v.currentKm.toLocaleString('pt-BR')} km</span> : null}
                           </div>
@@ -254,7 +255,7 @@ export default function ClientsPage() {
                   ))}
                   <button
                     onClick={() => setModal({ kind: 'vehicle', client, vehicle: null })}
-                    className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-amber-400 hover:text-amber-300 border border-dashed border-slate-700 rounded-lg py-2"
+                    className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-brand-brown hover:text-brand-brown border border-dashed border-line rounded-lg py-2"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     Adicionar veículo
@@ -288,31 +289,26 @@ export default function ClientsPage() {
 }
 
 /**
- * Acesso do cliente à Área do Cliente. A equipe NÃO define senha: o cliente cadastra a própria em
- * "É meu primeiro acesso", com o WhatsApp deste cadastro. Aqui a equipe vê o usuário (código de 4 dígitos),
- * libera/redefine o acesso (a senha atual deixa de valer) ou bloqueia.
+ * Painel do cliente: ele entra sem senha, informando nome completo, e-mail e o contato deste cadastro.
+ * Aqui a equipe vê se o cliente já entrou e pode bloquear ou reativar a entrada.
  */
 function PortalAccessModal({ client, canRevoke, onClose }: { client: Client; canRevoke: boolean; onClose: (changed: boolean) => void }) {
-  const [info, setInfo] = useState<{ hasAccess: boolean; accessCode: string | null; firstAccessPending: boolean; email: string } | null>(null);
+  const [info, setInfo] = useState<{ hasAccess: boolean; hasEntered: boolean; isActive: boolean; email: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const ctrl = new AbortController();
-    fetchApi<{ hasAccess: boolean; accessCode: string | null; firstAccessPending: boolean; email: string }>(`/clients/${client.id}/portal-access`, { signal: ctrl.signal })
+    fetchApi<{ hasAccess: boolean; hasEntered: boolean; isActive: boolean; email: string }>(`/clients/${client.id}/portal-access`, { signal: ctrl.signal })
       .then(setInfo)
       .catch((err) => !ctrl.signal.aborted && setError(errorMessage(err)));
     return () => ctrl.abort();
   }, [client.id]);
 
-  async function resetAccess() {
-    if (!confirm(`Redefinir o acesso de ${client.name}? A senha atual deixa de valer e o cliente cadastra uma nova em "É meu primeiro acesso".`)) return;
+  async function reactivate() {
     try {
       setSaving(true);
-      await fetchApi(`/clients/${client.id}/portal-access`, {
-        method: 'POST',
-        successToast: 'Acesso redefinido. O cliente cadastra a nova senha em "É meu primeiro acesso".',
-      });
+      await fetchApi(`/clients/${client.id}/portal-access`, { method: 'POST', successToast: 'Entrada do cliente reativada.' });
       onClose(true);
     } catch {
       setSaving(false);
@@ -320,60 +316,45 @@ function PortalAccessModal({ client, canRevoke, onClose }: { client: Client; can
   }
 
   async function revoke() {
-    if (!confirm(`Bloquear o acesso de ${client.name}? O cadastro e o histórico continuam.`)) return;
+    if (!confirm(`Bloquear a entrada de ${client.name} no painel do cliente? O cadastro e o histórico continuam.`)) return;
     try {
       setSaving(true);
-      await fetchApi(`/clients/${client.id}/portal-access`, { method: 'DELETE', successToast: 'Acesso bloqueado.' });
+      await fetchApi(`/clients/${client.id}/portal-access`, { method: 'DELETE', successToast: 'Entrada bloqueada.' });
       onClose(true);
     } catch {
       setSaving(false);
     }
   }
 
-  const linked = !!info?.accessCode;
   return (
-    <Modal title={`Acesso do cliente · ${client.name}`} onClose={() => onClose(false)}>
+    <Modal title={`Painel do cliente · ${client.name}`} onClose={() => onClose(false)}>
       <div className="space-y-4">
-        <p className="text-sm text-slate-400">
-          O cliente entra com o <strong className="text-slate-200">usuário</strong> (código de 4 dígitos) e a <strong className="text-slate-200">senha que ele mesmo cadastrou</strong>.
-          Para criar o acesso, ele toca em &quot;É meu primeiro acesso&quot; na tela de login e informa o WhatsApp deste cadastro ({client.phone}).
+        <p className="text-sm text-brand-brown">
+          O cliente entra pela aba <strong className="text-brand-brown-dark">Cliente</strong> da tela de login, sem senha, informando o nome completo,
+          o e-mail{client.email ? ` (${client.email})` : ''} e o contato deste cadastro ({client.phone}).
         </p>
         {!info && !error ? (
-          <p className="text-sm text-slate-500">Carregando...</p>
-        ) : linked ? (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-3 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5">
-              <span className="text-xs text-slate-400">Usuário (login)</span>
-              <span className="font-mono text-xl font-extrabold tracking-[0.3em] text-amber-300">{info?.accessCode}</span>
-            </div>
-            <p className="text-xs text-slate-400">
-              {!info?.hasAccess
-                ? 'Acesso bloqueado.'
-                : info?.firstAccessPending
-                  ? 'Aguardando o cliente cadastrar a senha em "É meu primeiro acesso".'
-                  : `Acesso ativo (${info?.email}).`}
-            </p>
-          </div>
-        ) : (
-          <p className="text-sm text-amber-300">O cliente ainda não fez o primeiro acesso.</p>
-        )}
+          <p className="text-sm text-brand-brown-light">Carregando...</p>
+        ) : info ? (
+          <p className="text-sm font-semibold text-brand-brown-dark">
+            {!info.hasEntered ? 'O cliente ainda não entrou no painel.' : info.isActive ? 'Entrada liberada.' : 'Entrada bloqueada.'}
+          </p>
+        ) : null}
         <FormError message={error} />
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-2">
-          {linked && info?.hasAccess && canRevoke ? (
-            <button type="button" onClick={revoke} disabled={saving} className="min-h-11 text-sm font-semibold text-rose-300 hover:text-rose-200 disabled:opacity-50">
-              Bloquear acesso
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+          {info?.hasEntered && info.isActive && canRevoke && (
+            <button type="button" onClick={revoke} disabled={saving} className="min-h-11 px-4 text-sm font-semibold text-rose-700 hover:underline disabled:opacity-50">
+              Bloquear entrada
             </button>
-          ) : (
-            <span />
           )}
-          {linked && (
+          {info?.hasEntered && !info.isActive && (
             <button
               type="button"
-              onClick={resetAccess}
+              onClick={reactivate}
               disabled={saving}
-              className="min-h-11 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-bold disabled:opacity-50"
+              className="min-h-11 px-4 rounded-xl bg-neon-primary hover:bg-neon-soft text-brand-brown-dark text-sm font-bold disabled:opacity-50"
             >
-              {info?.hasAccess ? 'Redefinir acesso' : 'Reativar acesso'}
+              Reativar entrada
             </button>
           )}
         </div>
@@ -400,23 +381,23 @@ function HistoryModal({ vehicle, onClose }: { vehicle: Vehicle; onClose: () => v
       {error ? (
         <FormError message={error} />
       ) : !orders ? (
-        <p className="text-sm text-slate-400">Carregando...</p>
+        <p className="text-sm text-brand-brown">Carregando...</p>
       ) : orders.length === 0 ? (
-        <p className="text-sm text-slate-400">Nenhuma OS registrada para este veículo.</p>
+        <p className="text-sm text-brand-brown">Nenhuma OS registrada para este veículo.</p>
       ) : (
         <ul className="space-y-2">
           {orders.map((wo) => {
-            const s = STATUS_LABELS[wo.status] ?? { label: wo.status, color: 'text-slate-300 border-slate-600' };
+            const s = STATUS_LABELS[wo.status] ?? { label: wo.status, color: 'text-brand-brown border-brand-brown-light' };
             return (
               <li key={wo.id}>
                 <Link
                   href={`/os/${wo.id}`}
-                  className="grid grid-cols-[auto_1fr_auto] sm:grid-cols-[auto_auto_1fr_auto] items-center gap-x-3 gap-y-1 bg-slate-950 border border-slate-800 hover:border-amber-500/50 rounded-lg px-3 py-2"
+                  className="grid grid-cols-[auto_1fr_auto] sm:grid-cols-[auto_auto_1fr_auto] items-center gap-x-3 gap-y-1 bg-surface-offwhite border border-line-soft hover:border-neon-deep/50 rounded-lg px-3 py-2"
                 >
-                  <span className="font-mono font-bold text-amber-400">#{wo.code}</span>
+                  <span className="font-mono font-bold text-brand-brown">#{wo.code}</span>
                   <span className={`justify-self-start text-xs px-2 py-0.5 rounded-full border ${s.color}`}>{s.label}</span>
-                  <span className="hidden sm:block text-xs text-slate-400">{new Date(wo.createdAt).toLocaleDateString('pt-BR')}</span>
-                  <span className="text-sm font-semibold text-white text-right">
+                  <span className="hidden sm:block text-xs text-brand-brown">{new Date(wo.createdAt).toLocaleDateString('pt-BR')}</span>
+                  <span className="text-sm font-semibold text-brand-brown-dark text-right">
                     R$ {Number(wo.finalAmount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </span>
                 </Link>
@@ -571,9 +552,9 @@ function ClientModal({ client, onClose }: { client: Client | null; onClose: (cha
         </div>
 
         {!editing && (
-          <div className="border-t border-slate-800 pt-4 space-y-3">
-            <label className="flex items-center gap-2 text-sm text-slate-300">
-              <input type="checkbox" checked={withVehicle} onChange={(e) => setWithVehicle(e.target.checked)} className="accent-amber-500" />
+          <div className="border-t border-line-soft pt-4 space-y-3">
+            <label className="flex items-center gap-2 text-sm text-brand-brown">
+              <input type="checkbox" checked={withVehicle} onChange={(e) => setWithVehicle(e.target.checked)} className="accent-brand-brown" />
               Cadastrar o primeiro veículo agora
             </label>
             {withVehicle && <VehicleFields form={vehicle} set={(k, v) => setVehicle((f) => ({ ...f, [k]: v }))} />}

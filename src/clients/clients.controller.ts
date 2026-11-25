@@ -74,7 +74,7 @@ export class ClientsController {
     return this.clientsService.portalAccess(id);
   }
 
-  /** Libera/redefine o acesso: o cliente cadastra a própria senha no primeiro acesso. */
+  /** Reativa a entrada do cliente no painel. */
   @Post(':id/portal-access')
   grantPortalAccess(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.clientsService.grantPortalAccess(id);

@@ -41,11 +41,11 @@ interface ClientOption {
 }
 
 const STATUS_CONFIG: Record<'ALL' | AppointmentStatus, { label: string; bg: string; text: string; border: string }> = {
-  ALL: { label: 'Todos', bg: 'bg-slate-800', text: 'text-slate-300', border: 'border-slate-700' },
-  PENDING: { label: 'Pendente', bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/30' },
-  CONFIRMED: { label: 'Confirmado', bg: 'bg-sky-500/10', text: 'text-sky-400', border: 'border-sky-500/30' },
-  ATTENDED: { label: 'Compareceu', bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30' },
-  CANCELLED: { label: 'Cancelado', bg: 'bg-rose-500/10', text: 'text-rose-400', border: 'border-rose-500/30' },
+  ALL: { label: 'Todos', bg: 'bg-surface-muted', text: 'text-brand-brown', border: 'border-line' },
+  PENDING: { label: 'Pendente', bg: 'bg-neon-primary/10', text: 'text-brand-brown', border: 'border-neon-deep/30' },
+  CONFIRMED: { label: 'Confirmado', bg: 'bg-sky-500/10', text: 'text-sky-700', border: 'border-sky-500/30' },
+  ATTENDED: { label: 'Compareceu', bg: 'bg-emerald-500/10', text: 'text-emerald-700', border: 'border-emerald-500/30' },
+  CANCELLED: { label: 'Cancelado', bg: 'bg-rose-500/10', text: 'text-rose-700', border: 'border-rose-500/30' },
 };
 
 // ==========================================
@@ -272,23 +272,23 @@ function AppointmentsAgenda({
   }
 
   return (
-    <div className="min-h-full bg-slate-950 text-slate-100 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+    <div className="min-h-full bg-surface-offwhite text-brand-brown-dark px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
       <div className="max-w-7xl mx-auto space-y-5 sm:space-y-6">
         {/* Cabeçalho */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4 border-b border-slate-800 pb-4 sm:pb-6">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4 border-b border-line-soft pb-4 sm:pb-6">
           <div>
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white flex items-center gap-2.5">
-              <Calendar className="w-6 h-6 sm:w-7 sm:h-7 text-amber-500 shrink-0" />
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-brand-brown-dark flex items-center gap-2.5">
+              <Calendar className="w-6 h-6 sm:w-7 sm:h-7 text-neon-deep shrink-0" />
               Agendamentos
             </h1>
-            <p className="text-xs sm:text-sm text-slate-400 mt-1">
+            <p className="text-xs sm:text-sm text-brand-brown mt-1">
               Reserve horários, confirme presença pelo WhatsApp e acompanhe a agenda da semana.
             </p>
           </div>
 
           <button
             onClick={openCreate}
-            className="inline-flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-4 py-2.5 rounded-xl transition-all shadow-md shadow-amber-500/20 text-sm"
+            className="inline-flex items-center justify-center gap-2 bg-neon-primary hover:bg-neon-deep text-brand-brown-dark font-bold px-4 py-2.5 rounded-xl transition-all shadow-md shadow-neon-primary/20 text-sm"
           >
             <PlusCircle className="w-5 h-5" />
             Novo Agendamento
@@ -296,29 +296,29 @@ function AppointmentsAgenda({
         </div>
 
         {/* Navegação da semana + filtros */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
+        <div className="bg-surface-white border border-line-soft rounded-2xl p-3 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
           <div className="flex items-center gap-2">
             <button
               onClick={() => goToWeek(addDays(weekStart, -7))}
-              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300"
+              className="p-2 rounded-xl bg-surface-muted hover:bg-surface-strong text-brand-brown"
               title="Semana anterior"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
               onClick={() => goToWeek(new Date())}
-              className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300"
+              className="px-3 py-2 rounded-xl bg-surface-muted hover:bg-surface-strong text-xs font-semibold text-brand-brown"
             >
               Hoje
             </button>
             <button
               onClick={() => goToWeek(addDays(weekStart, 7))}
-              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300"
+              className="p-2 rounded-xl bg-surface-muted hover:bg-surface-strong text-brand-brown"
               title="Próxima semana"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
-            <span className="ml-2 text-sm font-semibold text-white whitespace-nowrap">
+            <span className="ml-2 text-sm font-semibold text-brand-brown-dark whitespace-nowrap">
               {rangeFmt.format(weekStart)} – {rangeFmt.format(addDays(weekStart, 6))}
             </span>
           </div>
@@ -332,8 +332,8 @@ function AppointmentsAgenda({
                   onClick={() => setStatusFilter(key)}
                   className={`px-3 min-h-9 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
                     isSelected
-                      ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-sm'
-                      : 'bg-slate-800/80 text-slate-300 border-slate-700/60 hover:bg-slate-700'
+                      ? 'bg-neon-primary text-brand-brown-dark border-neon-deep shadow-sm'
+                      : 'bg-surface-muted/80 text-brand-brown border-line/60 hover:bg-surface-strong'
                   }`}
                 >
                   {STATUS_CONFIG[key].label}
@@ -359,28 +359,28 @@ function AppointmentsAgenda({
               return (
                 <section
                   key={key}
-                  className={`bg-slate-900 border rounded-2xl overflow-hidden ${
-                    isToday ? 'border-amber-500/50' : 'border-slate-800'
+                  className={`bg-surface-white border rounded-2xl overflow-hidden ${
+                    isToday ? 'border-neon-deep/50' : 'border-line-soft'
                   }`}
                 >
-                  <header className="px-4 sm:px-5 py-3 bg-slate-950/60 border-b border-slate-800 flex items-center justify-between">
-                    <h2 className="text-sm font-bold capitalize text-white">
+                  <header className="px-4 sm:px-5 py-3 bg-surface-offwhite/60 border-b border-line-soft flex items-center justify-between">
+                    <h2 className="text-sm font-bold capitalize text-brand-brown-dark">
                       {dayFmt.format(day)}
                       {isToday && (
-                        <span className="ml-2 text-[10px] uppercase tracking-wider bg-amber-500 text-slate-950 px-2 py-0.5 rounded-full">
+                        <span className="ml-2 text-[10px] uppercase tracking-wider bg-neon-primary text-brand-brown-dark px-2 py-0.5 rounded-full">
                           Hoje
                         </span>
                       )}
                     </h2>
-                    <span className="text-xs text-slate-500">
+                    <span className="text-xs text-brand-brown-light">
                       {items.length} {items.length === 1 ? 'agendamento' : 'agendamentos'}
                     </span>
                   </header>
 
                   {items.length === 0 ? (
-                    <p className="px-4 sm:px-5 py-4 text-xs text-slate-500">Nenhum horário reservado.</p>
+                    <p className="px-4 sm:px-5 py-4 text-xs text-brand-brown-light">Nenhum horário reservado.</p>
                   ) : (
-                    <ul className="divide-y divide-slate-800/80">
+                    <ul className="divide-y divide-line-soft/80">
                       {items.map((a) => {
                         const st = STATUS_CONFIG[a.status];
                         const busy = actionLoadingId === a.id;
@@ -389,19 +389,19 @@ function AppointmentsAgenda({
                         return (
                           <li
                             key={a.id}
-                            className="px-4 sm:px-5 py-4 flex flex-col lg:flex-row lg:items-center gap-2.5 sm:gap-3 hover:bg-slate-800/30"
+                            className="px-4 sm:px-5 py-4 flex flex-col lg:flex-row lg:items-center gap-2.5 sm:gap-3 hover:bg-surface-muted/30"
                           >
-                            <div className="flex items-center gap-2 w-24 shrink-0 font-mono font-bold text-amber-400">
+                            <div className="flex items-center gap-2 w-24 shrink-0 font-mono font-bold text-brand-brown">
                               <Clock className="w-4 h-4" />
                               {timeFmt.format(new Date(a.scheduledFor))}
                             </div>
 
                             <div className="flex-1 min-w-0">
                               <div className="flex flex-wrap items-center gap-2">
-                                <span className="font-bold text-white uppercase tracking-wide">
+                                <span className="font-bold text-brand-brown-dark uppercase tracking-wide">
                                   {a.vehicle.licensePlate}
                                 </span>
-                                <span className="text-xs text-slate-400">
+                                <span className="text-xs text-brand-brown">
                                   {a.vehicle.brand} {a.vehicle.model} ({a.vehicle.year})
                                 </span>
                                 <span
@@ -410,11 +410,11 @@ function AppointmentsAgenda({
                                   {st.label}
                                 </span>
                               </div>
-                              <div className="text-sm text-slate-300 mt-0.5">
-                                {a.client.name} <span className="text-xs text-slate-500">· {a.client.phone}</span>
+                              <div className="text-sm text-brand-brown mt-0.5">
+                                {a.client.name} <span className="text-xs text-brand-brown-light">· {a.client.phone}</span>
                               </div>
                               {a.notes && (
-                                <p className="text-xs text-slate-500 mt-1 whitespace-pre-line">{a.notes}</p>
+                                <p className="text-xs text-brand-brown-light mt-1 whitespace-pre-line">{a.notes}</p>
                               )}
                             </div>
 
@@ -506,10 +506,10 @@ function AppointmentsAgenda({
 // ==========================================
 
 const ACTION_COLORS = {
-  sky: 'bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 border-sky-500/30',
-  emerald: 'bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border-emerald-500/30',
-  rose: 'bg-rose-600/10 hover:bg-rose-600/20 text-rose-300 border-rose-500/30',
-  slate: 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700',
+  sky: 'bg-sky-600/20 hover:bg-sky-600/30 text-sky-700 border-sky-500/30',
+  emerald: 'bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-700 border-emerald-500/30',
+  rose: 'bg-rose-600/10 hover:bg-rose-600/20 text-rose-700 border-rose-500/30',
+  slate: 'bg-surface-muted hover:bg-surface-strong text-brand-brown border-line',
 };
 
 function ActionButton({
@@ -594,39 +594,39 @@ function AppointmentModal({
   }
 
   const inputCls =
-    'w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-amber-500 disabled:opacity-60';
+    'w-full bg-surface-offwhite border border-line/80 rounded-xl px-3 py-2.5 text-sm text-brand-brown-dark placeholder-brand-brown-light focus:outline-none focus:border-neon-deep disabled:opacity-60';
 
   return (
     <div className="fixed inset-0 z-[80] bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4" onClick={onClose}>
       <form
         onSubmit={handleSubmit}
         onClick={(e) => e.stopPropagation()}
-        className="w-full sm:max-w-lg max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto overscroll-contain bg-slate-900 border border-slate-800 rounded-t-2xl sm:rounded-2xl shadow-2xl pb-[env(safe-area-inset-bottom)] sm:pb-0"
+        className="w-full sm:max-w-lg max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto overscroll-contain bg-surface-white border border-line-soft rounded-t-2xl sm:rounded-2xl shadow-2xl pb-[env(safe-area-inset-bottom)] sm:pb-0"
       >
-        <div className="sticky top-0 z-10 bg-slate-900 flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-800">
-          <h3 className="text-lg font-bold text-white">
+        <div className="sticky top-0 z-10 bg-surface-white flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-line-soft">
+          <h3 className="text-lg font-bold text-brand-brown-dark">
             {editing ? 'Reagendar' : 'Novo Agendamento'}
           </h3>
-          <button type="button" onClick={onClose} className="text-slate-400 hover:text-white">
+          <button type="button" onClick={onClose} className="text-brand-brown hover:text-brand-brown-dark">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="px-4 sm:px-6 py-4 sm:py-5 space-y-4">
           {editing ? (
-            <div className="text-sm text-slate-300 bg-slate-950/60 border border-slate-800 rounded-xl p-3">
-              <div className="font-semibold text-white">{editing.client.name}</div>
-              <div className="text-xs text-slate-400">
+            <div className="text-sm text-brand-brown bg-surface-offwhite/60 border border-line-soft rounded-xl p-3">
+              <div className="font-semibold text-brand-brown-dark">{editing.client.name}</div>
+              <div className="text-xs text-brand-brown">
                 {editing.vehicle.licensePlate} · {editing.vehicle.brand} {editing.vehicle.model}
               </div>
-              <p className="text-[11px] text-amber-400/80 mt-2">
+              <p className="text-[11px] text-brand-brown/80 mt-2">
                 Ao mudar o horário, o agendamento volta para &quot;Pendente&quot; até nova confirmação.
               </p>
             </div>
           ) : (
             <>
               <label className="block">
-                <span className="text-xs font-semibold text-slate-400">Cliente</span>
+                <span className="text-xs font-semibold text-brand-brown">Cliente</span>
                 <select
                   required
                   value={clientId}
@@ -647,7 +647,7 @@ function AppointmentModal({
               </label>
 
               <label className="block">
-                <span className="text-xs font-semibold text-slate-400">Veículo</span>
+                <span className="text-xs font-semibold text-brand-brown">Veículo</span>
                 <select
                   required
                   value={vehicleId}
@@ -671,7 +671,7 @@ function AppointmentModal({
           )}
 
           <label className="block">
-            <span className="text-xs font-semibold text-slate-400">Data e hora</span>
+            <span className="text-xs font-semibold text-brand-brown">Data e hora</span>
             <input
               type="datetime-local"
               required
@@ -679,15 +679,15 @@ function AppointmentModal({
               min={toDatetimeLocal(new Date())}
               onChange={(e) => setScheduledFor(e.target.value)}
               step={1800}
-              className={`${inputCls} mt-1 [color-scheme:dark]`}
+              className={`${inputCls} mt-1 [color-scheme:light]`}
             />
-            <span className="block mt-1 text-[11px] text-slate-500">
+            <span className="block mt-1 text-[11px] text-brand-brown-light">
               Segunda a sexta, das 08:00 às 17:00 (cada atendimento ocupa 1 hora). Um veículo por horário; feriados nacionais bloqueados.
             </span>
           </label>
 
           <label className="block">
-            <span className="text-xs font-semibold text-slate-400">Observações</span>
+            <span className="text-xs font-semibold text-brand-brown">Observações</span>
             <textarea
               rows={3}
               value={notes}
@@ -698,22 +698,22 @@ function AppointmentModal({
           </label>
 
           {error && (
-            <div className="text-sm text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-xl p-3">{error}</div>
+            <div className="text-sm text-rose-700 bg-rose-500/10 border border-rose-500/30 rounded-xl p-3">{error}</div>
           )}
         </div>
 
-        <div className="sticky bottom-0 bg-slate-900 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-800">
+        <div className="sticky bottom-0 bg-surface-white flex flex-col-reverse sm:flex-row sm:justify-end gap-2 px-4 sm:px-6 py-3 sm:py-4 border-t border-line-soft">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm font-semibold text-slate-300"
+            className="px-4 py-2.5 rounded-xl bg-surface-muted hover:bg-surface-strong text-sm font-semibold text-brand-brown"
           >
             Voltar
           </button>
           <button
             type="submit"
             disabled={saving}
-            className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-sm font-bold disabled:opacity-50"
+            className="px-5 py-2.5 rounded-xl bg-neon-primary hover:bg-neon-deep text-brand-brown-dark text-sm font-bold disabled:opacity-50"
           >
             {saving ? 'Salvando...' : editing ? 'Salvar novo horário' : 'Agendar'}
           </button>

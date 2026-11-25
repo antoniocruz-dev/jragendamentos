@@ -103,21 +103,21 @@ export default function CatalogPage() {
   );
 
   return (
-    <div className="min-h-full bg-slate-950 text-slate-100 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+    <div className="min-h-full bg-surface-offwhite text-brand-brown-dark px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
       <div className="max-w-6xl mx-auto space-y-5 sm:space-y-6">
-        <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4 border-b border-slate-800 pb-4 sm:pb-6">
+        <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4 border-b border-line-soft pb-4 sm:pb-6">
           <div>
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white flex items-center gap-2.5">
-              <Package className="w-6 h-6 sm:w-7 sm:h-7 text-amber-500 shrink-0" />
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-brand-brown-dark flex items-center gap-2.5">
+              <Package className="w-6 h-6 sm:w-7 sm:h-7 text-neon-deep shrink-0" />
               Peças &amp; Serviços
             </h1>
-            <p className="text-slate-400 mt-1 text-xs sm:text-sm">
+            <p className="text-brand-brown mt-1 text-xs sm:text-sm">
               Tabela de mão de obra e estoque de peças usados na abertura das OS.
             </p>
           </div>
           <button
             onClick={() => (tab === 'services' ? setEditingService(null) : setEditingProduct(null))}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm rounded-xl"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-neon-primary hover:bg-neon-soft text-brand-brown-dark font-bold text-sm rounded-xl"
           >
             <Plus className="w-4 h-4" />
             {tab === 'services' ? 'Novo serviço' : 'Nova peça'}
@@ -125,7 +125,7 @@ export default function CatalogPage() {
         </header>
 
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
-          <div className="grid grid-cols-2 sm:inline-flex bg-slate-900 border border-slate-700 rounded-lg p-1">
+          <div className="grid grid-cols-2 sm:inline-flex bg-surface-white border border-line rounded-lg p-1">
             {([
               ['services', 'Serviços', Wrench, services.length],
               ['products', 'Peças', Package, products.length],
@@ -134,7 +134,7 @@ export default function CatalogPage() {
                 key={key}
                 onClick={() => setTab(key)}
                 className={`inline-flex items-center justify-center gap-1.5 px-4 py-2 sm:py-1.5 rounded-md text-sm font-semibold ${
-                  tab === key ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:text-white'
+                  tab === key ? 'bg-neon-primary text-brand-brown-dark' : 'text-brand-brown hover:text-brand-brown-dark'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -143,25 +143,25 @@ export default function CatalogPage() {
             ))}
           </div>
           <div className="relative w-full sm:w-72">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-brand-brown" />
             <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nome ou código..." className={`${inputCls} pl-9 py-2.5`} />
           </div>
         </div>
 
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-brand-brown-light">
           Itens inativos não aparecem na Nova OS. Itens já usados em OS não podem ser excluídos, só inativados.
           {!isManager && ' Excluir e inativar são exclusivos do Administrador e do Gerente Geral.'}
         </p>
 
         {loading ? (
-          <div className="p-12 text-center text-slate-400">Carregando catálogo...</div>
+          <div className="p-12 text-center text-brand-brown">Carregando catálogo...</div>
         ) : error ? (
           <FormError message={error} />
         ) : (
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-x-auto">
+          <div className="bg-surface-white border border-line-soft rounded-2xl overflow-x-auto">
             {tab === 'services' ? (
-              <table className="w-full text-left text-sm text-slate-300">
-                <thead className="bg-slate-900/60 text-xs uppercase text-slate-400 border-b border-slate-700">
+              <table className="w-full text-left text-sm text-brand-brown">
+                <thead className="bg-surface-white/60 text-xs uppercase text-brand-brown border-b border-line">
                   <tr>
                     <th className="py-3 px-3 sm:px-4">Serviço</th>
                     <th className="py-3 px-3 sm:px-4">Preço</th>
@@ -170,20 +170,20 @@ export default function CatalogPage() {
                     <th className="py-3 px-3 sm:px-4 text-right">Ações</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-700/60">
+                <tbody className="divide-y divide-line/60">
                   {visibleServices.length === 0 && (
-                    <tr><td colSpan={5} className="p-8 text-center text-slate-400">Nenhum serviço cadastrado.</td></tr>
+                    <tr><td colSpan={5} className="p-8 text-center text-brand-brown">Nenhum serviço cadastrado.</td></tr>
                   )}
                   {visibleServices.map((s) => (
                     <tr key={s.id} className={s.isActive ? '' : 'opacity-60'}>
                       <td className="py-3 px-3 sm:px-4">
-                        <div className="font-semibold text-white">{s.name}</div>
-                        {s.description && <div className="text-xs text-slate-400 line-clamp-2">{s.description}</div>}
-                        <div className="sm:hidden mt-1 flex items-center gap-2 text-xs text-slate-400">
+                        <div className="font-semibold text-brand-brown-dark">{s.name}</div>
+                        {s.description && <div className="text-xs text-brand-brown line-clamp-2">{s.description}</div>}
+                        <div className="sm:hidden mt-1 flex items-center gap-2 text-xs text-brand-brown">
                           {s.estimatedMinutes} min <ActiveBadge active={s.isActive} />
                         </div>
                       </td>
-                      <td className="py-3 px-3 sm:px-4 font-semibold text-white whitespace-nowrap">{brl(s.basePrice)}</td>
+                      <td className="py-3 px-3 sm:px-4 font-semibold text-brand-brown-dark whitespace-nowrap">{brl(s.basePrice)}</td>
                       <td className="hidden sm:table-cell py-3 px-4 whitespace-nowrap">{s.estimatedMinutes} min</td>
                       <td className="hidden sm:table-cell py-3 px-4"><ActiveBadge active={s.isActive} /></td>
                       <td className="py-3 px-3 sm:px-4">
@@ -202,8 +202,8 @@ export default function CatalogPage() {
                 </tbody>
               </table>
             ) : (
-              <table className="w-full text-left text-sm text-slate-300">
-                <thead className="bg-slate-900/60 text-xs uppercase text-slate-400 border-b border-slate-700">
+              <table className="w-full text-left text-sm text-brand-brown">
+                <thead className="bg-surface-white/60 text-xs uppercase text-brand-brown border-b border-line">
                   <tr>
                     <th className="py-3 px-3 sm:px-4">Peça</th>
                     <th className="hidden sm:table-cell py-3 px-4">Custo</th>
@@ -213,29 +213,29 @@ export default function CatalogPage() {
                     <th className="py-3 px-3 sm:px-4 text-right">Ações</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-700/60">
+                <tbody className="divide-y divide-line/60">
                   {visibleProducts.length === 0 && (
-                    <tr><td colSpan={6} className="p-8 text-center text-slate-400">Nenhuma peça cadastrada.</td></tr>
+                    <tr><td colSpan={6} className="p-8 text-center text-brand-brown">Nenhuma peça cadastrada.</td></tr>
                   )}
                   {visibleProducts.map((p) => {
                     const low = p.stockQuantity <= p.minStock;
                     return (
                       <tr key={p.id} className={p.isActive ? '' : 'opacity-60'}>
                         <td className="py-3 px-3 sm:px-4">
-                          <div className="font-semibold text-white">{p.name}</div>
-                          <div className="text-xs text-slate-400 font-mono">{p.sku}</div>
-                          <div className="sm:hidden mt-1 flex items-center gap-2 text-xs text-slate-400">
+                          <div className="font-semibold text-brand-brown-dark">{p.name}</div>
+                          <div className="text-xs text-brand-brown font-mono">{p.sku}</div>
+                          <div className="sm:hidden mt-1 flex items-center gap-2 text-xs text-brand-brown">
                             Custo {brl(p.costPrice)} <ActiveBadge active={p.isActive} />
                           </div>
                         </td>
                         <td className="hidden sm:table-cell py-3 px-4 whitespace-nowrap">{brl(p.costPrice)}</td>
-                        <td className="py-3 px-3 sm:px-4 font-semibold text-white whitespace-nowrap">{brl(p.salePrice)}</td>
+                        <td className="py-3 px-3 sm:px-4 font-semibold text-brand-brown-dark whitespace-nowrap">{brl(p.salePrice)}</td>
                         <td className="py-3 px-3 sm:px-4 whitespace-nowrap">
-                          <span className={low ? 'text-amber-300 font-semibold inline-flex items-center gap-1' : ''}>
+                          <span className={low ? 'text-brand-brown font-semibold inline-flex items-center gap-1' : ''}>
                             {low && <AlertTriangle className="w-3.5 h-3.5" />}
                             {p.stockQuantity} un.
                           </span>
-                          <div className="text-xs text-slate-500">mín. {p.minStock}</div>
+                          <div className="text-xs text-brand-brown-light">mín. {p.minStock}</div>
                         </td>
                         <td className="hidden sm:table-cell py-3 px-4"><ActiveBadge active={p.isActive} /></td>
                         <td className="py-3 px-3 sm:px-4">
@@ -282,9 +282,9 @@ export default function CatalogPage() {
 
 function ActiveBadge({ active }: { active: boolean }) {
   return active ? (
-    <span className="text-xs px-2 py-0.5 rounded-full border text-emerald-300 bg-emerald-500/10 border-emerald-500/30">Ativo</span>
+    <span className="text-xs px-2 py-0.5 rounded-full border text-emerald-700 bg-emerald-500/10 border-emerald-500/30">Ativo</span>
   ) : (
-    <span className="text-xs px-2 py-0.5 rounded-full border text-slate-300 bg-slate-500/10 border-slate-500/30">Inativo</span>
+    <span className="text-xs px-2 py-0.5 rounded-full border text-brand-brown bg-brand-brown-light/10 border-brand-brown-light/30">Inativo</span>
   );
 }
 
@@ -518,9 +518,9 @@ function StockModal({ product, isAdmin, onClose }: { product: ProductItem; isAdm
               className={`min-h-10 rounded-lg text-sm font-semibold border ${
                 direction === d
                   ? d === 'in'
-                    ? 'bg-emerald-500 text-slate-950 border-emerald-500'
+                    ? 'bg-emerald-500 text-brand-brown-dark border-emerald-500'
                     : 'bg-rose-500 text-white border-rose-500'
-                  : 'bg-slate-950 text-slate-300 border-slate-700'
+                  : 'bg-surface-offwhite text-brand-brown border-line'
               }`}
             >
               {d === 'in' ? 'Entrada' : 'Saída'}
@@ -531,9 +531,9 @@ function StockModal({ product, isAdmin, onClose }: { product: ProductItem; isAdm
           <Field label="Quantidade *">
             <input type="number" min={1} required value={quantity} onChange={(e) => setQuantity(e.target.value)} className={inputCls} />
           </Field>
-          <div className="text-sm text-slate-400 self-end pb-2">
-            Saldo: <strong className="text-white">{product.stockQuantity}</strong> →{' '}
-            <strong className={after < 0 ? 'text-rose-400' : 'text-emerald-400'}>{after}</strong>
+          <div className="text-sm text-brand-brown self-end pb-2">
+            Saldo: <strong className="text-brand-brown-dark">{product.stockQuantity}</strong> →{' '}
+            <strong className={after < 0 ? 'text-rose-700' : 'text-emerald-700'}>{after}</strong>
           </div>
         </div>
         <Field label="Motivo *">
@@ -541,41 +541,41 @@ function StockModal({ product, isAdmin, onClose }: { product: ProductItem; isAdm
         </Field>
         {direction === 'out' && after < 0 && (
           isAdmin ? (
-            <label className="flex items-center gap-2 text-sm text-amber-300">
-              <input type="checkbox" checked={allowNegative} onChange={(e) => setAllowNegative(e.target.checked)} className="w-4 h-4 accent-amber-500" />
+            <label className="flex items-center gap-2 text-sm text-brand-brown">
+              <input type="checkbox" checked={allowNegative} onChange={(e) => setAllowNegative(e.target.checked)} className="w-4 h-4 accent-brand-brown" />
               Autorizar estoque negativo (Administrador)
             </label>
           ) : (
-            <p className="text-xs text-rose-300">Saída maior que o saldo: só o Administrador pode autorizar estoque negativo.</p>
+            <p className="text-xs text-rose-700">Saída maior que o saldo: só o Administrador pode autorizar estoque negativo.</p>
           )
         )}
         <FormError message={error} />
         <ModalActions onCancel={() => onClose(false)} saving={saving} label="Registrar" />
       </form>
 
-      <div className="mt-5 border-t border-slate-800 pt-4">
-        <h3 className="text-xs font-bold uppercase text-slate-400 mb-2">Últimas movimentações</h3>
+      <div className="mt-5 border-t border-line-soft pt-4">
+        <h3 className="text-xs font-bold uppercase text-brand-brown mb-2">Últimas movimentações</h3>
         {!movements ? (
-          <p className="text-xs text-slate-500">Carregando...</p>
+          <p className="text-xs text-brand-brown-light">Carregando...</p>
         ) : movements.length === 0 ? (
-          <p className="text-xs text-slate-500">Nenhuma movimentação registrada.</p>
+          <p className="text-xs text-brand-brown-light">Nenhuma movimentação registrada.</p>
         ) : (
           <ul className="space-y-1.5 max-h-56 overflow-y-auto text-xs">
             {movements.map((m) => (
-              <li key={m.id} className="flex items-start justify-between gap-3 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2">
+              <li key={m.id} className="flex items-start justify-between gap-3 bg-surface-offwhite border border-line-soft rounded-lg px-3 py-2">
                 <div className="min-w-0">
-                  <div className="text-slate-200 truncate">{m.reason}</div>
-                  <div className="text-slate-500">
+                  <div className="text-brand-brown-dark truncate">{m.reason}</div>
+                  <div className="text-brand-brown-light">
                     {new Date(m.createdAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
                     {m.userName ? ` · ${m.userName}` : ''}
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <div className={`font-mono font-bold ${m.quantity > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  <div className={`font-mono font-bold ${m.quantity > 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
                     {m.quantity > 0 ? '+' : ''}
                     {m.quantity}
                   </div>
-                  <div className="text-slate-500">saldo {m.balance}</div>
+                  <div className="text-brand-brown-light">saldo {m.balance}</div>
                 </div>
               </li>
             ))}

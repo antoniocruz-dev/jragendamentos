@@ -186,7 +186,8 @@ model Client {
   id       String  @id @default(uuid()) @db.Uuid
   userId   String? @unique @map("user_id") @db.Uuid
   name     String  @db.VarChar(150)
-  document String  @unique @db.VarChar(20) // CPF ou CNPJ (somente números)
+  /// CPF ou CNPJ (somente números). Opcional: o cliente que entra pelo painel informa só nome, e-mail e contato
+  document String? @unique @db.VarChar(20)
   phone    String  @db.VarChar(20)
   email    String? @db.VarChar(255)
   address  String? @db.VarChar(255)

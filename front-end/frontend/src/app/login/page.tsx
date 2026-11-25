@@ -1,34 +1,26 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { HardHat, KeyRound, LogIn, MessageCircle, ShieldPlus, User, Wrench } from 'lucide-react';
+import { CalendarCheck, HardHat, KeyRound, LogIn, ShieldPlus, User, Wrench } from 'lucide-react';
 import { fetchApi } from '@/services/api';
 import { CLIENT_HOME, MECHANIC_HOME, isClientUser, isMechanicUser, saveSession, type AuthSession } from '@/services/auth';
-import {
-  Button,
-  InlineError,
-  Input,
-  Modal,
-  PasswordInput,
-  Tabs,
-  isValidEmail,
-  isValidWhatsapp,
-  maskWhatsapp,
-} from '@/components/ui';
+import { Button, InlineError, Input, Modal, PasswordInput, Tabs, isValidEmail } from '@/components/ui';
 
 type Tab = 'CLIENTE' | 'EQUIPE';
-type Mode = 'login' | 'first';
-
-interface FirstAccessResult {
-  created: boolean;
-  whatsappSent: boolean;
-  whatsappMasked: string;
-  accessLink: string;
-}
 
 const errorMessage = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
-/** Destino após o login: só caminhos internos (evita redirecionamento aberto) e dentro da área do usuário. */
+/** Telefone BR com DDD: (99) 9999-9999 ou (99) 99999-9999 */
+function maskPhone(value: string) {
+  const d = value.replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 2) return d.length ? `(${d}` : '';
+  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+}
+const isValidPhone = (v: string) => /^[1-9]{2}(9\d{8}|[2-8]\d{7})$/.test(v.replace(/\D/g, ''));
+
+/** Destino após entrar: só caminhos internos (evita redirecionamento aberto) e dentro da área do usuário. */
 function nextPath(user: AuthSession['user']) {
   const next = new URLSearchParams(window.location.search).get('next');
   const safe = next && next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/login') ? next : null;
@@ -39,15 +31,14 @@ function nextPath(user: AuthSession['user']) {
 
 function initialTab(): Tab {
   if (typeof window === 'undefined') return 'CLIENTE';
-  const aba = new URLSearchParams(window.location.search).get('aba');
-  return aba === 'equipe' ? 'EQUIPE' : 'CLIENTE';
+  return new URLSearchParams(window.location.search).get('aba') === 'equipe' ? 'EQUIPE' : 'CLIENTE';
 }
 
 export default function LoginPage() {
   // null = verificando; true = banco sem usuários (criação do administrador inicial)
   const [setupRequired, setSetupRequired] = useState<boolean | null>(null);
   const [tab, setTab] = useState<Tab>(initialTab);
-  const [mode, setMode] = useState<Mode>('login');
+  const [staffFirstAccess, setStaffFirstAccess] = useState(false);
 
   useEffect(() => {
     fetchApi<{ setupRequired: boolean }>('/auth/setup', { skipAuthRedirect: true })
@@ -84,18 +75,20 @@ export default function LoginPage() {
                 value={tab}
                 onChange={(t) => {
                   setTab(t);
-                  setMode('login');
+                  setStaffFirstAccess(false);
                 }}
                 items={[
                   { key: 'CLIENTE', label: 'Cliente', icon: <User className="w-4 h-4" aria-hidden /> },
                   { key: 'EQUIPE', label: 'Equipe', icon: <HardHat className="w-4 h-4" aria-hidden /> },
                 ]}
               />
-              <div role="tabpanel" key={`${tab}-${mode}`} className="animate-fade-up">
-                {mode === 'login' ? (
-                  <LoginForm tab={tab} onFirstAccess={() => setMode('first')} />
+              <div role="tabpanel" key={`${tab}-${staffFirstAccess}`} className="animate-fade-up">
+                {tab === 'CLIENTE' ? (
+                  <ClientEntryForm />
+                ) : staffFirstAccess ? (
+                  <StaffFirstAccessForm onBack={() => setStaffFirstAccess(false)} />
                 ) : (
-                  <FirstAccessForm tab={tab} onBack={() => setMode('login')} />
+                  <StaffLoginForm onFirstAccess={() => setStaffFirstAccess(true)} />
                 )}
               </div>
             </>
@@ -107,34 +100,35 @@ export default function LoginPage() {
 }
 
 // ==========================================
-// LOGIN: código de 4 dígitos + senha
+// CLIENTE: nome completo, e-mail e contato (sem senha)
 // ==========================================
 
-function LoginForm({ tab, onFirstAccess }: { tab: Tab; onFirstAccess: () => void }) {
-  const [accessCode, setAccessCode] = useState('');
+function ClientEntryForm() {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  // Equipe pode entrar com o e-mail (contas antigas que ainda não guardaram o código)
-  const [useEmail, setUseEmail] = useState(false);
-  const [password, setPassword] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [phone, setPhone] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
-  const byEmail = tab === 'EQUIPE' && useEmail;
+  const [submitting, setSubmitting] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!byEmail && !/^\d{4}$/.test(accessCode)) return setError('O usuário é o seu código de 4 dígitos.');
-    if (byEmail && !isValidEmail(email)) return setError('Informe um e-mail válido.');
-    if (!password) return setError('Informe a senha.');
+    const errs: Record<string, string> = {};
+    if (!/^\S+(\s+\S+)+$/.test(name.trim()) || name.trim().length < 5) errs.name = 'Informe o nome completo (nome e sobrenome).';
+    if (!isValidEmail(email)) errs.email = 'Informe um e-mail válido.';
+    if (!isValidPhone(phone)) errs.phone = 'Informe o telefone com DDD. Ex.: (94) 99999-9999';
+    setErrors(errs);
+    if (Object.keys(errs).length) return;
     setSubmitting(true);
     try {
-      const session = await fetchApi<AuthSession>('/auth/login', {
+      const session = await fetchApi<AuthSession>('/auth/client-entry', {
         method: 'POST',
         skipAuthRedirect: true,
         successToast: false,
         errorToast: false,
         token: '',
-        body: JSON.stringify(byEmail ? { email: email.trim(), password, tab } : { accessCode, password, tab }),
+        body: JSON.stringify({ name: name.trim(), email: email.trim(), phone: phone.replace(/\D/g, '') }),
       });
       saveSession(session);
       window.location.assign(nextPath(session.user));
@@ -146,86 +140,124 @@ function LoginForm({ tab, onFirstAccess }: { tab: Tab; onFirstAccess: () => void
 
   return (
     <form onSubmit={submit} className="space-y-4" noValidate>
-      <p className="text-sm text-brand-brown-light">
-        {tab === 'CLIENTE' ? 'Acompanhe suas O.S, aprove orçamentos e agende serviços.' : 'Acesso da equipe da oficina.'}
-      </p>
-      {byEmail ? (
-        <Input label="E-mail" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required />
-      ) : (
-        <Input
-          label="Usuário"
-          hint="Seu código de 4 dígitos (recebido no WhatsApp)"
-          inputMode="numeric"
-          pattern="\d{4}"
-          maxLength={4}
-          autoComplete="username"
-          placeholder="0000"
-          value={accessCode}
-          onChange={(e) => setAccessCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
-          className="text-center text-2xl font-mono tracking-[0.6em] placeholder:tracking-[0.6em]"
-          required
-        />
-      )}
-      <PasswordInput label="Senha" hint="A senha que você cadastrou no primeiro acesso" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-      <InlineError message={error} />
-      <Button type="submit" block loading={submitting} icon={<LogIn className="w-4 h-4" aria-hidden />}>
-        Entrar
-      </Button>
-      <div className="flex flex-col items-center gap-1 pt-1">
-        <button type="button" onClick={onFirstAccess} className="min-h-11 px-3 text-sm font-bold text-brand-brown underline-offset-4 hover:underline">
-          É meu primeiro acesso
-        </button>
-        {tab === 'EQUIPE' && (
-          <button
-            type="button"
-            onClick={() => setUseEmail((v) => !v)}
-            className="min-h-11 px-3 text-xs font-semibold text-brand-brown-light hover:text-brand-brown"
-          >
-            {useEmail ? 'Entrar com o usuário (código)' : 'Entrar com e-mail'}
-          </button>
-        )}
+      <div>
+        <h2 className="text-lg font-extrabold">Agendamento</h2>
+        <p className="text-sm text-brand-brown-light">Informe seus dados para agendar serviços e acompanhar suas O.S. Não precisa de senha.</p>
       </div>
+      <Input label="Nome completo" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} error={errors.name} required />
+      <Input label="E-mail" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} error={errors.email} required />
+      <Input
+        label="Contato"
+        hint="Telefone ou WhatsApp com DDD"
+        type="tel"
+        inputMode="numeric"
+        autoComplete="tel-national"
+        placeholder="(94) 99999-9999"
+        value={phone}
+        onChange={(e) => setPhone(maskPhone(e.target.value))}
+        error={errors.phone}
+        required
+      />
+      <InlineError message={error} />
+      <Button type="submit" block loading={submitting} icon={<CalendarCheck className="w-4 h-4" aria-hidden />} className="min-h-12">
+        Acessar meu painel
+      </Button>
+      <p className="text-xs text-center text-brand-brown-light">Já é cliente? Use o mesmo e-mail e telefone informados na oficina.</p>
     </form>
   );
 }
 
 // ==========================================
-// PRIMEIRO ACESSO: e-mail, WhatsApp, senha e confirmação
+// EQUIPE: código de 4 dígitos ou e-mail + senha
 // ==========================================
 
-function FirstAccessForm({ tab, onBack }: { tab: Tab; onBack: () => void }) {
-  const [email, setEmail] = useState('');
-  const [whatsapp, setWhatsapp] = useState('');
+function StaffLoginForm({ onFirstAccess }: { onFirstAccess: () => void }) {
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmation, setConfirmation] = useState('');
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<FirstAccessResult | null>(null);
-
-  function validate() {
-    const e: Record<string, string> = {};
-    if (!isValidEmail(email)) e.email = 'Informe um e-mail válido.';
-    if (!isValidWhatsapp(whatsapp)) e.whatsapp = 'Informe DDD + celular com 9 dígitos. Ex.: (94) 99999-9999';
-    if (password.length < 8) e.password = 'A senha deve ter no mínimo 8 caracteres.';
-    if (confirmation !== password) e.confirmation = 'As senhas não conferem.';
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  }
+  const [error, setError] = useState<string | null>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!validate()) return;
+    const id = identifier.trim();
+    const byCode = /^\d{4}$/.test(id);
+    if (!byCode && !isValidEmail(id)) return setError('Informe o seu código de 4 dígitos ou o e-mail cadastrado.');
+    if (!password) return setError('Informe a senha.');
     setSubmitting(true);
     try {
-      const res = await fetchApi<FirstAccessResult>('/auth/first-access', {
+      const session = await fetchApi<AuthSession>('/auth/login', {
         method: 'POST',
         skipAuthRedirect: true,
         successToast: false,
         errorToast: false,
         token: '',
-        body: JSON.stringify({ tab, email: email.trim(), whatsapp: whatsapp.replace(/\D/g, ''), password, passwordConfirmation: confirmation }),
+        body: JSON.stringify(byCode ? { accessCode: id, password, tab: 'EQUIPE' } : { email: id, password, tab: 'EQUIPE' }),
+      });
+      saveSession(session);
+      window.location.assign(nextPath(session.user));
+    } catch (err) {
+      setError(errorMessage(err));
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-4" noValidate>
+      <p className="text-sm text-brand-brown-light">Acesso da equipe da oficina.</p>
+      <Input
+        label="Código ou e-mail"
+        hint="Seu código de 4 dígitos (tela Equipe) ou o e-mail cadastrado"
+        autoComplete="username"
+        autoCapitalize="none"
+        spellCheck={false}
+        placeholder="0000 ou nome@email.com"
+        value={identifier}
+        onChange={(e) => setIdentifier(e.target.value)}
+        required
+      />
+      <PasswordInput label="Senha" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+      <InlineError message={error} />
+      <Button type="submit" block loading={submitting} icon={<LogIn className="w-4 h-4" aria-hidden />} className="min-h-12">
+        Entrar
+      </Button>
+      <div className="flex justify-center">
+        <button type="button" onClick={onFirstAccess} className="min-h-11 px-3 text-sm font-bold text-brand-brown underline-offset-4 hover:underline">
+          É meu primeiro acesso
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/** Convidado pelo gestor (tela Equipe): cadastra a própria senha e recebe o código de 4 dígitos. */
+function StaffFirstAccessForm({ onBack }: { onBack: () => void }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmation, setConfirmation] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState<{ name: string; accessCode: string } | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const errs: Record<string, string> = {};
+    if (!isValidEmail(email)) errs.email = 'Informe um e-mail válido.';
+    if (password.length < 8) errs.password = 'A senha deve ter no mínimo 8 caracteres.';
+    if (confirmation !== password) errs.confirmation = 'As senhas não conferem.';
+    setErrors(errs);
+    if (Object.keys(errs).length) return;
+    setSubmitting(true);
+    try {
+      const res = await fetchApi<{ name: string; accessCode: string }>('/auth/first-access', {
+        method: 'POST',
+        skipAuthRedirect: true,
+        successToast: false,
+        errorToast: false,
+        token: '',
+        body: JSON.stringify({ email: email.trim(), password, passwordConfirmation: confirmation }),
       });
       setResult(res);
     } catch (err) {
@@ -240,24 +272,9 @@ function FirstAccessForm({ tab, onBack }: { tab: Tab; onBack: () => void }) {
       <form onSubmit={submit} className="space-y-4" noValidate>
         <div>
           <h2 className="text-lg font-extrabold">Primeiro acesso</h2>
-          <p className="text-sm text-brand-brown-light">
-            {tab === 'CLIENTE'
-              ? 'Cadastre a sua senha. Use o WhatsApp que você informou na oficina: seu usuário (código de 4 dígitos) chega nele.'
-              : 'Cadastre a sua senha. Use o e-mail que o gestor cadastrou para você: seu usuário (código de 4 dígitos) chega no WhatsApp.'}
-          </p>
+          <p className="text-sm text-brand-brown-light">Use o e-mail que o gestor cadastrou para você e crie a sua senha.</p>
         </div>
         <Input label="E-mail" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} error={errors.email} required />
-        <Input
-          label="WhatsApp"
-          type="tel"
-          inputMode="numeric"
-          autoComplete="tel-national"
-          placeholder="(94) 99999-9999"
-          value={whatsapp}
-          onChange={(e) => setWhatsapp(maskWhatsapp(e.target.value))}
-          error={errors.whatsapp}
-          required
-        />
         <PasswordInput
           label="Senha"
           autoComplete="new-password"
@@ -276,37 +293,29 @@ function FirstAccessForm({ tab, onBack }: { tab: Tab; onBack: () => void }) {
           required
         />
         <InlineError message={error} />
-        <Button type="submit" block loading={submitting} icon={<KeyRound className="w-4 h-4" aria-hidden />}>
-          Criar meu acesso
+        <Button type="submit" block loading={submitting} icon={<KeyRound className="w-4 h-4" aria-hidden />} className="min-h-12">
+          Criar minha senha
         </Button>
         <Button variant="ghost" block onClick={onBack}>
-          Já tenho código: voltar ao login
+          Voltar ao login
         </Button>
       </form>
 
       {result && (
         <Modal
-          title={result.whatsappSent ? 'Credenciais enviadas!' : 'Cadastro concluído'}
+          title="Acesso criado!"
           onClose={() => {
             setResult(null);
             onBack();
           }}
         >
           <div className="space-y-4 text-center">
-            <div className="mx-auto w-14 h-14 rounded-2xl bg-neon-muted text-neon-deep flex items-center justify-center">
-              <MessageCircle className="w-7 h-7" aria-hidden />
-            </div>
-            {result.whatsappSent ? (
-              <p className="text-sm">
-                Enviamos seu <strong>usuário</strong> (código de 4 dígitos) e o link de entrada para o WhatsApp{' '}
-                <strong>{result.whatsappMasked}</strong>. Para entrar, use esse usuário e a <strong>senha que você acabou de cadastrar</strong>.
-              </p>
-            ) : (
-              <p className="text-sm">
-                Seu acesso foi criado, mas não conseguimos enviar o WhatsApp para <strong>{result.whatsappMasked}</strong> agora.
-                Peça seu <strong>usuário (código de 4 dígitos)</strong> à oficina. A senha é a que você acabou de cadastrar.
-              </p>
-            )}
+            <p className="text-sm">
+              {result.name.split(' ')[0]}, este é o seu <strong>código de acesso</strong>. Entre com ele (ou com o seu e-mail) e a senha que você acabou de criar.
+            </p>
+            <p className="font-mono text-4xl font-extrabold tracking-[0.4em] text-brand-brown-dark bg-neon-muted border border-neon-deep/40 rounded-2xl py-4">
+              {result.accessCode}
+            </p>
             <Button
               block
               onClick={() => {

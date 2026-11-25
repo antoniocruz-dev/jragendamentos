@@ -23,7 +23,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#0f172a',
+  themeColor: '#4e342e',
 };
 
 export default function RootLayout({
@@ -34,7 +34,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body
-        className="bg-slate-950 text-slate-100 flex flex-col min-h-screen antialiased">
+        className="bg-surface-offwhite text-brand-brown-dark flex flex-col min-h-screen antialiased">
         {/* Navbar/Footer usam usePathname(): com cacheComponents, em rotas com parâmetro dinâmico
             (ex.: /os/[id]) o pathname só existe em runtime e exige um Suspense, senão o build falha.
             Em rotas estáticas o pathname é resolvido no prerender e o fallback nem aparece. */}

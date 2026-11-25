@@ -61,7 +61,7 @@ export class MercadoPagoService {
     amount: number;
     clientName: string;
     clientEmail: string;
-    clientDocument: string;
+    clientDocument: string | null;
   }): Promise<PixPaymentResponse> {
     try {
       // API_PUBLIC_URL = origem pública (ex.: https://seu-app.vercel.app), sem /api no final
@@ -83,10 +83,10 @@ export class MercadoPagoService {
             email: params.clientEmail || 'cliente@email.com',
             first_name: firstName,
             last_name: lastName,
-            identification: {
-              type: params.clientDocument.length === 11 ? 'CPF' : 'CNPJ',
-              number: params.clientDocument,
-            },
+            // Cliente sem CPF/CNPJ cadastrado: o Pix sai sem identificação do pagador
+            ...(params.clientDocument
+              ? { identification: { type: params.clientDocument.length === 11 ? 'CPF' : 'CNPJ', number: params.clientDocument } }
+              : {}),
           },
         },
         // Mesma chave nas novas tentativas: o Mercado Pago não cria o Pix em dobro

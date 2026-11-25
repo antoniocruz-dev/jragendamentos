@@ -5,7 +5,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { randomBytes } from 'crypto';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { parsePage, searchTerms, toPage } from '../common/pagination.js';
@@ -226,35 +225,24 @@ export class ClientsService {
   async portalAccess(clientId: string) {
     const client = await this.prisma.client.findUnique({
       where: { id: clientId },
-      select: { email: true, phone: true, user: { select: { email: true, isActive: true, accessCode: true, firstAccessPending: true } } },
+      select: { email: true, phone: true, user: { select: { email: true, isActive: true } } },
     });
     if (!client) throw new NotFoundException('Cliente não encontrado.');
     return {
       hasAccess: !!client.user?.isActive,
       email: client.user?.email ?? client.email ?? '',
       isActive: client.user?.isActive ?? false,
-      // Usuário (código de 4 dígitos) do login: a equipe informa ao cliente se o WhatsApp não chegar
-      accessCode: client.user?.accessCode ?? null,
-      // true: o cliente ainda precisa cadastrar a própria senha em "É meu primeiro acesso"
-      firstAccessPending: client.user ? client.user.firstAccessPending : true,
+      // Já entrou no painel alguma vez (o login técnico é criado na primeira entrada)
+      hasEntered: !!client.user,
       phone: client.phone,
     };
   }
 
-  /**
-   * Libera (ou redefine) o acesso do cliente. A equipe NÃO define senha: o acesso fica pendente e o
-   * cliente cadastra a própria senha em "É meu primeiro acesso", com o WhatsApp deste cadastro.
-   * O usuário (código de 4 dígitos) continua o mesmo.
-   */
+  /** Reativa a entrada do cliente no painel (depois de um bloqueio). */
   async grantPortalAccess(clientId: string) {
     const client = await this.prisma.client.findUnique({ where: { id: clientId }, select: { id: true, userId: true } });
     if (!client) throw new NotFoundException('Cliente não encontrado.');
-    if (client.userId) {
-      await this.prisma.user.update({
-        where: { id: client.userId },
-        data: { isActive: true, firstAccessPending: true, passwordHash: await bcrypt.hash(randomBytes(24).toString('hex'), 10) },
-      });
-    }
+    if (client.userId) await this.prisma.user.update({ where: { id: client.userId }, data: { isActive: true } });
     return this.portalAccess(clientId);
   }
 

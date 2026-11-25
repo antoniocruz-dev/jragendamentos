@@ -4,8 +4,8 @@ import { Wrench } from 'lucide-react';
 // só é resolvido em runtime. Este fallback é o que vai no HTML pré-renderizado.
 export default function Loading() {
   return (
-    <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3 text-slate-400">
-      <Wrench className="w-8 h-8 text-amber-500 animate-spin" />
+    <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3 text-brand-brown-light">
+      <Wrench className="w-8 h-8 text-neon-deep animate-spin" />
       <span>Carregando Ordem de Serviço...</span>
     </div>
   );

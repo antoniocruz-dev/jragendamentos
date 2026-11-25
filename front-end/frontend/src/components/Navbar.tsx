@@ -87,14 +87,14 @@ export default function Navbar() {
 
   return (
     <>
-      <header className="bg-slate-900/95 backdrop-blur border-b border-slate-800 sticky top-0 z-50 pt-[env(safe-area-inset-top)]">
+      <header className="bg-brand-brown-dark text-white shadow-md sticky top-0 z-50 pt-[env(safe-area-inset-top)]">
         <div className="max-w-7xl mx-auto px-4 lg:px-6 flex items-center justify-between gap-3 h-14 lg:h-16">
-          <Link href={isClientUser(user) ? '/portal' : '/'} className="flex items-center gap-2.5 min-w-0">
-            <div className="bg-amber-500/10 border border-amber-500/30 p-1.5 lg:p-2 rounded-xl text-amber-500 shrink-0">
+          <Link href={isClientUser(user) ? '/cliente' : '/'} className="flex items-center gap-2.5 min-w-0">
+            <div className="bg-neon-primary text-brand-brown-dark p-1.5 lg:p-2 rounded-xl shrink-0 shadow-[0_0_14px_rgba(57,255,20,0.45)]">
               <Wrench className="w-5 h-5" />
             </div>
             <span className="font-extrabold text-base lg:text-lg text-white tracking-tight truncate">
-              JR <span className="text-amber-500">Agendamentos</span>
+              JR <span className="text-neon-primary">Garage Center</span>
             </span>
           </Link>
 
@@ -110,7 +110,7 @@ export default function Navbar() {
                   title={item.name}
                   aria-current={isActive ? 'page' : undefined}
                   className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-                    isActive ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                    isActive ? 'bg-neon-primary text-brand-brown-dark' : 'text-white/85 hover:text-white hover:bg-white/10'
                   }`}
                 >
                   <Icon className="w-4 h-4 shrink-0" />
@@ -122,7 +122,7 @@ export default function Navbar() {
               <button
                 onClick={handleLogout}
                 title={`Sair (${user.email})`}
-                className="ml-1 flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800"
+                className="ml-1 flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs font-semibold text-white/85 hover:text-white hover:bg-white/10"
               >
                 <LogOut className="w-4 h-4" />
                 <span className="hidden xl:inline">{firstName} · Sair</span>
@@ -133,7 +133,7 @@ export default function Navbar() {
           {/* Celular/tablet: botão da gaveta */}
           <button
             onClick={() => setIsOpen(true)}
-            className="lg:hidden shrink-0 text-slate-300 hover:text-white p-2 -mr-2 rounded-lg hover:bg-slate-800"
+            className="lg:hidden shrink-0 text-white p-2.5 -mr-2 rounded-lg hover:bg-white/10"
             aria-label="Abrir menu"
             aria-expanded={isOpen}
           >
@@ -147,7 +147,7 @@ export default function Navbar() {
         <nav
           data-bottom-nav
           aria-label="Atalhos"
-          className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-slate-900/95 backdrop-blur border-t border-slate-800 pb-[env(safe-area-inset-bottom)]"
+          className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-surface-white border-t border-brand-brown-light/30 shadow-[0_-4px_16px_rgba(78,52,46,0.08)] pb-[env(safe-area-inset-bottom)]"
         >
           <div className="grid grid-cols-5 max-w-lg mx-auto h-16">
             {bottomItems.map((item) => {
@@ -158,11 +158,15 @@ export default function Navbar() {
                   key={item.href}
                   href={item.href}
                   aria-current={isActive ? 'page' : undefined}
-                  className={`flex flex-col items-center justify-center gap-1 min-w-0 px-1 text-[11px] font-semibold ${
-                    isActive ? 'text-amber-400' : 'text-slate-400 active:text-white'
+                  className={`relative flex flex-col items-center justify-center gap-1 min-w-0 px-1 text-[11px] font-semibold ${
+                    isActive ? 'text-brand-brown-dark' : 'text-brand-brown-light active:text-brand-brown-dark'
                   }`}
                 >
-                  <Icon className={`w-5 h-5 ${isActive ? 'text-amber-400' : ''}`} />
+                  <span
+                    aria-hidden
+                    className={`absolute top-0 h-1 w-10 rounded-b-full bg-neon-primary transition-opacity duration-200 ${isActive ? 'opacity-100' : 'opacity-0'}`}
+                  />
+                  <Icon className="w-5 h-5" />
                   <span className="truncate max-w-full">{item.short}</span>
                 </Link>
               );
@@ -173,7 +177,7 @@ export default function Navbar() {
             ))}
             <button
               onClick={() => setIsOpen(true)}
-              className="flex flex-col items-center justify-center gap-1 text-[11px] font-semibold text-slate-400 active:text-white"
+              className="flex flex-col items-center justify-center gap-1 text-[11px] font-semibold text-brand-brown-light active:text-brand-brown-dark"
               aria-label="Abrir menu completo"
             >
               <Menu className="w-5 h-5" />
@@ -186,14 +190,17 @@ export default function Navbar() {
       {/* Gaveta com todos os módulos */}
       {isOpen && (
         <div className="lg:hidden fixed inset-0 z-[70]" role="dialog" aria-modal="true" aria-label="Menu">
-          <button className="absolute inset-0 bg-black/60 backdrop-blur-sm" aria-label="Fechar menu" onClick={() => setIsOpen(false)} />
-          <aside className="absolute right-0 top-0 h-full w-[82%] max-w-xs bg-slate-950 border-l border-slate-800 flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
-            <div className="flex items-center justify-between px-4 h-14 border-b border-slate-800">
+          <button className="absolute inset-0 bg-brand-brown-dark/50 backdrop-blur-[2px]" aria-label="Fechar menu" onClick={() => setIsOpen(false)} />
+          <aside className="absolute right-0 top-0 h-full w-[82%] max-w-xs bg-surface-white shadow-2xl flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+            <div className="flex items-center justify-between px-4 h-14 bg-brand-brown-dark text-white">
               <div className="min-w-0">
-                <div className="text-sm font-bold text-white truncate">{user?.name}</div>
-                <div className="text-xs text-slate-500 truncate">{user?.email}</div>
+                <div className="text-sm font-bold truncate">{user?.name}</div>
+                <div className="text-xs text-neon-soft truncate">
+                  {user?.accessCode ? `Código ${user.accessCode} · ` : ''}
+                  {user?.email}
+                </div>
               </div>
-              <button onClick={() => setIsOpen(false)} className="p-2 -mr-2 text-slate-400 hover:text-white" aria-label="Fechar menu">
+              <button onClick={() => setIsOpen(false)} className="p-2.5 -mr-2 text-white hover:bg-white/10 rounded-lg" aria-label="Fechar menu">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -208,7 +215,7 @@ export default function Navbar() {
                     onClick={() => setIsOpen(false)}
                     aria-current={isActive ? 'page' : undefined}
                     className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium ${
-                      isActive ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                      isActive ? 'bg-neon-primary text-brand-brown-dark font-bold' : 'text-brand-brown hover:bg-surface-muted hover:text-brand-brown-dark'
                     }`}
                   >
                     <Icon className="w-5 h-5 shrink-0" />
@@ -218,10 +225,10 @@ export default function Navbar() {
               })}
             </nav>
             {user && (
-              <div className="p-3 border-t border-slate-800">
+              <div className="p-3 border-t border-line-soft">
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium text-rose-300 hover:bg-rose-500/10"
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium text-rose-700 hover:bg-rose-500/10"
                 >
                   <LogOut className="w-5 h-5" />
                   Sair

@@ -41,9 +41,9 @@ export const toast = {
 };
 
 const TOAST_STYLE: Record<ToastKind, { cls: string; Icon: typeof CheckCircle2 }> = {
-  success: { cls: 'border-emerald-500/40 text-emerald-200', Icon: CheckCircle2 },
-  error: { cls: 'border-rose-500/40 text-rose-200', Icon: XCircle },
-  info: { cls: 'border-sky-500/40 text-sky-200', Icon: Info },
+  success: { cls: 'border-emerald-500/40 text-emerald-800', Icon: CheckCircle2 },
+  error: { cls: 'border-rose-500/40 text-rose-800', Icon: XCircle },
+  info: { cls: 'border-sky-500/40 text-sky-800', Icon: Info },
 };
 
 export function Toaster() {
@@ -66,11 +66,11 @@ export function Toaster() {
           <div
             key={t.id}
             role={t.kind === 'error' ? 'alert' : 'status'}
-            className={`pointer-events-auto w-full max-w-sm flex items-start gap-2.5 bg-slate-900/95 backdrop-blur border ${cls} rounded-xl px-3.5 py-3 shadow-2xl text-sm`}
+            className={`pointer-events-auto w-full max-w-sm flex items-start gap-2.5 bg-surface-white/95 backdrop-blur border ${cls} rounded-xl px-3.5 py-3 shadow-2xl text-sm`}
           >
             <Icon className="w-5 h-5 shrink-0 mt-px" />
             <span className="flex-1 min-w-0 break-words">{t.text}</span>
-            <button onClick={() => dismissToast(t.id)} className="shrink-0 text-slate-400 hover:text-white" aria-label="Fechar aviso">
+            <button onClick={() => dismissToast(t.id)} className="shrink-0 text-brand-brown hover:text-brand-brown-dark" aria-label="Fechar aviso">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -143,14 +143,14 @@ export function ConnectionBanner() {
   return (
     <div
       role="alert"
-      className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] lg:top-16 z-40 bg-amber-500/15 border-b border-amber-500/40 text-amber-100 text-xs sm:text-sm"
+      className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] lg:top-16 z-40 bg-neon-primary/15 border-b border-neon-deep/40 text-brand-brown-dark text-xs sm:text-sm"
     >
       <div className="max-w-7xl mx-auto px-4 py-2 flex items-center gap-2">
-        <WifiOff className="w-4 h-4 shrink-0 text-amber-300" />
+        <WifiOff className="w-4 h-4 shrink-0 text-brand-brown" />
         <span className="flex-1 min-w-0">Sem conexão com o servidor. Seus dados na tela continuam aqui; tentando reconectar…</span>
         <button
           onClick={() => probeHealth(apiBase)}
-          className="shrink-0 inline-flex items-center gap-1 font-semibold text-amber-300 hover:text-white"
+          className="shrink-0 inline-flex items-center gap-1 font-semibold text-brand-brown hover:text-brand-brown-dark"
         >
           <RefreshCw className="w-3.5 h-3.5" />
           Tentar agora
@@ -166,7 +166,7 @@ export function ConnectionBanner() {
 
 /** Bloco cinza animado (skeleton). */
 export function Skeleton({ className = '' }: { className?: string }) {
-  return <div className={`animate-pulse rounded-md bg-slate-800/80 ${className}`} aria-hidden />;
+  return <div className={`animate-pulse rounded-md bg-surface-muted/80 ${className}`} aria-hidden />;
 }
 
 /** Lista de cartões em carregamento (mesmo formato no celular e no desktop). */
@@ -174,7 +174,7 @@ export function ListSkeleton({ rows = 5, label = 'Carregando...' }: { rows?: num
   return (
     <div className="space-y-3" role="status" aria-label={label}>
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <div key={i} className="bg-surface-white border border-line-soft rounded-2xl p-4 space-y-3">
           <div className="flex items-center justify-between gap-3">
             <Skeleton className="h-4 w-40" />
             <Skeleton className="h-5 w-20 rounded-full" />
@@ -194,12 +194,12 @@ export function ListSkeleton({ rows = 5, label = 'Carregando...' }: { rows?: num
 /** Erro de carregamento com botão de nova tentativa. */
 export function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div className="bg-slate-900 border border-rose-500/30 rounded-2xl p-6 sm:p-8 text-center space-y-3">
-      <AlertTriangle className="w-8 h-8 text-rose-400 mx-auto" />
-      <p className="text-sm text-slate-300">{message}</p>
+    <div className="bg-surface-white border border-rose-500/30 rounded-2xl p-6 sm:p-8 text-center space-y-3">
+      <AlertTriangle className="w-8 h-8 text-rose-700 mx-auto" />
+      <p className="text-sm text-brand-brown">{message}</p>
       <button
         onClick={onRetry}
-        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm font-semibold text-white"
+        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface-muted hover:bg-surface-strong text-sm font-semibold text-brand-brown-dark"
       >
         <RefreshCw className="w-4 h-4" />
         Tentar novamente
