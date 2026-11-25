@@ -272,23 +272,23 @@ function AppointmentsAgenda({
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 lg:p-10">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-full bg-slate-950 text-slate-100 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+      <div className="max-w-7xl mx-auto space-y-5 sm:space-y-6">
         {/* Cabeçalho */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4 border-b border-slate-800 pb-4 sm:pb-6">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-3">
-              <Calendar className="w-8 h-8 text-amber-500" />
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white flex items-center gap-2.5">
+              <Calendar className="w-6 h-6 sm:w-7 sm:h-7 text-amber-500 shrink-0" />
               Agendamentos
             </h1>
-            <p className="text-sm text-slate-400 mt-1">
+            <p className="text-xs sm:text-sm text-slate-400 mt-1">
               Reserve horários, confirme presença pelo WhatsApp e acompanhe a agenda da semana.
             </p>
           </div>
 
           <button
             onClick={openCreate}
-            className="inline-flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-5 py-3 rounded-xl transition-all shadow-md shadow-amber-500/20 text-sm"
+            className="inline-flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-4 py-2.5 rounded-xl transition-all shadow-md shadow-amber-500/20 text-sm"
           >
             <PlusCircle className="w-5 h-5" />
             Novo Agendamento
@@ -296,7 +296,7 @@ function AppointmentsAgenda({
         </div>
 
         {/* Navegação da semana + filtros */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col lg:flex-row items-center justify-between gap-4">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
           <div className="flex items-center gap-2">
             <button
               onClick={() => goToWeek(addDays(weekStart, -7))}
@@ -323,14 +323,14 @@ function AppointmentsAgenda({
             </span>
           </div>
 
-          <div className="flex items-center gap-1.5 overflow-x-auto w-full lg:w-auto pb-2 lg:pb-0">
+          <div className="flex items-center gap-1.5 scroll-x w-full lg:w-auto pb-1 lg:pb-0">
             {(Object.keys(STATUS_CONFIG) as Array<'ALL' | AppointmentStatus>).map((key) => {
               const isSelected = statusFilter === key;
               return (
                 <button
                   key={key}
                   onClick={() => setStatusFilter(key)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
+                  className={`px-3 min-h-9 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
                     isSelected
                       ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-sm'
                       : 'bg-slate-800/80 text-slate-300 border-slate-700/60 hover:bg-slate-700'
@@ -365,7 +365,7 @@ function AppointmentsAgenda({
                     isToday ? 'border-amber-500/50' : 'border-slate-800'
                   }`}
                 >
-                  <header className="px-5 py-3 bg-slate-950/60 border-b border-slate-800 flex items-center justify-between">
+                  <header className="px-4 sm:px-5 py-3 bg-slate-950/60 border-b border-slate-800 flex items-center justify-between">
                     <h2 className="text-sm font-bold capitalize text-white">
                       {dayFmt.format(day)}
                       {isToday && (
@@ -380,7 +380,7 @@ function AppointmentsAgenda({
                   </header>
 
                   {items.length === 0 ? (
-                    <p className="px-5 py-4 text-xs text-slate-500">Nenhum horário reservado.</p>
+                    <p className="px-4 sm:px-5 py-4 text-xs text-slate-500">Nenhum horário reservado.</p>
                   ) : (
                     <ul className="divide-y divide-slate-800/80">
                       {items.map((a) => {
@@ -391,7 +391,7 @@ function AppointmentsAgenda({
                         return (
                           <li
                             key={a.id}
-                            className="px-5 py-4 flex flex-col lg:flex-row lg:items-center gap-3 hover:bg-slate-800/30"
+                            className="px-4 sm:px-5 py-4 flex flex-col lg:flex-row lg:items-center gap-2.5 sm:gap-3 hover:bg-slate-800/30"
                           >
                             <div className="flex items-center gap-2 w-24 shrink-0 font-mono font-bold text-amber-400">
                               <Clock className="w-4 h-4" />
@@ -531,7 +531,7 @@ function ActionButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`inline-flex items-center gap-1.5 border px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 ${ACTION_COLORS[color]}`}
+      className={`inline-flex items-center justify-center gap-1.5 border px-3 min-h-9 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 ${ACTION_COLORS[color]}`}
     >
       {icon}
       {label}
@@ -560,7 +560,7 @@ function AppointmentModal({
 
   useEffect(() => {
     if (editing) return; // No reagendamento cliente/veículo são fixos
-    fetchApi<ClientOption[]>('/clients')
+    fetchApi<ClientOption[]>('/clients/options')
       .then(setClients)
       .catch((err) => setError(`Erro ao carregar clientes: ${errorMessage(err)}`));
   }, [editing]);
@@ -599,13 +599,13 @@ function AppointmentModal({
     'w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-amber-500 disabled:opacity-60';
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[80] bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4" onClick={onClose}>
       <form
         onSubmit={handleSubmit}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl"
+        className="w-full sm:max-w-lg max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto overscroll-contain bg-slate-900 border border-slate-800 rounded-t-2xl sm:rounded-2xl shadow-2xl pb-[env(safe-area-inset-bottom)] sm:pb-0"
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+        <div className="sticky top-0 z-10 bg-slate-900 flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-800">
           <h3 className="text-lg font-bold text-white">
             {editing ? 'Reagendar' : 'Novo Agendamento'}
           </h3>
@@ -614,7 +614,7 @@ function AppointmentModal({
           </button>
         </div>
 
-        <div className="px-6 py-5 space-y-4">
+        <div className="px-4 sm:px-6 py-4 sm:py-5 space-y-4">
           {editing ? (
             <div className="text-sm text-slate-300 bg-slate-950/60 border border-slate-800 rounded-xl p-3">
               <div className="font-semibold text-white">{editing.client.name}</div>
@@ -700,7 +700,7 @@ function AppointmentModal({
           )}
         </div>
 
-        <div className="flex justify-end gap-2 px-6 py-4 border-t border-slate-800">
+        <div className="sticky bottom-0 bg-slate-900 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-800">
           <button
             type="button"
             onClick={onClose}

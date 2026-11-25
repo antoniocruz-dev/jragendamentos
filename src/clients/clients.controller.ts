@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, ParseUUIDPipe, Query } from '@nestjs/common';
 import { ClientsService } from './clients.service.js';
 import { RequireModules } from '../auth/decorators/require-modules.decorator.js';
 import { ManagersOnly } from '../auth/decorators/managers-only.decorator.js';
@@ -12,11 +12,22 @@ import { UpdateVehicleDto } from './dto/update-vehicle.dto.js';
 export class ClientsController {
   constructor(private readonly clientsService: ClientsService) {}
 
-  // Lista também usada pelas telas de Agendamentos e Nova OS
-  @RequireModules('CLIENTS', 'APPOINTMENTS', 'WORK_ORDERS')
+  // Grid paginado da tela de Clientes
   @Get()
-  findAll() {
-    return this.clientsService.findAll();
+  findAll(@Query('q') q?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+    return this.clientsService.findAll({ q, page, pageSize });
+  }
+
+  // Lista enxuta para selects (Agendamentos e Nova OS)
+  @RequireModules('CLIENTS', 'APPOINTMENTS', 'WORK_ORDERS')
+  @Get('options')
+  options() {
+    return this.clientsService.options();
+  }
+
+  @Get('vehicles/:vehicleId/work-orders')
+  vehicleWorkOrders(@Param('vehicleId', new ParseUUIDPipe()) vehicleId: string) {
+    return this.clientsService.vehicleWorkOrders(vehicleId);
   }
 
   // Busca por placa usada na abertura da OS

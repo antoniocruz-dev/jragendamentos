@@ -204,22 +204,22 @@ function Dashboard() {
   const totalAppts = apptSlices.reduce((a, s) => a + s.value, 0);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 lg:p-10">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
+    <div className="min-h-full bg-slate-950 text-slate-100 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+      <div className="max-w-7xl mx-auto space-y-5 sm:space-y-6">
+        <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4 border-b border-slate-800 pb-4 sm:pb-6">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-3">
-              <LayoutDashboard className="w-8 h-8 text-amber-500" />
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white flex items-center gap-2.5">
+              <LayoutDashboard className="w-6 h-6 sm:w-7 sm:h-7 text-amber-500 shrink-0" />
               Dashboard
             </h1>
-            <p className="text-sm text-slate-400 mt-1">
+            <p className="text-xs sm:text-sm text-slate-400 mt-1">
               Visão do período. Clique numa fatia ou na legenda para abrir a tela correspondente.
             </p>
           </div>
           {can('WORK_ORDERS') && (
             <Link
               href="/work-orders/new"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm rounded-lg self-start"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm rounded-xl sm:self-end"
             >
               <Plus className="w-4 h-4" />
               Nova Ordem de Serviço
@@ -229,12 +229,12 @@ function Dashboard() {
 
         {/* Filtro de período */}
         <div className="flex flex-col lg:flex-row lg:items-center gap-3 bg-slate-900 border border-slate-800 rounded-2xl p-3">
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex gap-1.5 scroll-x -mx-3 px-3 sm:mx-0 sm:px-0 sm:flex-wrap pb-1 sm:pb-0">
             {PRESETS.map((p) => (
               <button
                 key={p.key}
                 onClick={() => choosePreset(p.key)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                className={`shrink-0 whitespace-nowrap px-3 py-2 sm:py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
                   preset === p.key
                     ? 'bg-amber-500 text-slate-950 border-amber-500'
                     : 'bg-slate-800/80 text-slate-300 border-slate-700/60 hover:bg-slate-700'
@@ -244,25 +244,25 @@ function Dashboard() {
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-2 lg:ml-auto text-sm">
-            <label className="flex items-center gap-1.5 text-slate-400">
+          <div className="grid grid-cols-2 gap-2 lg:flex lg:items-center lg:ml-auto text-sm">
+            <label className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-slate-400 min-w-0">
               De
               <input
                 type="date"
                 value={range.from}
                 max={range.to}
                 onChange={(e) => changeDate('from', e.target.value)}
-                className="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200 [color-scheme:dark]"
+                className="w-full min-w-0 bg-slate-950 border border-slate-700 rounded-lg px-2 py-2 sm:py-1.5 text-slate-200 [color-scheme:dark]"
               />
             </label>
-            <label className="flex items-center gap-1.5 text-slate-400">
+            <label className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-slate-400 min-w-0">
               até
               <input
                 type="date"
                 value={range.to}
                 min={range.from}
                 onChange={(e) => changeDate('to', e.target.value)}
-                className="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200 [color-scheme:dark]"
+                className="w-full min-w-0 bg-slate-950 border border-slate-700 rounded-lg px-2 py-2 sm:py-1.5 text-slate-200 [color-scheme:dark]"
               />
             </label>
           </div>

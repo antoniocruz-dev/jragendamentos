@@ -1,12 +1,27 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Users, Search, Plus, Car, Phone, FileText, History, Pencil, Trash2, Gauge, Mail, MapPin } from 'lucide-react';
+import { Users, Plus, Car, Phone, FileText, History, Pencil, Trash2, Gauge, Mail, MapPin } from 'lucide-react';
 import { fetchApi } from '@/services/api';
 import { useAuth } from '@/services/auth';
 import { canManageRecords } from '@/services/permissions';
-import { ActionBtn, Field, FormError, Modal, ModalActions, errorMessage, inputCls } from '@/components/crud';
+import {
+  ActionBtn,
+  Field,
+  FormError,
+  Modal,
+  ModalActions,
+  PageHeader,
+  PageShell,
+  Pagination,
+  SearchInput,
+  errorMessage,
+  inputCls,
+  primaryBtnCls,
+  useDebouncedValue,
+  type Page,
+} from '@/components/crud';
 
 interface WorkOrderSummary {
   id: string;
@@ -26,7 +41,7 @@ interface Vehicle {
   currentKm?: number | null;
   chassis?: string | null;
   notes?: string | null;
-  workOrders?: WorkOrderSummary[];
+  _count?: { workOrders: number };
 }
 
 interface Client {
@@ -78,49 +93,43 @@ export default function ClientsPage() {
   const { user } = useAuth();
   const isManager = canManageRecords(user);
 
-  const [clients, setClients] = useState<Client[]>([]);
+  const [data, setData] = useState<Page<Client> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const search = useDebouncedValue(searchTerm.trim());
+  const [page, setPage] = useState(1);
   const [modal, setModal] = useState<ModalState>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const [reloadKey, setReloadKey] = useState(0);
   const loadClients = () => setReloadKey((k) => k + 1);
 
+  // Busca e paginação no servidor (só a página visível trafega)
   useEffect(() => {
-    let cancelled = false;
-    fetchApi<Client[]>('/clients')
-      .then((data) => {
-        if (cancelled) return;
-        setClients(data);
+    const ctrl = new AbortController();
+    const params = new URLSearchParams({ page: String(page), pageSize: '12' });
+    if (search) params.set('q', search);
+    fetchApi<Page<Client>>(`/clients?${params}`, { signal: ctrl.signal })
+      .then((d) => {
+        // Excluiu o último cliente da página: volta uma página
+        if (d.items.length === 0 && d.page > 1) return setPage(d.page - 1);
+        setData(d);
         setError(null);
       })
-      .catch((err) => !cancelled && setError(errorMessage(err)))
-      .finally(() => !cancelled && setLoading(false));
-    return () => {
-      cancelled = true;
-    };
-  }, [reloadKey]);
+      .catch((err) => !ctrl.signal.aborted && setError(errorMessage(err)))
+      .finally(() => !ctrl.signal.aborted && setLoading(false));
+    return () => ctrl.abort();
+  }, [reloadKey, page, search]);
 
-  const filtered = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
-    if (!term) return clients;
-    const digits = onlyDigits(term);
-    return clients.filter(
-      (c) =>
-        c.name.toLowerCase().includes(term) ||
-        (digits && (c.document.includes(digits) || c.phone.includes(digits))) ||
-        c.vehicles.some((v) => v.licensePlate.toLowerCase().includes(term.replace(/[^a-z0-9]/g, ''))),
-    );
-  }, [clients, searchTerm]);
+  const filtered = data?.items ?? [];
 
   async function removeClient(c: Client) {
     if (!confirm(`Excluir o cliente "${c.name}" e seus ${c.vehicles.length} veículo(s)? Esta ação não pode ser desfeita.`)) return;
     try {
       setBusyId(c.id);
       await fetchApi(`/clients/${c.id}`, { method: 'DELETE' });
-      await loadClients();
+      loadClients();
     } catch (err) {
       alert(errorMessage(err));
     } finally {
@@ -133,7 +142,7 @@ export default function ClientsPage() {
     try {
       setBusyId(v.id);
       await fetchApi(`/clients/vehicles/${v.id}`, { method: 'DELETE' });
-      await loadClients();
+      loadClients();
     } catch (err) {
       alert(errorMessage(err));
     } finally {
@@ -147,34 +156,28 @@ export default function ClientsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 p-6 md:p-10">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-              <Users className="w-8 h-8 text-amber-500" />
-              Clientes &amp; Veículos
-            </h1>
-            <p className="text-slate-400 mt-1 text-sm">Cadastro de clientes, frota e histórico de OS por veículo.</p>
-          </div>
-          <button
-            onClick={() => setModal({ kind: 'client', client: null })}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm rounded-lg"
-          >
+    <PageShell width="max-w-6xl">
+      <PageHeader
+        icon={Users}
+        title="Clientes & Veículos"
+        description="Cadastro de clientes, frota e histórico de OS por veículo."
+        actions={
+          <button onClick={() => setModal({ kind: 'client', client: null })} className={primaryBtnCls}>
             <Plus className="w-4 h-4" />
             Novo cliente
           </button>
-        </header>
+        }
+      />
 
-        <div className="relative max-w-md">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar por nome, CPF/CNPJ, telefone ou placa..."
-            className={`${inputCls} pl-9`}
-          />
-        </div>
+      <SearchInput
+        value={searchTerm}
+        onChange={(v) => {
+          setSearchTerm(v);
+          setPage(1);
+        }}
+        placeholder="Nome, CPF/CNPJ, telefone ou placa..."
+        className="w-full sm:max-w-md"
+      />
 
         {!isManager && (
           <p className="text-xs text-slate-500">Exclusões só podem ser feitas pelo Administrador ou Gerente Geral.</p>
@@ -192,16 +195,16 @@ export default function ClientsPage() {
         ) : filtered.length === 0 ? (
           <div className="p-12 text-center text-slate-400">Nenhum cliente encontrado.</div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
             {filtered.map((client) => (
-              <article key={client.id} className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-5 space-y-4">
+              <article key={client.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 min-w-0">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h2 className="text-lg font-bold text-white truncate">{client.name}</h2>
+                    <h2 className="text-base sm:text-lg font-bold text-white truncate">{client.name}</h2>
                     <div className="mt-1 space-y-0.5 text-xs text-slate-400">
                       <div className="flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" />{formatDocument(client.document)}</div>
                       <div className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" />{formatPhone(client.phone)}</div>
-                      {client.email && <div className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" />{client.email}</div>}
+                      {client.email && <div className="flex items-center gap-1.5 min-w-0"><Mail className="w-3.5 h-3.5 shrink-0" /><span className="truncate">{client.email}</span></div>}
                       {(client.city || client.address) && (
                         <div className="flex items-center gap-1.5">
                           <MapPin className="w-3.5 h-3.5" />
@@ -221,7 +224,7 @@ export default function ClientsPage() {
                 <div className="space-y-2">
                   {client.vehicles.length === 0 && <p className="text-xs text-slate-500">Nenhum veículo cadastrado.</p>}
                   {client.vehicles.map((v) => (
-                    <div key={v.id} className="flex items-center justify-between gap-2 bg-slate-900/60 border border-slate-700/60 rounded-lg px-3 py-2">
+                    <div key={v.id} className="flex flex-wrap items-center justify-between gap-2 bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2">
                       <div className="flex items-center gap-3 min-w-0">
                         <Car className="w-4 h-4 text-sky-400 shrink-0" />
                         <div className="min-w-0">
@@ -233,7 +236,7 @@ export default function ClientsPage() {
                         </div>
                       </div>
                       <div className="flex gap-1.5 shrink-0">
-                        <ActionBtn icon={History} label={`OS (${v.workOrders?.length ?? 0})`} onClick={() => setModal({ kind: 'history', client, vehicle: v })} />
+                        <ActionBtn icon={History} label={`OS (${v._count?.workOrders ?? 0})`} onClick={() => setModal({ kind: 'history', client, vehicle: v })} />
                         <ActionBtn icon={Pencil} label="Editar" onClick={() => setModal({ kind: 'vehicle', client, vehicle: v })} />
                         {isManager && (
                           <ActionBtn icon={Trash2} label="Excluir" tone="danger" disabled={busyId === v.id} onClick={() => removeVehicle(v)} />
@@ -253,36 +256,72 @@ export default function ClientsPage() {
             ))}
           </div>
         )}
-      </div>
+
+      {data && (
+        <Pagination
+          page={data.page}
+          pages={data.pages}
+          total={data.total}
+          pageSize={data.pageSize}
+          loading={loading}
+          onPage={(p) => {
+            setPage(p);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+        />
+      )}
 
       {modal?.kind === 'client' && <ClientModal client={modal.client} onClose={closeAndReload} />}
       {modal?.kind === 'vehicle' && <VehicleModal client={modal.client} vehicle={modal.vehicle} onClose={closeAndReload} />}
-      {modal?.kind === 'history' && (
-        <Modal title={`Histórico · ${modal.vehicle.licensePlate}`} onClose={() => setModal(null)}>
-          {!modal.vehicle.workOrders?.length ? (
-            <p className="text-sm text-slate-400">Nenhuma OS registrada para este veículo.</p>
-          ) : (
-            <ul className="space-y-2">
-              {modal.vehicle.workOrders.map((wo) => {
-                const s = STATUS_LABELS[wo.status] ?? { label: wo.status, color: 'text-slate-300 border-slate-600' };
-                return (
-                  <li key={wo.id}>
-                    <Link href={`/os/${wo.id}`} className="flex items-center justify-between gap-3 bg-slate-950 border border-slate-800 hover:border-amber-500/50 rounded-lg px-3 py-2">
-                      <span className="font-mono font-bold text-amber-400">#{wo.code}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full border ${s.color}`}>{s.label}</span>
-                      <span className="text-xs text-slate-400">{new Date(wo.createdAt).toLocaleDateString('pt-BR')}</span>
-                      <span className="text-sm font-semibold text-white">
-                        R$ {Number(wo.finalAmount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </Modal>
+      {modal?.kind === 'history' && <HistoryModal vehicle={modal.vehicle} onClose={() => setModal(null)} />}
+    </PageShell>
+  );
+}
+
+/** Histórico de OS do veículo: carregado só quando o modal abre. */
+function HistoryModal({ vehicle, onClose }: { vehicle: Vehicle; onClose: () => void }) {
+  const [orders, setOrders] = useState<WorkOrderSummary[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    fetchApi<WorkOrderSummary[]>(`/clients/vehicles/${vehicle.id}/work-orders`, { signal: ctrl.signal })
+      .then(setOrders)
+      .catch((err) => !ctrl.signal.aborted && setError(errorMessage(err)));
+    return () => ctrl.abort();
+  }, [vehicle.id]);
+
+  return (
+    <Modal title={`Histórico · ${vehicle.licensePlate}`} onClose={onClose}>
+      {error ? (
+        <FormError message={error} />
+      ) : !orders ? (
+        <p className="text-sm text-slate-400">Carregando...</p>
+      ) : orders.length === 0 ? (
+        <p className="text-sm text-slate-400">Nenhuma OS registrada para este veículo.</p>
+      ) : (
+        <ul className="space-y-2">
+          {orders.map((wo) => {
+            const s = STATUS_LABELS[wo.status] ?? { label: wo.status, color: 'text-slate-300 border-slate-600' };
+            return (
+              <li key={wo.id}>
+                <Link
+                  href={`/os/${wo.id}`}
+                  className="grid grid-cols-[auto_1fr_auto] sm:grid-cols-[auto_auto_1fr_auto] items-center gap-x-3 gap-y-1 bg-slate-950 border border-slate-800 hover:border-amber-500/50 rounded-lg px-3 py-2"
+                >
+                  <span className="font-mono font-bold text-amber-400">#{wo.code}</span>
+                  <span className={`justify-self-start text-xs px-2 py-0.5 rounded-full border ${s.color}`}>{s.label}</span>
+                  <span className="hidden sm:block text-xs text-slate-400">{new Date(wo.createdAt).toLocaleDateString('pt-BR')}</span>
+                  <span className="text-sm font-semibold text-white text-right">
+                    R$ {Number(wo.finalAmount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
       )}
-    </div>
+    </Modal>
   );
 }
 

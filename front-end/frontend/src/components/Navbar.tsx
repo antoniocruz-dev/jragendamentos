@@ -1,17 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-  Wrench, 
-  LayoutDashboard, 
-  ClipboardList, 
-  PlusCircle, 
-  Users, 
-  Package, 
-  Calendar, 
-  DollarSign, 
+import {
+  Wrench,
+  LayoutDashboard,
+  ClipboardList,
+  PlusCircle,
+  Users,
+  Package,
+  Calendar,
+  DollarSign,
   Menu,
   X,
   LogOut,
@@ -21,30 +21,60 @@ import type { AppModule } from '@/services/permissions';
 import { useAuth, clearSession } from '@/services/auth';
 import { isPublicPath } from '@/components/AuthGate';
 
-const navItems: { name: string; href: string; icon: typeof Wrench; module: AppModule }[] = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard, module: 'DASHBOARD' },
-  { name: 'Ordens de Serviço', href: '/work-orders', icon: ClipboardList, module: 'WORK_ORDERS' },
-  { name: 'Nova OS', href: '/work-orders/new', icon: PlusCircle, module: 'WORK_ORDERS' },
-  { name: 'Clientes & Veículos', href: '/clients', icon: Users, module: 'CLIENTS' },
-  { name: 'Peças & Serviços', href: '/catalog', icon: Package, module: 'CATALOG' },
-  { name: 'Agendamentos', href: '/appointments', icon: Calendar, module: 'APPOINTMENTS' },
-  { name: 'Financeiro', href: '/financial', icon: DollarSign, module: 'FINANCIAL' },
-  { name: 'Equipe', href: '/team', icon: UserCog, module: 'TEAM' },
+type NavItem = { name: string; short: string; href: string; icon: typeof Wrench; module: AppModule };
+
+const navItems: NavItem[] = [
+  { name: 'Dashboard', short: 'Início', href: '/', icon: LayoutDashboard, module: 'DASHBOARD' },
+  { name: 'Ordens de Serviço', short: 'OS', href: '/work-orders', icon: ClipboardList, module: 'WORK_ORDERS' },
+  { name: 'Nova OS', short: 'Nova OS', href: '/work-orders/new', icon: PlusCircle, module: 'WORK_ORDERS' },
+  { name: 'Agendamentos', short: 'Agenda', href: '/appointments', icon: Calendar, module: 'APPOINTMENTS' },
+  { name: 'Clientes & Veículos', short: 'Clientes', href: '/clients', icon: Users, module: 'CLIENTS' },
+  { name: 'Peças & Serviços', short: 'Catálogo', href: '/catalog', icon: Package, module: 'CATALOG' },
+  { name: 'Financeiro', short: 'Financeiro', href: '/financial', icon: DollarSign, module: 'FINANCIAL' },
+  { name: 'Equipe', short: 'Equipe', href: '/team', icon: UserCog, module: 'TEAM' },
 ];
 
+/** Item ativo = o de href mais longo que casa com a rota (evita "OS" e "Nova OS" ativos juntos). */
+function activeHref(pathname: string, items: NavItem[]) {
+  let best: string | null = null;
+  for (const it of items) {
+    const match = it.href === '/' ? pathname === '/' : pathname === it.href || pathname.startsWith(`${it.href}/`);
+    if (match && (!best || it.href.length > best.length)) best = it.href;
+  }
+  return best;
+}
+
+/**
+ * Navegação mobile first:
+ * - celular/tablet (< lg): barra superior fixa + barra inferior com até 4 atalhos e "Menu" (gaveta com tudo);
+ * - notebook (lg): menu horizontal só com ícones; desktop (xl+): ícones com rótulos curtos.
+ * A barra inferior tem largura fixa por item, então não "quebra" em telas estreitas (320px+).
+ */
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
-
   const { user } = useAuth();
 
-  // Oculta a navegação administrativa na página pública do cliente (/os/[id]) e no login
-  if (isPublicPath(pathname)) {
-    return null;
-  }
+  // Fecha a gaveta com Esc e trava a rolagem do fundo enquanto ela está aberta
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setIsOpen(false);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [isOpen]);
 
-  // Só os módulos liberados para o perfil do usuário
+  // Oculta a navegação administrativa na página pública do cliente (/os/[id]) e no login
+  if (isPublicPath(pathname)) return null;
+
   const visibleItems = navItems.filter((item) => user?.modules?.includes(item.module));
+  const current = activeHref(pathname, visibleItems);
+  const bottomItems = visibleItems.slice(0, 4);
+  const firstName = user?.name.split(' ')[0] ?? '';
 
   function handleLogout() {
     clearSession();
@@ -52,37 +82,35 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="bg-slate-900 border-b border-slate-800 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          
-          {/* Logo da Oficina */}
-          <Link href="/" className="flex items-center gap-3">
-            <div className="bg-amber-500/10 border border-amber-500/30 p-2 rounded-xl text-amber-500">
+    <>
+      <header className="bg-slate-900/95 backdrop-blur border-b border-slate-800 sticky top-0 z-50 pt-[env(safe-area-inset-top)]">
+        <div className="max-w-7xl mx-auto px-4 lg:px-6 flex items-center justify-between gap-3 h-14 lg:h-16">
+          <Link href="/" className="flex items-center gap-2.5 min-w-0">
+            <div className="bg-amber-500/10 border border-amber-500/30 p-1.5 lg:p-2 rounded-xl text-amber-500 shrink-0">
               <Wrench className="w-5 h-5" />
             </div>
-            <span className="font-extrabold text-lg text-white tracking-tight">
+            <span className="font-extrabold text-base lg:text-lg text-white tracking-tight truncate">
               JR <span className="text-amber-500">Agendamentos</span>
             </span>
           </Link>
 
-          {/* Menu Horizontal para Desktop */}
-          <div className="hidden xl:flex items-center gap-1">
+          {/* Notebook/desktop: menu horizontal */}
+          <nav className="hidden lg:flex items-center gap-0.5" aria-label="Menu principal">
             {visibleItems.map((item) => {
               const Icon = item.icon;
-              const isActive = pathname === item.href;
+              const isActive = current === item.href;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
-                    isActive
-                      ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                  title={item.name}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+                    isActive ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:text-white hover:bg-slate-800'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
-                  {item.name}
+                  <Icon className="w-4 h-4 shrink-0" />
+                  <span className="hidden xl:inline">{item.short}</span>
                 </Link>
               );
             })}
@@ -90,60 +118,115 @@ export default function Navbar() {
               <button
                 onClick={handleLogout}
                 title={`Sair (${user.email})`}
-                className="ml-2 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-all"
+                className="ml-1 flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800"
               >
                 <LogOut className="w-4 h-4" />
-                {user.name.split(' ')[0]} · Sair
+                <span className="hidden xl:inline">{firstName} · Sair</span>
               </button>
             )}
-          </div>
+          </nav>
 
-          {/* Botão Hambúrguer Mobile */}
-          <div className="xl:hidden flex items-center">
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800 focus:outline-none"
-              aria-label="Alternar menu de navegação"
-            >
-              {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
-          </div>
+          {/* Celular/tablet: botão da gaveta */}
+          <button
+            onClick={() => setIsOpen(true)}
+            className="lg:hidden shrink-0 text-slate-300 hover:text-white p-2 -mr-2 rounded-lg hover:bg-slate-800"
+            aria-label="Abrir menu"
+            aria-expanded={isOpen}
+          >
+            <Menu className="w-6 h-6" />
+          </button>
         </div>
-      </div>
+      </header>
 
-      {/* Menu Colapsado Mobile */}
-      {isOpen && (
-        <div className="xl:hidden bg-slate-950/95 border-b border-slate-800 px-4 pt-2 pb-5 space-y-1.5 backdrop-blur-md">
-          {visibleItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setIsOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-amber-500 text-slate-950 font-bold'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-                {item.name}
-              </Link>
-            );
-          })}
-          {user && (
+      {/* Celular/tablet: barra inferior fixa */}
+      {visibleItems.length > 0 && (
+        <nav
+          data-bottom-nav
+          aria-label="Atalhos"
+          className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-slate-900/95 backdrop-blur border-t border-slate-800 pb-[env(safe-area-inset-bottom)]"
+        >
+          <div className="grid grid-cols-5 max-w-lg mx-auto h-16">
+            {bottomItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = current === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`flex flex-col items-center justify-center gap-1 min-w-0 px-1 text-[11px] font-semibold ${
+                    isActive ? 'text-amber-400' : 'text-slate-400 active:text-white'
+                  }`}
+                >
+                  <Icon className={`w-5 h-5 ${isActive ? 'text-amber-400' : ''}`} />
+                  <span className="truncate max-w-full">{item.short}</span>
+                </Link>
+              );
+            })}
+            {/* Mantém "Menu" sempre na 5ª coluna, mesmo com menos atalhos */}
+            {Array.from({ length: 4 - bottomItems.length }).map((_, i) => (
+              <span key={`gap-${i}`} aria-hidden />
+            ))}
             <button
-              onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+              onClick={() => setIsOpen(true)}
+              className="flex flex-col items-center justify-center gap-1 text-[11px] font-semibold text-slate-400 active:text-white"
+              aria-label="Abrir menu completo"
             >
-              <LogOut className="w-5 h-5" />
-              Sair ({user.name})
+              <Menu className="w-5 h-5" />
+              Menu
             </button>
-          )}
+          </div>
+        </nav>
+      )}
+
+      {/* Gaveta com todos os módulos */}
+      {isOpen && (
+        <div className="lg:hidden fixed inset-0 z-[70]" role="dialog" aria-modal="true" aria-label="Menu">
+          <button className="absolute inset-0 bg-black/60 backdrop-blur-sm" aria-label="Fechar menu" onClick={() => setIsOpen(false)} />
+          <aside className="absolute right-0 top-0 h-full w-[82%] max-w-xs bg-slate-950 border-l border-slate-800 flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+            <div className="flex items-center justify-between px-4 h-14 border-b border-slate-800">
+              <div className="min-w-0">
+                <div className="text-sm font-bold text-white truncate">{user?.name}</div>
+                <div className="text-xs text-slate-500 truncate">{user?.email}</div>
+              </div>
+              <button onClick={() => setIsOpen(false)} className="p-2 -mr-2 text-slate-400 hover:text-white" aria-label="Fechar menu">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <nav className="flex-1 overflow-y-auto p-3 space-y-1" aria-label="Todos os módulos">
+              {visibleItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = current === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setIsOpen(false)}
+                    aria-current={isActive ? 'page' : undefined}
+                    className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium ${
+                      isActive ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5 shrink-0" />
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </nav>
+            {user && (
+              <div className="p-3 border-t border-slate-800">
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium text-rose-300 hover:bg-rose-500/10"
+                >
+                  <LogOut className="w-5 h-5" />
+                  Sair
+                </button>
+              </div>
+            )}
+          </aside>
         </div>
       )}
-    </nav>
+    </>
   );
 }

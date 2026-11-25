@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 //import { Inter } from 'next/font/google';
 import './globals.css';
 import Navbar from '@/components/Navbar';
@@ -18,6 +18,13 @@ export const metadata: Metadata = {
   description: 'Sistema Operacional e Financeiro para Oficinas Mecânicas',
 };
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#0f172a',
+};
+
 export default function RootLayout({
   children,
 }: {
@@ -33,7 +40,7 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <Navbar />
         </Suspense>
-        <main className="flex-1">
+        <main className="flex-1 min-w-0">
           {/* AuthGate usa usePathname(): mesmo motivo do Suspense acima */}
           <Suspense fallback={null}>
             <AuthGate>{children}</AuthGate>

@@ -3,7 +3,9 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { parsePage, searchTerms, toPage } from '../common/pagination.js';
 import { UpdateClientDto } from './dto/update-client.dto.js';
 import { CreateVehicleDto } from './dto/create-vehicle.dto.js';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto.js';
@@ -34,15 +36,61 @@ export class ClientsService {
     });
   }
 
-  async findAll() {
-    return this.prisma.client.findMany({
-      include: {
-        vehicles: {
-          include: { workOrders: WORK_ORDER_SUMMARY },
-          orderBy: { createdAt: 'asc' },
+  /**
+   * Grid de clientes paginado no banco. Busca por nome, CPF/CNPJ, telefone ou placa.
+   * Cada veículo traz só a contagem de OS; o histórico é carregado sob demanda.
+   */
+  async findAll(filters: { q?: string; page?: string; pageSize?: string }) {
+    const { page, pageSize, skip, take } = parsePage(filters.page, filters.pageSize, 12);
+    const { text, digits, plate } = searchTerms(filters.q);
+
+    const or: Prisma.ClientWhereInput[] = [];
+    if (text) {
+      or.push({ name: { contains: text, mode: 'insensitive' } });
+      if (digits.length >= 3) or.push({ document: { contains: digits } }, { phone: { contains: digits } });
+      if (plate.length >= 2) or.push({ vehicles: { some: { licensePlate: { contains: plate } } } });
+    }
+    const where: Prisma.ClientWhereInput = or.length ? { OR: or } : {};
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.client.findMany({
+        where,
+        include: {
+          vehicles: {
+            include: { _count: { select: { workOrders: true } } },
+            orderBy: { createdAt: 'asc' },
+          },
         },
+        orderBy: [{ name: 'asc' }, { id: 'asc' }],
+        skip,
+        take,
+      }),
+      this.prisma.client.count({ where }),
+    ]);
+    return toPage(items, total, page, pageSize);
+  }
+
+  /** Lista enxuta para selects (Agendamentos): só o necessário para escolher cliente e veículo. */
+  async options() {
+    return this.prisma.client.findMany({
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        vehicles: { select: { id: true, licensePlate: true, brand: true, model: true, year: true }, orderBy: { createdAt: 'asc' } },
       },
       orderBy: { name: 'asc' },
+    });
+  }
+
+  /** Histórico de OS de um veículo (aberto ao clicar em "OS" no grid). */
+  async vehicleWorkOrders(vehicleId: string) {
+    const vehicle = await this.prisma.vehicle.findUnique({ where: { id: vehicleId }, select: { id: true } });
+    if (!vehicle) throw new NotFoundException('Veículo não encontrado.');
+    return this.prisma.workOrder.findMany({
+      where: { vehicleId },
+      ...WORK_ORDER_SUMMARY,
+      take: 100,
     });
   }
 

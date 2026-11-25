@@ -5,6 +5,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { parsePage, searchTerms, toPage } from '../common/pagination.js';
 import { CreateWorkOrderDto } from './dto/create-work-order.dto.js';
 import { UpdateWorkOrderStatusDto } from './dto/update-status.dto.js';
 import { CustomerDecisionDto } from './dto/customer-decision.dto.js';
@@ -223,15 +224,52 @@ export class WorkOrdersService {
     return workOrder;
   }
 
-  async listAll(status?: WorkOrderStatus) {
-    return this.prisma.workOrder.findMany({
-      where: status ? { status } : undefined,
-      include: {
-        client: { select: { name: true, phone: true } },
-        vehicle: { select: { licensePlate: true, model: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+  /**
+   * Grid de OS paginado no banco. A busca (nº da OS, placa ou cliente) e o status são filtrados
+   * no SQL; `counts` traz o total por status para as abas (respeitando a busca).
+   */
+  async listAll(filters: { status?: string; q?: string; page?: string; pageSize?: string }) {
+    const { page, pageSize, skip, take } = parsePage(filters.page, filters.pageSize);
+    const { text, digits, plate } = searchTerms(filters.q);
+
+    const or: Prisma.WorkOrderWhereInput[] = [];
+    if (text) {
+      or.push({ client: { name: { contains: text, mode: 'insensitive' } } });
+      if (plate.length >= 2) or.push({ vehicle: { licensePlate: { contains: plate } } });
+      if (digits && digits.length <= 9 && digits === text.replace(/^#/, '')) or.push({ code: Number(digits) });
+    }
+    const searchWhere: Prisma.WorkOrderWhereInput = or.length ? { OR: or } : {};
+
+    const status = filters.status && filters.status in WorkOrderStatus ? (filters.status as WorkOrderStatus) : undefined;
+    const where: Prisma.WorkOrderWhereInput = status ? { ...searchWhere, status } : searchWhere;
+
+    const [items, total, grouped] = await this.prisma.$transaction([
+      this.prisma.workOrder.findMany({
+        where,
+        select: {
+          id: true,
+          code: true,
+          status: true,
+          finalAmount: true,
+          createdAt: true,
+          client: { select: { name: true, phone: true } },
+          vehicle: { select: { licensePlate: true, brand: true, model: true, year: true } },
+        },
+        orderBy: [{ createdAt: 'desc' }, { code: 'desc' }],
+        skip,
+        take,
+      }),
+      this.prisma.workOrder.count({ where }),
+      this.prisma.workOrder.groupBy({ by: ['status'], where: searchWhere, _count: { _all: true }, orderBy: { status: 'asc' } }),
+    ]);
+
+    const counts: Record<string, number> = { ALL: 0 };
+    for (const g of grouped) {
+      const n = (g._count as { _all: number })._all;
+      counts[g.status] = n;
+      counts.ALL += n;
+    }
+    return { ...toPage(items, total, page, pageSize), counts };
   }
 
   /**

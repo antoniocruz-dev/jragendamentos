@@ -100,21 +100,21 @@ export default function CatalogPage() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 p-6 md:p-10">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
+    <div className="min-h-full bg-slate-950 text-slate-100 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+      <div className="max-w-6xl mx-auto space-y-5 sm:space-y-6">
+        <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4 border-b border-slate-800 pb-4 sm:pb-6">
           <div>
-            <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-              <Package className="w-8 h-8 text-amber-500" />
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white flex items-center gap-2.5">
+              <Package className="w-6 h-6 sm:w-7 sm:h-7 text-amber-500 shrink-0" />
               Peças &amp; Serviços
             </h1>
-            <p className="text-slate-400 mt-1 text-sm">
+            <p className="text-slate-400 mt-1 text-xs sm:text-sm">
               Tabela de mão de obra e estoque de peças usados na abertura das OS.
             </p>
           </div>
           <button
             onClick={() => (tab === 'services' ? setEditingService(null) : setEditingProduct(null))}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm rounded-lg"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm rounded-xl"
           >
             <Plus className="w-4 h-4" />
             {tab === 'services' ? 'Novo serviço' : 'Nova peça'}
@@ -122,7 +122,7 @@ export default function CatalogPage() {
         </header>
 
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
-          <div className="inline-flex bg-slate-800/80 border border-slate-700 rounded-lg p-1">
+          <div className="grid grid-cols-2 sm:inline-flex bg-slate-900 border border-slate-700 rounded-lg p-1">
             {([
               ['services', 'Serviços', Wrench, services.length],
               ['products', 'Peças', Package, products.length],
@@ -130,7 +130,7 @@ export default function CatalogPage() {
               <button
                 key={key}
                 onClick={() => setTab(key)}
-                className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-md text-sm font-semibold ${
+                className={`inline-flex items-center justify-center gap-1.5 px-4 py-2 sm:py-1.5 rounded-md text-sm font-semibold ${
                   tab === key ? 'bg-amber-500 text-slate-950' : 'text-slate-300 hover:text-white'
                 }`}
               >
@@ -141,7 +141,7 @@ export default function CatalogPage() {
           </div>
           <div className="relative w-full sm:w-72">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar..." className={`${inputCls} pl-9`} />
+            <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nome ou código..." className={`${inputCls} pl-9 py-2.5`} />
           </div>
         </div>
 
@@ -155,16 +155,16 @@ export default function CatalogPage() {
         ) : error ? (
           <FormError message={error} />
         ) : (
-          <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl overflow-x-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-x-auto">
             {tab === 'services' ? (
               <table className="w-full text-left text-sm text-slate-300">
                 <thead className="bg-slate-900/60 text-xs uppercase text-slate-400 border-b border-slate-700">
                   <tr>
-                    <th className="py-3 px-4">Serviço</th>
-                    <th className="py-3 px-4">Preço</th>
-                    <th className="py-3 px-4">Tempo</th>
-                    <th className="py-3 px-4">Situação</th>
-                    <th className="py-3 px-4 text-right">Ações</th>
+                    <th className="py-3 px-3 sm:px-4">Serviço</th>
+                    <th className="py-3 px-3 sm:px-4">Preço</th>
+                    <th className="hidden sm:table-cell py-3 px-4">Tempo</th>
+                    <th className="hidden sm:table-cell py-3 px-4">Situação</th>
+                    <th className="py-3 px-3 sm:px-4 text-right">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/60">
@@ -173,14 +173,17 @@ export default function CatalogPage() {
                   )}
                   {visibleServices.map((s) => (
                     <tr key={s.id} className={s.isActive ? '' : 'opacity-60'}>
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-3 sm:px-4">
                         <div className="font-semibold text-white">{s.name}</div>
-                        {s.description && <div className="text-xs text-slate-400">{s.description}</div>}
+                        {s.description && <div className="text-xs text-slate-400 line-clamp-2">{s.description}</div>}
+                        <div className="sm:hidden mt-1 flex items-center gap-2 text-xs text-slate-400">
+                          {s.estimatedMinutes} min <ActiveBadge active={s.isActive} />
+                        </div>
                       </td>
-                      <td className="py-3 px-4 font-semibold text-white whitespace-nowrap">{brl(s.basePrice)}</td>
-                      <td className="py-3 px-4 whitespace-nowrap">{s.estimatedMinutes} min</td>
-                      <td className="py-3 px-4"><ActiveBadge active={s.isActive} /></td>
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-3 sm:px-4 font-semibold text-white whitespace-nowrap">{brl(s.basePrice)}</td>
+                      <td className="hidden sm:table-cell py-3 px-4 whitespace-nowrap">{s.estimatedMinutes} min</td>
+                      <td className="hidden sm:table-cell py-3 px-4"><ActiveBadge active={s.isActive} /></td>
+                      <td className="py-3 px-3 sm:px-4">
                         <RowActions
                           active={s.isActive}
                           used={(s._count?.items ?? 0) > 0}
@@ -199,12 +202,12 @@ export default function CatalogPage() {
               <table className="w-full text-left text-sm text-slate-300">
                 <thead className="bg-slate-900/60 text-xs uppercase text-slate-400 border-b border-slate-700">
                   <tr>
-                    <th className="py-3 px-4">Peça</th>
-                    <th className="py-3 px-4">Custo</th>
-                    <th className="py-3 px-4">Venda</th>
-                    <th className="py-3 px-4">Estoque</th>
-                    <th className="py-3 px-4">Situação</th>
-                    <th className="py-3 px-4 text-right">Ações</th>
+                    <th className="py-3 px-3 sm:px-4">Peça</th>
+                    <th className="hidden sm:table-cell py-3 px-4">Custo</th>
+                    <th className="py-3 px-3 sm:px-4">Venda</th>
+                    <th className="py-3 px-3 sm:px-4">Estoque</th>
+                    <th className="hidden sm:table-cell py-3 px-4">Situação</th>
+                    <th className="py-3 px-3 sm:px-4 text-right">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/60">
@@ -215,21 +218,24 @@ export default function CatalogPage() {
                     const low = p.stockQuantity <= p.minStock;
                     return (
                       <tr key={p.id} className={p.isActive ? '' : 'opacity-60'}>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-3 sm:px-4">
                           <div className="font-semibold text-white">{p.name}</div>
                           <div className="text-xs text-slate-400 font-mono">{p.sku}</div>
+                          <div className="sm:hidden mt-1 flex items-center gap-2 text-xs text-slate-400">
+                            Custo {brl(p.costPrice)} <ActiveBadge active={p.isActive} />
+                          </div>
                         </td>
-                        <td className="py-3 px-4 whitespace-nowrap">{brl(p.costPrice)}</td>
-                        <td className="py-3 px-4 font-semibold text-white whitespace-nowrap">{brl(p.salePrice)}</td>
-                        <td className="py-3 px-4 whitespace-nowrap">
+                        <td className="hidden sm:table-cell py-3 px-4 whitespace-nowrap">{brl(p.costPrice)}</td>
+                        <td className="py-3 px-3 sm:px-4 font-semibold text-white whitespace-nowrap">{brl(p.salePrice)}</td>
+                        <td className="py-3 px-3 sm:px-4 whitespace-nowrap">
                           <span className={low ? 'text-amber-300 font-semibold inline-flex items-center gap-1' : ''}>
                             {low && <AlertTriangle className="w-3.5 h-3.5" />}
                             {p.stockQuantity} un.
                           </span>
                           <div className="text-xs text-slate-500">mín. {p.minStock}</div>
                         </td>
-                        <td className="py-3 px-4"><ActiveBadge active={p.isActive} /></td>
-                        <td className="py-3 px-4">
+                        <td className="hidden sm:table-cell py-3 px-4"><ActiveBadge active={p.isActive} /></td>
+                        <td className="py-3 px-3 sm:px-4">
                           <RowActions
                             active={p.isActive}
                             used={(p._count?.items ?? 0) > 0}
@@ -397,7 +403,7 @@ function ProductModal({ item, onClose }: { item: ProductItem | null; onClose: (c
           });
         }}
       >
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <Field label="Código (SKU) *">
             <input required value={form.sku} onChange={(e) => set('sku', e.target.value.toUpperCase())} className={`${inputCls} font-mono uppercase`} />
           </Field>

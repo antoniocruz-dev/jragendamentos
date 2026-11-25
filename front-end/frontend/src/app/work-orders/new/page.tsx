@@ -196,9 +196,9 @@ export default function NewWorkOrderPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 p-6 md:p-10">
+    <div className="min-h-full bg-slate-950 text-slate-100 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
       {/* Cabeçalho */}
-      <div className="max-w-5xl mx-auto mb-8">
+      <div className="max-w-5xl mx-auto mb-5 sm:mb-8">
         <button
           onClick={() => router.push('/')}
           className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white mb-4 transition-colors"
@@ -207,8 +207,8 @@ export default function NewWorkOrderPage() {
           Voltar para o Painel Geral
         </button>
 
-        <h1 className="text-3xl font-extrabold text-white flex items-center gap-3">
-          <Wrench className="w-8 h-8 text-amber-500" />
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white flex items-center gap-2.5">
+          <Wrench className="w-6 h-6 sm:w-7 sm:h-7 text-amber-500 shrink-0" />
           Abertura de Ordem de Serviço (Balcão)
         </h1>
         <p className="text-slate-400 mt-1">
@@ -216,17 +216,17 @@ export default function NewWorkOrderPage() {
         </p>
       </div>
 
-      <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-5 lg:gap-8">
         {/* Coluna 1 & 2: Formulário Operacional */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-5 sm:space-y-6">
           {/* Etapa 1: Busca do Carro */}
-          <div className="bg-slate-800/80 border border-slate-700/60 rounded-xl p-6 shadow-sm">
+          <div className="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-4 sm:p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-white flex items-center gap-2 mb-4">
               <Car className="w-5 h-5 text-amber-500" />
               1. Identificação do Veículo
             </h2>
 
-            <form onSubmit={handleSearchPlate} className="flex gap-3 mb-4">
+            <form onSubmit={handleSearchPlate} className="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-4">
               <div className="relative flex-1">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
@@ -276,7 +276,7 @@ export default function NewWorkOrderPage() {
           </div>
 
           {/* Etapa 2: Queixa do Cliente */}
-          <div className="bg-slate-800/80 border border-slate-700/60 rounded-xl p-6 shadow-sm">
+          <div className="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-4 sm:p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-white flex items-center gap-2 mb-4">
               <FileText className="w-5 h-5 text-amber-500" />
               2. Queixa / Relato do Cliente
@@ -291,7 +291,7 @@ export default function NewWorkOrderPage() {
           </div>
 
           {/* Etapa 3: Itens da OS */}
-          <div className="bg-slate-800/80 border border-slate-700/60 rounded-xl p-6 shadow-sm">
+          <div className="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-4 sm:p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                 <Package className="w-5 h-5 text-amber-500" />
@@ -399,7 +399,7 @@ export default function NewWorkOrderPage() {
 
         {/* Coluna 3: Resumo Financeiro & Ação */}
         <div className="space-y-6">
-          <div className="bg-slate-800/80 border border-slate-700/60 rounded-xl p-6 shadow-sm sticky top-6">
+          <div className="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-4 sm:p-6 shadow-sm lg:sticky lg:top-20">
             <h2 className="text-lg font-semibold text-white flex items-center gap-2 mb-4">
               <DollarSign className="w-5 h-5 text-emerald-400" />
               Resumo do Orçamento

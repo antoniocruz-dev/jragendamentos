@@ -34,8 +34,13 @@ export class WorkOrdersController {
   // Lista de OS (o Dashboard usa /dashboard/summary)
   @RequireModules('WORK_ORDERS')
   @Get()
-  async listAll(@Query('status') status?: WorkOrderStatus) {
-    return this.workOrdersService.listAll(status);
+  async listAll(
+    @Query('status') status?: string,
+    @Query('q') q?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    return this.workOrdersService.listAll({ status, q, page, pageSize });
   }
 
   /** Equipe ativa, para escolher o mecânico responsável ao registrar o pagamento. */

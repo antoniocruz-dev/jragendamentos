@@ -189,23 +189,23 @@ function Financial() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 lg:p-10">
+    <div className="min-h-full bg-slate-950 text-slate-100 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
       <div className="max-w-7xl mx-auto space-y-5">
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-800 pb-5">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-3">
-              <Wallet className="w-8 h-8 text-amber-500" />
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white flex items-center gap-2.5">
+              <Wallet className="w-6 h-6 sm:w-7 sm:h-7 text-amber-500 shrink-0" />
               Financeiro
             </h1>
-            <p className="text-sm text-slate-400 mt-1">
+            <p className="text-xs sm:text-sm text-slate-400 mt-1">
               Gestão interna: faturamento, custo de peças, mão de obra, ISS, comissões e despesas. Não compartilhe com clientes.
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 sm:flex gap-2">
             <button
               onClick={() => runExport('excel')}
               disabled={!report || !!exporting}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-600/30 disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 px-3 py-2.5 sm:py-2 rounded-lg text-sm font-semibold bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-600/30 disabled:opacity-50"
             >
               {exporting === 'excel' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
               Excel
@@ -213,7 +213,7 @@ function Financial() {
             <button
               onClick={() => runExport('pdf')}
               disabled={!report || !!exporting}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold bg-rose-600/15 text-rose-300 border border-rose-500/30 hover:bg-rose-600/25 disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 px-3 py-2.5 sm:py-2 rounded-lg text-sm font-semibold bg-rose-600/15 text-rose-300 border border-rose-500/30 hover:bg-rose-600/25 disabled:opacity-50"
             >
               {exporting === 'pdf' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
               PDF
@@ -224,12 +224,12 @@ function Financial() {
         {/* Filtros */}
         <section className="bg-slate-900 border border-slate-800 rounded-2xl p-3 space-y-3">
           <div className="flex flex-col xl:flex-row xl:items-center gap-3">
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex gap-1.5 scroll-x -mx-3 px-3 sm:mx-0 sm:px-0 sm:flex-wrap pb-1 sm:pb-0">
               {PRESETS.map((p) => (
                 <button
                   key={p.key}
                   onClick={() => choosePreset(p.key)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${
+                  className={`shrink-0 whitespace-nowrap px-3 py-2 sm:py-1.5 rounded-lg text-xs font-semibold border ${
                     preset === p.key ? 'bg-amber-500 text-slate-950 border-amber-500' : 'bg-slate-800/80 text-slate-300 border-slate-700/60 hover:bg-slate-700'
                   }`}
                 >
@@ -237,18 +237,18 @@ function Financial() {
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-2 xl:ml-auto text-sm">
-              <label className="flex items-center gap-1.5 text-slate-400">
+            <div className="grid grid-cols-2 gap-2 xl:flex xl:items-center xl:ml-auto text-sm">
+              <label className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-slate-400 min-w-0">
                 De
-                <input type="date" value={range.from} max={range.to} onChange={(e) => { setPreset('custom'); setLoading(true); setRange((r) => ({ ...r, from: e.target.value })); }} className="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200 [color-scheme:dark]" />
+                <input type="date" value={range.from} max={range.to} onChange={(e) => { setPreset('custom'); setLoading(true); setRange((r) => ({ ...r, from: e.target.value })); }} className="w-full min-w-0 bg-slate-950 border border-slate-700 rounded-lg px-2 py-2 sm:py-1.5 text-slate-200 [color-scheme:dark]" />
               </label>
-              <label className="flex items-center gap-1.5 text-slate-400">
+              <label className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-slate-400 min-w-0">
                 até
-                <input type="date" value={range.to} min={range.from} onChange={(e) => { setPreset('custom'); setLoading(true); setRange((r) => ({ ...r, to: e.target.value })); }} className="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200 [color-scheme:dark]" />
+                <input type="date" value={range.to} min={range.from} onChange={(e) => { setPreset('custom'); setLoading(true); setRange((r) => ({ ...r, to: e.target.value })); }} className="w-full min-w-0 bg-slate-950 border border-slate-700 rounded-lg px-2 py-2 sm:py-1.5 text-slate-200 [color-scheme:dark]" />
               </label>
             </div>
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2">
             <select value={groupBy} onChange={(e) => { setLoading(true); setGroupBy(e.target.value as GroupBy); }} className={inputCls} aria-label="Agrupar por">
               <option value="week">Agrupar por semana</option>
               <option value="month">Agrupar por mês</option>
@@ -267,7 +267,7 @@ function Financial() {
           </div>
         </section>
 
-        <nav className="flex gap-1.5 overflow-x-auto pb-1">
+        <nav className="flex gap-1.5 scroll-x -mx-4 px-4 sm:mx-0 sm:px-0 pb-1">
           {TABS.map(({ key, label, icon: Icon }) => (
             <button
               key={key}

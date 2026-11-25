@@ -275,9 +275,9 @@ export default function WorkOrderDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 p-6 md:p-10">
+    <div className="min-h-full bg-slate-950 text-slate-100 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
       {/* Barra de Navegação e Cabeçalho */}
-      <div className="max-w-5xl mx-auto mb-8">
+      <div className="max-w-5xl mx-auto mb-5 sm:mb-8">
         {isStaff && (
           <button
             onClick={() => router.push('/')}
@@ -291,7 +291,7 @@ export default function WorkOrderDetailPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-6">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-extrabold text-white font-mono">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-white font-mono">
                 OS #{order.code}
               </h1>
               <span
@@ -342,11 +342,11 @@ export default function WorkOrderDetailPage() {
         )}
       </div>
 
-      <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-5 lg:gap-8">
         {/* Coluna 1 & 2: Detalhes do Veículo, Cliente, Queixas e Itens */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-5 sm:space-y-6">
           {/* Card: Veículo & Cliente */}
-          <div className="bg-slate-800/80 border border-slate-700/60 rounded-xl p-6 shadow-sm grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-4 sm:p-6 shadow-sm grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
               <div className="flex items-center gap-2 text-slate-400 mb-2 text-xs font-semibold uppercase tracking-wider">
                 <Car className="w-4 h-4 text-sky-400" />
@@ -376,7 +376,7 @@ export default function WorkOrderDetailPage() {
 
           {/* Card: Relato e Notas Técnicas */}
           {(order.reportedIssue || order.technicalNotes) && (
-            <div className="bg-slate-800/80 border border-slate-700/60 rounded-xl p-6 shadow-sm space-y-4">
+            <div className="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
               {order.reportedIssue && (
                 <div>
                   <div className="flex items-center gap-2 text-xs font-semibold uppercase text-slate-400 mb-1">
@@ -466,7 +466,7 @@ export default function WorkOrderDetailPage() {
         {/* Coluna 3: Painel de Ações & Fluxo Financeiro */}
         <div className="space-y-6">
           {/* Card de Resumo de Valores */}
-          <div className="bg-slate-800/80 border border-slate-700/60 rounded-xl p-6 shadow-sm">
+          <div className="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-4 sm:p-6 shadow-sm">
             <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
               <DollarSign className="w-4 h-4 text-emerald-400" />
               Resumo Financeiro

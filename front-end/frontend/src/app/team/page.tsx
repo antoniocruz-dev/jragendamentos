@@ -58,19 +58,19 @@ export default function TeamPage() {
   const [tab, setTab] = useState<'users' | 'profiles'>('users');
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 lg:p-10">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="border-b border-slate-800 pb-6">
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-3">
-            <UserCog className="w-8 h-8 text-amber-500" />
+    <div className="min-h-full bg-slate-950 text-slate-100 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+      <div className="max-w-7xl mx-auto space-y-5 sm:space-y-6">
+        <div className="border-b border-slate-800 pb-4 sm:pb-6">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white flex items-center gap-2.5">
+            <UserCog className="w-6 h-6 sm:w-7 sm:h-7 text-amber-500 shrink-0" />
             Equipe
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-400 mt-1">
             Cadastre os usuários da oficina e defina quais módulos cada perfil pode acessar.
           </p>
         </div>
 
-        <div className="flex gap-1.5">
+        <div className="grid grid-cols-2 sm:flex gap-1.5">
           {(
             [
               ['users', 'Usuários', Users],
@@ -80,7 +80,7 @@ export default function TeamPage() {
             <button
               key={key}
               onClick={() => setTab(key)}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
+              className={`inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold border transition-all ${
                 tab === key
                   ? 'bg-amber-500 text-slate-950 border-amber-500'
                   : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
@@ -172,10 +172,10 @@ function UsersTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex sm:justify-end">
         <button
           onClick={() => setShowForm(true)}
-          className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-5 py-3 rounded-xl text-sm shadow-md shadow-amber-500/20"
+          className="w-full sm:w-auto justify-center inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-sm shadow-md shadow-amber-500/20"
         >
           <UserPlus className="w-5 h-5" />
           Novo usuário
@@ -194,12 +194,12 @@ function UsersTab() {
             <table className="w-full text-left text-sm text-slate-300">
               <thead className="bg-slate-950/80 text-xs uppercase font-bold text-slate-400 border-b border-slate-800">
                 <tr>
-                  <th className="py-3 px-5">Nome</th>
-                  <th className="py-3 px-5">Contato</th>
-                  <th className="py-3 px-5">Perfil</th>
-                  <th className="py-3 px-5">Comissão</th>
-                  <th className="py-3 px-5">Situação</th>
-                  <th className="py-3 px-5 text-right">Ações</th>
+                  <th className="py-3 px-3 sm:px-5">Nome</th>
+                  <th className="hidden md:table-cell py-3 px-3 sm:px-5">Contato</th>
+                  <th className="hidden sm:table-cell py-3 px-3 sm:px-5">Perfil</th>
+                  <th className="hidden lg:table-cell py-3 px-3 sm:px-5">Comissão</th>
+                  <th className="hidden md:table-cell py-3 px-3 sm:px-5">Situação</th>
+                  <th className="py-3 px-3 sm:px-5 text-right">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/80">
@@ -211,17 +211,41 @@ function UsersTab() {
 
                   return (
                     <tr key={u.id} className={u.isActive ? '' : 'opacity-50'}>
-                      <td className="py-3 px-5">
+                      <td className="py-3 px-3 sm:px-5">
                         <div className="font-semibold text-white">
                           {u.name}
                           {isSelf && <span className="ml-2 text-[10px] text-amber-400">(você)</span>}
                         </div>
+                        <div className="md:hidden text-xs text-slate-400 break-all">{u.email}</div>
+                        <div className="lg:hidden text-xs text-slate-500">
+                          Comissão {Number(u.commissionRate).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%
+                          {!u.isActive && <span className="md:hidden"> · Inativo</span>}
+                        </div>
+                        <div className="sm:hidden mt-1.5">
+                          {locked || isSelf ? (
+                            <span className="text-xs text-slate-300">{u.profile ? PROFILE_LABELS[u.profile] : '—'}</span>
+                          ) : (
+                            <select
+                              value={u.profile ?? ''}
+                              disabled={busy}
+                              aria-label={`Perfil de ${u.name}`}
+                              onChange={(e) => updateUser(u, { profile: e.target.value as StaffProfile })}
+                              className="w-full bg-slate-950 border border-slate-700/80 rounded-lg px-2 py-1.5 text-slate-200 focus:outline-none focus:border-amber-500"
+                            >
+                              {assignableProfiles.map((p) => (
+                                <option key={p} value={p}>
+                                  {PROFILE_LABELS[p]}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
                       </td>
-                      <td className="py-3 px-5">
+                      <td className="hidden md:table-cell py-3 px-3 sm:px-5">
                         <div>{u.email}</div>
                         {u.phone && <div className="text-xs text-slate-500">{u.phone}</div>}
                       </td>
-                      <td className="py-3 px-5">
+                      <td className="hidden sm:table-cell py-3 px-3 sm:px-5">
                         {locked || isSelf ? (
                           <span className="inline-flex items-center gap-1.5 text-slate-300">
                             {locked && <Lock className="w-3.5 h-3.5 text-slate-500" />}
@@ -242,10 +266,10 @@ function UsersTab() {
                           </select>
                         )}
                       </td>
-                      <td className="py-3 px-5 tabular-nums" title="Comissão sobre a mão de obra das OS faturadas">
+                      <td className="hidden lg:table-cell py-3 px-3 sm:px-5 tabular-nums" title="Comissão sobre a mão de obra das OS faturadas">
                         {Number(u.commissionRate).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%
                       </td>
-                      <td className="py-3 px-5">
+                      <td className="hidden md:table-cell py-3 px-3 sm:px-5">
                         <span
                           className={`inline-flex px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
                             u.isActive
@@ -256,8 +280,8 @@ function UsersTab() {
                           {u.isActive ? 'Ativo' : 'Inativo'}
                         </span>
                       </td>
-                      <td className="py-3 px-5">
-                        <div className="flex justify-end gap-2">
+                      <td className="py-3 px-3 sm:px-5">
+                        <div className="flex flex-wrap justify-end gap-1.5 sm:gap-2">
                           {!locked && (
                             <button
                               onClick={() => setEditingUser(u)}
@@ -379,20 +403,20 @@ function NewUserModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[80] bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4" onClick={onClose}>
       <form
         onSubmit={handleSubmit}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl"
+        className="w-full sm:max-w-lg max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto overscroll-contain bg-slate-900 border border-slate-800 rounded-t-2xl sm:rounded-2xl shadow-2xl pb-[env(safe-area-inset-bottom)] sm:pb-0"
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+        <div className="sticky top-0 z-10 bg-slate-900 flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-800">
           <h3 className="text-lg font-bold text-white">Novo usuário da equipe</h3>
           <button type="button" onClick={onClose} className="text-slate-400 hover:text-white">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="px-6 py-5 space-y-4">
+        <div className="px-4 sm:px-6 py-4 sm:py-5 space-y-4">
           <label className="block">
             <span className="text-xs font-semibold text-slate-400">Nome</span>
             <input required minLength={3} value={form.name} onChange={set('name')} className={`${inputCls} mt-1`} />
@@ -447,7 +471,7 @@ function NewUserModal({
           )}
         </div>
 
-        <div className="flex justify-end gap-2 px-6 py-4 border-t border-slate-800">
+        <div className="sticky bottom-0 bg-slate-900 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-800">
           <button
             type="button"
             onClick={onClose}
@@ -490,19 +514,19 @@ function EditUserModal({ user, onClose, onSaved }: { user: TeamUser; onClose: ()
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[80] bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4" onClick={onClose}>
       <form
         onSubmit={handleSubmit}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl"
+        className="w-full sm:max-w-lg max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto overscroll-contain bg-slate-900 border border-slate-800 rounded-t-2xl sm:rounded-2xl shadow-2xl pb-[env(safe-area-inset-bottom)] sm:pb-0"
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+        <div className="sticky top-0 z-10 bg-slate-900 flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-800">
           <h3 className="text-lg font-bold text-white">Editar usuário</h3>
           <button type="button" onClick={onClose} className="text-slate-400 hover:text-white">
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="px-6 py-5 space-y-4">
+        <div className="px-4 sm:px-6 py-4 sm:py-5 space-y-4">
           <label className="block">
             <span className="text-xs font-semibold text-slate-400">Nome</span>
             <input required minLength={3} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={`${inputCls} mt-1`} />
@@ -525,7 +549,7 @@ function EditUserModal({ user, onClose, onSaved }: { user: TeamUser; onClose: ()
           <p className="text-[11px] text-slate-500">Perfil, senha e situação são alterados direto na tabela.</p>
           {error && <div className="text-sm text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-xl p-3">{error}</div>}
         </div>
-        <div className="flex justify-end gap-2 px-6 py-4 border-t border-slate-800">
+        <div className="sticky bottom-0 bg-slate-900 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-800">
           <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm font-semibold text-slate-300">
             Cancelar
           </button>
@@ -611,7 +635,7 @@ function ProfilesTab() {
         <table className="w-full text-sm text-slate-300">
           <thead className="bg-slate-950/80 text-xs uppercase font-bold text-slate-400 border-b border-slate-800">
             <tr>
-              <th className="py-3 px-5 text-left">Perfil</th>
+              <th className="sticky left-0 z-10 bg-slate-950 py-3 px-3 sm:px-5 text-left">Perfil</th>
               {data.modules.map((m) => (
                 <th key={m.key} className="py-3 px-3 text-center whitespace-nowrap">
                   {m.label}
@@ -619,7 +643,7 @@ function ProfilesTab() {
               ))}
               <th className="py-3 px-3 text-center whitespace-nowrap">Equipe</th>
               <th className="py-3 px-3 text-center whitespace-nowrap">Excluir / Inativar</th>
-              <th className="py-3 px-5" />
+              <th className="py-3 px-3 sm:px-5" />
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/80">
@@ -627,7 +651,7 @@ function ProfilesTab() {
               const dirty = drafts[p.profile] !== undefined;
               return (
                 <tr key={p.profile}>
-                  <td className="py-3 px-5">
+                  <td className="sticky left-0 z-10 bg-slate-900 py-3 px-3 sm:px-5 min-w-36">
                     <div className="font-semibold text-white flex items-center gap-1.5">
                       {p.locked && <Lock className="w-3.5 h-3.5 text-slate-500" />}
                       {p.label}
@@ -664,7 +688,7 @@ function ProfilesTab() {
                       className="w-4 h-4 accent-amber-500"
                     />
                   </td>
-                  <td className="py-3 px-5 text-right whitespace-nowrap">
+                  <td className="py-3 px-3 sm:px-5 text-right whitespace-nowrap">
                     {p.locked ? (
                       <span className="text-[11px] text-slate-500">Acesso total</span>
                     ) : dirty ? (
