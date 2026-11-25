@@ -1,6 +1,6 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { Type } from 'class-transformer';
-import { IsBoolean, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Length, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Length, Min, NotEquals } from 'class-validator';
 
 export class CreateServiceDto {
   @IsString()
@@ -69,4 +69,22 @@ export class UpdateProductDto extends PartialType(CreateProductDto) {}
 export class SetActiveDto {
   @IsBoolean()
   isActive: boolean;
+}
+
+/** Entrada (+) ou saída (-) manual de peças, com motivo para auditoria. */
+export class StockAdjustmentDto {
+  @Type(() => Number)
+  @IsInt({ message: 'A quantidade deve ser um número inteiro.' })
+  @NotEquals(0, { message: 'Informe uma quantidade diferente de zero.' })
+  quantity: number;
+
+  @IsString()
+  @IsNotEmpty({ message: 'Informe o motivo da movimentação.' })
+  @Length(3, 255)
+  reason: string;
+
+  /** Permite saldo negativo (só o Administrador). */
+  @IsOptional()
+  @IsBoolean()
+  allowNegative?: boolean;
 }

@@ -3,16 +3,18 @@
 import React, { useEffect, useState } from 'react';
 import { Wrench, LogIn, ShieldPlus, Loader2 } from 'lucide-react';
 import { fetchApi } from '@/services/api';
-import { saveSession, type AuthSession } from '@/services/auth';
+import { isClientUser, saveSession, type AuthSession } from '@/services/auth';
 
 function errorMessage(err: unknown) {
   return err instanceof Error ? err.message : String(err);
 }
 
-/** Destino após o login: só caminhos internos (evita redirecionamento aberto). */
-function nextPath() {
+/** Destino após o login: só caminhos internos (evita redirecionamento aberto). Cliente: só o portal. */
+function nextPath(isClient: boolean) {
   const next = new URLSearchParams(window.location.search).get('next');
-  return next && next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/login') ? next : '/';
+  const safe = next && next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/login') ? next : null;
+  if (isClient) return safe && (safe.startsWith('/portal') || safe.startsWith('/os/')) ? safe : '/portal';
+  return safe && !safe.startsWith('/portal') ? safe : '/';
 }
 
 export default function LoginPage() {
@@ -38,11 +40,13 @@ export default function LoginPage() {
       const session = await fetchApi<AuthSession>(setupRequired ? '/auth/setup' : '/auth/login', {
         method: 'POST',
         skipAuthRedirect: true,
+        successToast: false,
+        errorToast: false,
         token: '', // não envia token antigo
         body: JSON.stringify(setupRequired ? { name, email, password } : { email, password }),
       });
       saveSession(session);
-      window.location.assign(nextPath());
+      window.location.assign(nextPath(isClientUser(session.user)));
     } catch (err) {
       setError(errorMessage(err));
       setSubmitting(false);

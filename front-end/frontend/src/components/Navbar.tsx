@@ -16,9 +16,10 @@ import {
   X,
   LogOut,
   UserCog,
+  Home,
 } from 'lucide-react';
 import type { AppModule } from '@/services/permissions';
-import { useAuth, clearSession } from '@/services/auth';
+import { useAuth, clearSession, isClientUser } from '@/services/auth';
 import { isPublicPath } from '@/components/AuthGate';
 
 type NavItem = { name: string; short: string; href: string; icon: typeof Wrench; module: AppModule };
@@ -71,7 +72,10 @@ export default function Navbar() {
   // Oculta a navegação administrativa na página pública do cliente (/os/[id]) e no login
   if (isPublicPath(pathname)) return null;
 
-  const visibleItems = navItems.filter((item) => user?.modules?.includes(item.module));
+  // Cliente: só o próprio portal
+  const visibleItems = isClientUser(user)
+    ? [{ name: 'Meu portal', short: 'Portal', href: '/portal', icon: Home, module: 'DASHBOARD' as AppModule }]
+    : navItems.filter((item) => user?.modules?.includes(item.module));
   const current = activeHref(pathname, visibleItems);
   const bottomItems = visibleItems.slice(0, 4);
   const firstName = user?.name.split(' ')[0] ?? '';
@@ -85,7 +89,7 @@ export default function Navbar() {
     <>
       <header className="bg-slate-900/95 backdrop-blur border-b border-slate-800 sticky top-0 z-50 pt-[env(safe-area-inset-top)]">
         <div className="max-w-7xl mx-auto px-4 lg:px-6 flex items-center justify-between gap-3 h-14 lg:h-16">
-          <Link href="/" className="flex items-center gap-2.5 min-w-0">
+          <Link href={isClientUser(user) ? '/portal' : '/'} className="flex items-center gap-2.5 min-w-0">
             <div className="bg-amber-500/10 border border-amber-500/30 p-1.5 lg:p-2 rounded-xl text-amber-500 shrink-0">
               <Wrench className="w-5 h-5" />
             </div>

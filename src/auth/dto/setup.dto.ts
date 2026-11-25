@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, Length, MinLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, Length } from 'class-validator';
 
 /** Criação do primeiro administrador (só funciona com a base de usuários vazia). */
 export class SetupAdminDto {
@@ -10,8 +10,9 @@ export class SetupAdminDto {
   @IsEmail({}, { message: 'Forneça um e-mail válido.' })
   email: string;
 
+  // O tamanho mínimo (8) é conferido no serviço, que responde 422
   @IsString()
-  @MinLength(8, { message: 'A senha do administrador deve ter no mínimo 8 caracteres.' })
+  @IsNotEmpty({ message: 'A senha é obrigatória.' })
   password: string;
 
   @IsOptional()

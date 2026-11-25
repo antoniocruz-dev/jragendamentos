@@ -3,6 +3,7 @@ import {
   Post,
   Body,
   Query,
+  Headers,
   HttpCode,
   HttpStatus,
   ValidationPipe,
@@ -36,7 +37,9 @@ export class PaymentsController {
   async handleWebhook(
     @Body() body: any,
     @Query() query: any,
+    @Headers('x-signature') signature?: string,
+    @Headers('x-request-id') requestId?: string,
   ) {
-    return this.paymentsService.handleWebhook(body, query);
+    return this.paymentsService.handleWebhook(body, query, { signature, requestId });
   }
 }

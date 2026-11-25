@@ -5,6 +5,7 @@ import './globals.css';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import AuthGate from '@/components/AuthGate';
+import { ConnectionBanner, Toaster } from '@/components/feedback';
 
 //const inter = Inter({ subsets: ['latin'] });
 
@@ -40,6 +41,7 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <Navbar />
         </Suspense>
+        <ConnectionBanner />
         <main className="flex-1 min-w-0">
           {/* AuthGate usa usePathname(): mesmo motivo do Suspense acima */}
           <Suspense fallback={null}>
@@ -49,6 +51,7 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <Footer />
         </Suspense>
+        <Toaster />
       </body>
     </html>
   );

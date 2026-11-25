@@ -93,6 +93,18 @@ enum PaymentGateway {
   MANUAL
 }
 
+/// Situação do estorno de uma OS faturada que foi cancelada (o caixa e o estoque não voltam sozinhos)
+enum RefundStatus {
+  PENDING // Aguardando auditoria do Administrador
+  REFUNDED // Estorno feito: entrada do caixa cancelada (e peças devolvidas, se marcado)
+  WAIVED // Sem devolução ao cliente: a receita permanece
+}
+
+enum AlertType {
+  STOCK_SHORTAGE // OS aprovada sem peças suficientes (foi para Aguardando Peças)
+  PAYMENT_REJECTED // Pagamento recusado pelo Mercado Pago
+}
+
 enum PaymentStatus {
   PENDING
   APPROVED
@@ -220,7 +232,8 @@ model Product {
   minStock      Int     @default(2) @map("min_stock")
   isActive      Boolean @default(true) @map("is_active")
 
-  items WorkOrderItem[]
+  items     WorkOrderItem[]
+  movements StockMovement[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -268,11 +281,26 @@ model WorkOrder {
   issRate        Decimal?       @map("iss_rate") @db.Decimal(5, 2)
   commissionRate Decimal?       @map("commission_rate") @db.Decimal(5, 2)
 
+  /// As peças da OS já saíram do estoque (baixa feita na aprovação)
+  stockReserved Boolean @default(false) @map("stock_reserved")
+
+  // Cancelamento (de OS faturada gera pendência de estorno manual)
+  cancelledAt      DateTime?     @map("cancelled_at")
+  cancelReason     String?       @map("cancel_reason") @db.Text
+  refundStatus     RefundStatus? @map("refund_status")
+  refundResolvedAt DateTime?     @map("refund_resolved_at")
+  refundResolvedBy String?       @map("refund_resolved_by") @db.VarChar(150)
+  refundNotes      String?       @map("refund_notes") @db.Text
+
+  stockMovements StockMovement[]
+  alerts         SystemAlert[]
+
   @@index([billedAt])
   @@index([clientId])
   @@index([vehicleId])
   @@index([status])
   @@index([createdAt])
+  @@index([refundStatus])
   @@map("work_orders")
 }
 
@@ -387,4 +415,50 @@ model FinancialSettings {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("financial_settings")
+}
+
+// ==========================================
+// ESTOQUE, ALERTAS E SEGURANÇA
+// ==========================================
+
+/// Histórico de entradas e saídas de peças (auditoria)
+model StockMovement {
+  id          String   @id @default(uuid()) @db.Uuid
+  productId   String   @map("product_id") @db.Uuid
+  quantity    Int // positivo = entrada, negativo = saída
+  balance     Int // saldo após o movimento
+  reason      String   @db.VarChar(255)
+  workOrderId String?  @map("work_order_id") @db.Uuid
+  userName    String?  @map("user_name") @db.VarChar(150)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  workOrder WorkOrder? @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+
+  @@index([productId, createdAt])
+  @@map("stock_movements")
+}
+
+/// Avisos para a equipe (Dashboard): falta de peças, pagamento recusado...
+model SystemAlert {
+  id          String    @id @default(uuid()) @db.Uuid
+  type        AlertType
+  message     String    @db.VarChar(500)
+  workOrderId String?   @map("work_order_id") @db.Uuid
+  resolvedAt  DateTime? @map("resolved_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  workOrder WorkOrder? @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  @@index([resolvedAt, createdAt])
+  @@map("system_alerts")
+}
+
+/// Janela de tentativas de login por IP (limite contra força bruta, vale entre instâncias)
+model AuthRateLimit {
+  key         String   @id @db.VarChar(120)
+  windowStart DateTime @map("window_start")
+  count       Int
+
+  @@map("auth_rate_limits")
 }

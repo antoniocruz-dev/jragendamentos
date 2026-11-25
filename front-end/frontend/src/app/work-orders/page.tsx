@@ -2,9 +2,10 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ClipboardList, Play, CheckCircle, Share2, Eye, PlusCircle, Wrench } from 'lucide-react';
+import { ClipboardList, Play, CheckCircle, Share2, Eye, PlusCircle } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { fetchApi } from '@/services/api';
+import { ErrorState, ListSkeleton } from '@/components/feedback';
 import {
   FormError,
   PageHeader,
@@ -196,7 +197,8 @@ export default function WorkOrdersGeneralPage() {
       });
       setReloadKey((k) => k + 1);
     } catch (err) {
-      alert(`Erro ao atualizar status: ${errorMessage(err)}`);
+      // o aviso de erro já é mostrado pelo fetchApi (toast)
+      void err;
     } finally {
       setActionLoadingId(null);
     }
@@ -248,14 +250,19 @@ export default function WorkOrdersGeneralPage() {
         </div>
       </div>
 
-      {error && <FormError message={error} />}
+      {error && data && <FormError message={error} />}
 
       <div className={`transition-opacity ${loading && data ? 'opacity-60' : ''}`} aria-busy={loading}>
         {loading && !data ? (
-          <div className="p-16 text-center text-slate-400 flex flex-col items-center justify-center gap-3">
-            <Wrench className="w-8 h-8 text-amber-500 animate-spin" />
-            <span>Carregando Ordens de Serviço...</span>
-          </div>
+          <ListSkeleton rows={5} label="Carregando Ordens de Serviço..." />
+        ) : error && !data ? (
+          <ErrorState
+            message={`Não foi possível carregar as Ordens de Serviço: ${error}`}
+            onRetry={() => {
+              setLoading(true);
+              setReloadKey((k) => k + 1);
+            }}
+          />
         ) : orders.length === 0 ? (
           <div className="p-12 text-center text-slate-400 bg-slate-900 border border-slate-800 rounded-2xl">
             <ClipboardList className="w-12 h-12 text-slate-600 mx-auto mb-3" />

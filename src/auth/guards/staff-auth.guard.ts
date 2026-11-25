@@ -5,6 +5,7 @@ import { UserRole } from '@prisma/client';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator.js';
 import { REQUIRED_MODULES_KEY } from '../decorators/require-modules.decorator.js';
 import { MANAGERS_ONLY_KEY } from '../decorators/managers-only.decorator.js';
+import { CLIENT_PORTAL_KEY } from '../decorators/client-portal.decorator.js';
 import { TEAM_MANAGER_PROFILES } from '../permissions.js';
 
 /** Perfis da equipe da oficina que podem usar o sistema interno. */
@@ -33,6 +34,17 @@ export class StaffAuthGuard extends AuthGuard('jwt') {
     const user = context.switchToHttp().getRequest().user as
       | { role?: string; profile?: string | null; modules?: string[] }
       | undefined;
+
+    // Portal do Cliente: rotas exclusivas do papel CLIENT (dados filtrados pelo cliente do token)
+    const isPortal = this.reflector.getAllAndOverride<boolean>(CLIENT_PORTAL_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (isPortal) {
+      if (user?.role !== UserRole.CLIENT) throw new ForbiddenException('Área exclusiva do Portal do Cliente.');
+      return true;
+    }
+
     if (!user?.role || !STAFF_ROLES.includes(user.role)) {
       throw new ForbiddenException('Acesso restrito à equipe da oficina.');
     }

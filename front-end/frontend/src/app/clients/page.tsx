@@ -2,8 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Users, Plus, Car, Phone, FileText, History, Pencil, Trash2, Gauge, Mail, MapPin } from 'lucide-react';
+import { Users, Plus, KeyRound, Car, Phone, FileText, History, Pencil, Trash2, Gauge, Mail, MapPin } from 'lucide-react';
 import { fetchApi } from '@/services/api';
+import { ErrorState, ListSkeleton } from '@/components/feedback';
 import { useAuth } from '@/services/auth';
 import { canManageRecords } from '@/services/permissions';
 import {
@@ -54,6 +55,8 @@ interface Client {
   city?: string | null;
   state?: string | null;
   vehicles: Vehicle[];
+  /** Login do cliente no Portal do Cliente (se houver) */
+  user?: { email: string; isActive: boolean } | null;
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -87,6 +90,7 @@ type ModalState =
   | { kind: 'client'; client: Client | null }
   | { kind: 'vehicle'; client: Client; vehicle: Vehicle | null }
   | { kind: 'history'; client: Client; vehicle: Vehicle }
+  | { kind: 'portal'; client: Client }
   | null;
 
 export default function ClientsPage() {
@@ -131,7 +135,8 @@ export default function ClientsPage() {
       await fetchApi(`/clients/${c.id}`, { method: 'DELETE' });
       loadClients();
     } catch (err) {
-      alert(errorMessage(err));
+      // o aviso de erro já é mostrado pelo fetchApi (toast)
+      void err;
     } finally {
       setBusyId(null);
     }
@@ -144,7 +149,8 @@ export default function ClientsPage() {
       await fetchApi(`/clients/vehicles/${v.id}`, { method: 'DELETE' });
       loadClients();
     } catch (err) {
-      alert(errorMessage(err));
+      // o aviso de erro já é mostrado pelo fetchApi (toast)
+      void err;
     } finally {
       setBusyId(null);
     }
@@ -183,15 +189,10 @@ export default function ClientsPage() {
           <p className="text-xs text-slate-500">Exclusões só podem ser feitas pelo Administrador ou Gerente Geral.</p>
         )}
 
-        {loading ? (
-          <div className="p-12 text-center text-slate-400">Carregando clientes...</div>
-        ) : error ? (
-          <div className="p-8 text-center space-y-3">
-            <FormError message={error} />
-            <button onClick={loadClients} className="text-sm font-semibold text-amber-400 hover:text-amber-300">
-              Tentar novamente
-            </button>
-          </div>
+        {loading && !data ? (
+          <ListSkeleton rows={4} label="Carregando clientes..." />
+        ) : error && !data ? (
+          <ErrorState message={error} onRetry={loadClients} />
         ) : filtered.length === 0 ? (
           <div className="p-12 text-center text-slate-400">Nenhum cliente encontrado.</div>
         ) : (
@@ -214,6 +215,12 @@ export default function ClientsPage() {
                     </div>
                   </div>
                   <div className="flex gap-1.5 shrink-0">
+                    <ActionBtn
+                      icon={KeyRound}
+                      label={client.user?.isActive ? 'Portal ✓' : 'Portal'}
+                      tone={client.user?.isActive ? 'success' : 'neutral'}
+                      onClick={() => setModal({ kind: 'portal', client })}
+                    />
                     <ActionBtn icon={Pencil} label="Editar" onClick={() => setModal({ kind: 'client', client })} />
                     {isManager && (
                       <ActionBtn icon={Trash2} label="Excluir" tone="danger" disabled={busyId === client.id} onClick={() => removeClient(client)} />
@@ -274,7 +281,71 @@ export default function ClientsPage() {
       {modal?.kind === 'client' && <ClientModal client={modal.client} onClose={closeAndReload} />}
       {modal?.kind === 'vehicle' && <VehicleModal client={modal.client} vehicle={modal.vehicle} onClose={closeAndReload} />}
       {modal?.kind === 'history' && <HistoryModal vehicle={modal.vehicle} onClose={() => setModal(null)} />}
+      {modal?.kind === 'portal' && <PortalAccessModal client={modal.client} canRevoke={isManager} onClose={closeAndReload} />}
     </PageShell>
+  );
+}
+
+/** Login do cliente no Portal do Cliente: criar, redefinir senha ou bloquear. */
+function PortalAccessModal({ client, canRevoke, onClose }: { client: Client; canRevoke: boolean; onClose: (changed: boolean) => void }) {
+  const active = !!client.user?.isActive;
+  const [email, setEmail] = useState(client.user?.email ?? client.email ?? '');
+  const [password, setPassword] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    try {
+      setSaving(true);
+      await fetchApi(`/clients/${client.id}/portal-access`, {
+        method: 'POST',
+        body: JSON.stringify({ email: email.trim(), password }),
+        successToast: active ? 'Acesso do cliente atualizado.' : 'Acesso ao portal criado. Envie o e-mail e a senha ao cliente.',
+      });
+      onClose(true);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function revoke() {
+    if (!confirm(`Bloquear o acesso de ${client.name} ao portal? O cadastro e o histórico continuam.`)) return;
+    try {
+      setSaving(true);
+      await fetchApi(`/clients/${client.id}/portal-access`, { method: 'DELETE', successToast: 'Acesso ao portal bloqueado.' });
+      onClose(true);
+    } catch {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal title={`Portal do Cliente · ${client.name}`} onClose={() => onClose(false)}>
+      <form onSubmit={submit} className="space-y-4">
+        <p className="text-sm text-slate-400">
+          {active
+            ? 'O cliente já tem acesso. Ele vê só os próprios veículos, orçamentos e histórico, e pode aprovar orçamentos.'
+            : 'Crie um login para o cliente acompanhar os veículos, aprovar orçamentos e ver o histórico de OS.'}
+        </p>
+        <Field label="E-mail de acesso *">
+          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} autoComplete="off" />
+        </Field>
+        <Field label={active ? 'Nova senha (mín. 8 caracteres) *' : 'Senha inicial (mín. 8 caracteres) *'}>
+          <input type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} className={inputCls} autoComplete="new-password" />
+        </Field>
+        <FormError message={error} />
+        {active && canRevoke && (
+          <button type="button" onClick={revoke} disabled={saving} className="text-sm font-semibold text-rose-300 hover:text-rose-200 disabled:opacity-50">
+            Bloquear acesso ao portal
+          </button>
+        )}
+        <ModalActions onCancel={() => onClose(false)} saving={saving} label={active ? 'Atualizar acesso' : 'Criar acesso'} />
+      </form>
+    </Modal>
   );
 }
 

@@ -3,6 +3,8 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  ForbiddenException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { parsePage, searchTerms, toPage } from '../common/pagination.js';
@@ -17,8 +19,32 @@ import {
   TransactionStatus,
   TransactionType,
   UserRole,
+  StaffProfile,
+  AlertType,
+  RefundStatus,
 } from '@prisma/client';
 import { BillWorkOrderDto } from '../financial/dto/financial.dto.js';
+import { CancelWorkOrderDto } from './dto/cancel-work-order.dto.js';
+import { InsufficientStockError, reserveWorkOrderStock, returnWorkOrderStock, shortageText, type StockShortage } from '../common/stock.js';
+
+/** Quem está agindo na OS: alguém da equipe (com cargo) ou o próprio cliente (link/portal). */
+export type WorkOrderActor =
+  | { kind: 'staff'; name: string; profile: StaffProfile | null }
+  | { kind: 'client'; name: string };
+
+/** Cargos que podem aprovar orçamentos (mecânicos e auxiliares de oficina não podem). */
+export const APPROVER_PROFILES: StaffProfile[] = [
+  StaffProfile.ADMINISTRADOR,
+  StaffProfile.GERENTE_GERAL,
+  StaffProfile.AUXILIAR_ADMINISTRATIVO,
+];
+
+export interface ApprovalResult {
+  id: string;
+  code: number;
+  status: WorkOrderStatus;
+  shortages: StockShortage[];
+}
 
 @Injectable()
 export class WorkOrdersService {
@@ -26,6 +52,7 @@ export class WorkOrdersService {
 
   async create(dto: CreateWorkOrderDto) {
     const { clientId, vehicleId, operatorId, reportedIssue, technicalNotes, items } = dto;
+    const initialStatus = dto.status === 'DRAFT' ? WorkOrderStatus.DRAFT : WorkOrderStatus.QUOTE;
 
     // 1. Validar integridade Cliente x Veículo
     const vehicle = await this.prisma.vehicle.findUnique({
@@ -97,13 +124,6 @@ export class WorkOrdersService {
             throw new NotFoundException(`Produto ativo não encontrado para o ID: ${item.productId}`);
           }
 
-          // Verificação de saldo de estoque
-          if (product.stockQuantity < item.quantity) {
-            throw new BadRequestException(
-              `Estoque insuficiente para a peça "${product.name}". Disponível: ${product.stockQuantity}, Requisitado: ${item.quantity}.`,
-            );
-          }
-
           const itemTotal = product.salePrice.mul(item.quantity);
           totalProducts = totalProducts.add(itemTotal);
 
@@ -117,19 +137,16 @@ export class WorkOrdersService {
             unitCost: product.costPrice,
           });
 
-          // Baixa atômica no estoque da peça
-          await tx.product.update({
-            where: { id: product.id },
-            data: {
-              stockQuantity: {
-                decrement: item.quantity,
-              },
-            },
-          });
         }
       }
 
-      const finalAmount = totalServices.add(totalProducts);
+      // Desconto: não pode passar do total (422)
+      const gross = totalServices.add(totalProducts);
+      const discount = new Prisma.Decimal(dto.discount ?? 0);
+      if (discount.gt(gross)) {
+        throw new UnprocessableEntityException('O desconto não pode ser maior que o valor total da OS.');
+      }
+      const finalAmount = gross.sub(discount);
 
       // 3. Criação da Ordem de Serviço com itens vinculados
       const workOrder = await tx.workOrder.create({
@@ -139,10 +156,11 @@ export class WorkOrdersService {
           operatorId,
           reportedIssue,
           technicalNotes,
-          status: WorkOrderStatus.QUOTE, // Inicia como orçamento por padrão
+          // Rascunho ou orçamento. As peças só saem do estoque na aprovação.
+          status: initialStatus,
           totalServices,
           totalProducts,
-          discount: new Prisma.Decimal(0.00),
+          discount,
           finalAmount,
           items: {
             create: itemsToCreate,
@@ -284,7 +302,7 @@ export class WorkOrdersService {
       WorkOrderStatus.COMPLETED,
       WorkOrderStatus.CANCELLED,
     ],
-    [WorkOrderStatus.WAITING_PARTS]: [WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.CANCELLED],
+    [WorkOrderStatus.WAITING_PARTS]: [WorkOrderStatus.APPROVED, WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.CANCELLED],
     [WorkOrderStatus.COMPLETED]: [WorkOrderStatus.BILLED],
     [WorkOrderStatus.BILLED]: [], // Estado final
     [WorkOrderStatus.CANCELLED]: [], // Estado final
@@ -298,17 +316,36 @@ export class WorkOrdersService {
       throw new BadRequestException('Este orçamento não está mais aguardando aprovação.');
     }
 
-    await this.updateStatus(id, {
-      status: dto.decision === 'APPROVE' ? WorkOrderStatus.APPROVED : WorkOrderStatus.CANCELLED,
-      reason: dto.decision === 'REJECT' ? `Recusado pelo cliente${dto.reason ? `: ${dto.reason}` : ''}` : undefined,
-    });
+    const actor: WorkOrderActor = { kind: 'client', name: workOrder.client.name };
+    if (dto.decision === 'APPROVE') {
+      await this.approve(id, actor);
+    } else {
+      await this.updateStatus(
+        id,
+        { status: WorkOrderStatus.CANCELLED, reason: `Recusado pelo cliente${dto.reason ? `: ${dto.reason}` : ''}` },
+        actor,
+      );
+    }
 
     // Retorna o mesmo formato detalhado usado pela página da OS
     return this.findById(id);
   }
 
-  async updateStatus(id: string, dto: UpdateWorkOrderStatusDto) {
+  async updateStatus(id: string, dto: UpdateWorkOrderStatusDto, actor: WorkOrderActor) {
     const { status: targetStatus, reason } = dto;
+
+    // Aprovar tem regra própria: cargo autorizado + baixa de estoque (ou Aguardando Peças)
+    if (targetStatus === WorkOrderStatus.APPROVED) {
+      if (actor.kind === 'staff' && !(actor.profile && APPROVER_PROFILES.includes(actor.profile))) {
+        throw new ForbiddenException('Somente Administrador, Gerente Geral ou Auxiliar Administrativo podem aprovar a OS.');
+      }
+      const current = await this.prisma.workOrder.findUnique({ where: { id }, select: { status: true } });
+      if (!current) throw new NotFoundException(`Ordem de Serviço com ID ${id} não encontrada.`);
+      if (current.status !== WorkOrderStatus.WAITING_PARTS) {
+        const result = await this.approve(id, actor);
+        return this.prisma.workOrder.findUnique({ where: { id }, include: { items: true } }).then((wo) => ({ ...wo, shortages: result.shortages }));
+      }
+    }
 
     return this.prisma.$transaction(async (tx) => {
       // 1. Busca a OS atual com os itens de produto
@@ -352,31 +389,41 @@ export class WorkOrdersService {
         updateData.finishedAt = new Date();
       }
 
-      // 5. Regra de Negócio: Cancelamento e estorno atômico de estoque
-      if (targetStatus === WorkOrderStatus.CANCELLED) {
-        // Se a OS for cancelada antes de ser concluída, devolvemos as peças ao estoque
-        const shouldRestock = currentStatus !== WorkOrderStatus.COMPLETED;
-
-        if (shouldRestock) {
-          for (const item of workOrder.items) {
-            if (item.itemType === WorkOrderItemType.PRODUCT && item.productId) {
-              await tx.product.update({
-                where: { id: item.productId },
-                data: {
-                  stockQuantity: {
-                    increment: item.quantity,
-                  },
-                },
-              });
-            }
+      // 4.1 Saindo de "Aguardando Peças": as peças precisam estar no estoque agora
+      if (
+        currentStatus === WorkOrderStatus.WAITING_PARTS &&
+        (targetStatus === WorkOrderStatus.APPROVED || targetStatus === WorkOrderStatus.IN_PROGRESS) &&
+        !workOrder.stockReserved
+      ) {
+        try {
+          await reserveWorkOrderStock(tx, workOrder, actor.name);
+        } catch (err) {
+          if (err instanceof InsufficientStockError) {
+            throw new BadRequestException(`As peças ainda não chegaram ao estoque: ${shortageText(err.shortages)}.`);
           }
+          throw err;
         }
+        updateData.stockReserved = true;
+        await tx.systemAlert.updateMany({
+          where: { workOrderId: id, type: AlertType.STOCK_SHORTAGE, resolvedAt: null },
+          data: { resolvedAt: new Date() },
+        });
+      }
 
-        // Anexa o motivo do cancelamento às notas técnicas
+      // 5. Regra de Negócio: Cancelamento e devolução atômica das peças ao estoque
+      if (targetStatus === WorkOrderStatus.CANCELLED) {
+        // Peças já baixadas e não usadas (OS não concluída) voltam ao estoque
+        if (workOrder.stockReserved && currentStatus !== WorkOrderStatus.COMPLETED) {
+          await returnWorkOrderStock(tx, workOrder, `Devolução pelo cancelamento da OS #${workOrder.code}`, actor.name);
+          updateData.stockReserved = false;
+        }
+        updateData.cancelledAt = new Date();
         if (reason) {
+          updateData.cancelReason = reason;
           const previousNotes = workOrder.technicalNotes ? `${workOrder.technicalNotes}\n` : '';
           updateData.technicalNotes = `${previousNotes}[Cancelamento]: ${reason}`;
         }
+        await tx.systemAlert.updateMany({ where: { workOrderId: id, resolvedAt: null }, data: { resolvedAt: new Date() } });
       }
 
       // 6. Atualização da OS
@@ -392,6 +439,115 @@ export class WorkOrdersService {
 
       return updatedWorkOrder;
     });
+  }
+
+  // ==========================================
+  // APROVAÇÃO (com baixa de estoque)
+  // ==========================================
+
+  /**
+   * Aprova a OS. Equipe: só Administrador, Gerente Geral e Auxiliar Administrativo (403 para os demais).
+   * Cliente: só o orçamento (QUOTE) da própria OS.
+   * Com todas as peças em estoque: baixa atômica e status APPROVED. Faltando qualquer peça: nada sai do
+   * estoque, a OS vai para WAITING_PARTS, com nota técnica e alerta no Dashboard.
+   */
+  async approve(id: string, actor: WorkOrderActor): Promise<ApprovalResult> {
+    if (actor.kind === 'staff' && !(actor.profile && APPROVER_PROFILES.includes(actor.profile))) {
+      throw new ForbiddenException('Somente Administrador, Gerente Geral ou Auxiliar Administrativo podem aprovar a OS.');
+    }
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        // Trava a linha: duas aprovações simultâneas da mesma OS não baixam o estoque duas vezes
+        await tx.$queryRaw`SELECT id FROM "work_orders" WHERE id = ${id}::uuid FOR UPDATE`;
+        const wo = await tx.workOrder.findUnique({ where: { id }, include: { items: true } });
+        if (!wo) throw new NotFoundException(`Ordem de Serviço com ID ${id} não encontrada.`);
+        if (wo.status === WorkOrderStatus.APPROVED) return { id, code: wo.code, status: wo.status, shortages: [] };
+
+        const approvable: WorkOrderStatus[] =
+          actor.kind === 'client' ? [WorkOrderStatus.QUOTE] : [WorkOrderStatus.DRAFT, WorkOrderStatus.QUOTE, WorkOrderStatus.WAITING_PARTS];
+        if (!approvable.includes(wo.status)) {
+          throw new BadRequestException(`Não é possível aprovar uma OS com status "${wo.status}".`);
+        }
+
+        if (!wo.stockReserved) await reserveWorkOrderStock(tx, wo, actor.name);
+        await tx.workOrder.update({ where: { id }, data: { status: WorkOrderStatus.APPROVED, stockReserved: true } });
+        await tx.systemAlert.updateMany({
+          where: { workOrderId: id, type: AlertType.STOCK_SHORTAGE, resolvedAt: null },
+          data: { resolvedAt: new Date() },
+        });
+        return { id, code: wo.code, status: WorkOrderStatus.APPROVED, shortages: [] };
+      });
+    } catch (err) {
+      if (!(err instanceof InsufficientStockError)) throw err;
+      return this.markWaitingParts(id, err.shortages, actor);
+    }
+  }
+
+  /** Falta de peça na aprovação: OS em Aguardando Peças + nota técnica + alerta (sem baixar nada). */
+  private async markWaitingParts(id: string, shortages: StockShortage[], actor: WorkOrderActor): Promise<ApprovalResult> {
+    return this.prisma.$transaction(async (tx) => {
+      const wo = await tx.workOrder.findUnique({ where: { id } });
+      if (!wo) throw new NotFoundException('Ordem de Serviço não encontrada.');
+      const text = shortageText(shortages);
+      const previousNotes = wo.technicalNotes ? `${wo.technicalNotes}\n` : '';
+      await tx.workOrder.update({
+        where: { id },
+        data: {
+          status: WorkOrderStatus.WAITING_PARTS,
+          technicalNotes: `${previousNotes}[Falta de peças na aprovação por ${actor.name}]: ${text}`,
+        },
+      });
+      await tx.systemAlert.updateMany({
+        where: { workOrderId: id, type: AlertType.STOCK_SHORTAGE, resolvedAt: null },
+        data: { resolvedAt: new Date() },
+      });
+      await tx.systemAlert.create({
+        data: { type: AlertType.STOCK_SHORTAGE, workOrderId: id, message: `OS #${wo.code} aguardando peças: ${text}`.slice(0, 500) },
+      });
+      return { id, code: wo.code, status: WorkOrderStatus.WAITING_PARTS, shortages };
+    });
+  }
+
+  // ==========================================
+  // CANCELAMENTO
+  // ==========================================
+
+  /**
+   * Cancela a OS com motivo obrigatório.
+   * OS faturada (BILLED): só o Administrador, com confirmação. O caixa e o estoque NÃO são revertidos:
+   * fica uma pendência de estorno manual no Financeiro para auditoria.
+   */
+  async cancel(id: string, dto: CancelWorkOrderDto, actor: WorkOrderActor & { kind: 'staff' }) {
+    const wo = await this.prisma.workOrder.findUnique({ where: { id }, select: { status: true, code: true, technicalNotes: true } });
+    if (!wo) throw new NotFoundException(`Ordem de Serviço com ID ${id} não encontrada.`);
+
+    if (wo.status !== WorkOrderStatus.BILLED) {
+      const updated = await this.updateStatus(id, { status: WorkOrderStatus.CANCELLED, reason: dto.reason }, actor);
+      return { id, code: wo.code, status: updated?.status ?? WorkOrderStatus.CANCELLED, refundPending: false };
+    }
+
+    if (actor.profile !== StaffProfile.ADMINISTRADOR) {
+      throw new ForbiddenException('Somente o Administrador pode cancelar uma OS já faturada.');
+    }
+    if (dto.confirm !== true) {
+      throw new BadRequestException('Confirme o cancelamento da OS faturada (o estorno de valores e peças será manual).');
+    }
+
+    const previousNotes = wo.technicalNotes ? `${wo.technicalNotes}\n` : '';
+    // Condicionado ao status: duas requisições não geram duas pendências
+    const res = await this.prisma.workOrder.updateMany({
+      where: { id, status: WorkOrderStatus.BILLED },
+      data: {
+        status: WorkOrderStatus.CANCELLED,
+        cancelledAt: new Date(),
+        cancelReason: dto.reason,
+        refundStatus: RefundStatus.PENDING,
+        technicalNotes: `${previousNotes}[Cancelamento de OS faturada por ${actor.name}]: ${dto.reason} (estorno pendente)`,
+      },
+    });
+    if (res.count !== 1) throw new ConflictException('Esta OS já foi alterada por outra pessoa. Atualize a tela.');
+    return { id, code: wo.code, status: WorkOrderStatus.CANCELLED, refundPending: true };
   }
 
   // ==========================================

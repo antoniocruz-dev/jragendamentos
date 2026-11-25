@@ -1,5 +1,6 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma, TransactionType, TransactionStatus, UserRole, WorkOrderStatus } from '@prisma/client';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma, RefundStatus, TransactionType, TransactionStatus, UserRole, WorkOrderStatus } from '@prisma/client';
+import { returnWorkOrderStock } from '../common/stock.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   COMMISSION_PAYMENT,
@@ -13,7 +14,18 @@ import {
   type Dec,
   type GroupBy,
 } from './financial-calc.js';
-import { CreateExpenseDto, UpdateExpenseDto, UpdateSettingsDto } from './dto/financial.dto.js';
+import { CreateExpenseDto, ResolveRefundDto, UpdateExpenseDto, UpdateSettingsDto } from './dto/financial.dto.js';
+
+/**
+ * OS que contam como receita: faturadas, e as faturadas que foram canceladas enquanto o estorno
+ * não foi feito (o dinheiro ainda está no caixa) ou quando a oficina decidiu não devolver.
+ */
+export const REVENUE_ORDERS: Prisma.WorkOrderWhereInput = {
+  OR: [
+    { status: WorkOrderStatus.BILLED },
+    { status: WorkOrderStatus.CANCELLED, billedAt: { not: null }, refundStatus: { in: [RefundStatus.PENDING, RefundStatus.WAIVED] } },
+  ],
+};
 
 export interface ReportFilters {
   from?: string;
@@ -112,7 +124,7 @@ export class FinancialService {
     const groupBy: GroupBy = filters.groupBy === 'week' || filters.groupBy === 'year' ? filters.groupBy : 'month';
 
     const where: Prisma.WorkOrderWhereInput = {
-      status: WorkOrderStatus.BILLED,
+      AND: [REVENUE_ORDERS],
       billedAt: { gte: from, lte: to },
     };
     if (filters.mechanicId) where.operatorId = filters.mechanicId === 'none' ? null : filters.mechanicId;
@@ -369,7 +381,7 @@ export class FinancialService {
       id: o.id,
       code: o.code,
       status: o.status,
-      billed: o.status === WorkOrderStatus.BILLED,
+      billed: o.status === WorkOrderStatus.BILLED || (!!o.billedAt && o.refundStatus !== RefundStatus.REFUNDED && o.refundStatus !== null),
       date: localDay(o.billedAt ?? o.finishedAt ?? o.createdAt),
       payment: paymentLabel(o.paymentMethod, o.installments),
       client: o.client.name,
@@ -476,5 +488,78 @@ export class FinancialService {
       paymentMethods: Object.entries(PAYMENT_LABELS).map(([key, label]) => ({ key, label })),
       taxRegimes: Object.entries(TAX_REGIME_LABELS).map(([key, label]) => ({ key, label })),
     };
+  }
+
+  // ==========================================
+  // PENDÊNCIAS DE ESTORNO (OS faturada cancelada)
+  // ==========================================
+
+  /** OS faturadas que foram canceladas. Padrão: só as pendentes. */
+  async listRefunds(status?: string) {
+    const refundStatus = status && status in RefundStatus ? (status as RefundStatus) : undefined;
+    const rows = await this.prisma.workOrder.findMany({
+      where: { refundStatus: refundStatus ?? (status === 'ALL' ? { not: null } : RefundStatus.PENDING) },
+      orderBy: { cancelledAt: 'desc' },
+      take: 200,
+      select: {
+        id: true,
+        code: true,
+        finalAmount: true,
+        billedAt: true,
+        paymentMethod: true,
+        cancelledAt: true,
+        cancelReason: true,
+        refundStatus: true,
+        refundResolvedAt: true,
+        refundResolvedBy: true,
+        refundNotes: true,
+        stockReserved: true,
+        client: { select: { name: true, phone: true } },
+        vehicle: { select: { licensePlate: true, model: true } },
+        items: { where: { itemType: 'PRODUCT' }, select: { quantity: true, product: { select: { name: true } } } },
+      },
+    });
+    return rows.map((r) => ({
+      ...r,
+      finalAmount: Number(r.finalAmount),
+      payment: r.paymentMethod ? (PAYMENT_LABELS[r.paymentMethod] ?? r.paymentMethod) : '',
+      parts: r.items.map((i) => `${i.quantity}x ${i.product?.name ?? 'peça'}`),
+      items: undefined,
+    }));
+  }
+
+  /**
+   * Resolve a pendência (Administrador). Estorno feito: cancela a entrada do caixa e, se marcado,
+   * devolve as peças ao estoque. Sem estorno: a receita permanece. Tudo em uma transação.
+   */
+  async resolveRefund(id: string, dto: ResolveRefundDto, userName: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const wo = await tx.workOrder.findUnique({ where: { id }, include: { items: true } });
+      if (!wo) throw new NotFoundException('Ordem de Serviço não encontrada.');
+      if (wo.refundStatus !== RefundStatus.PENDING) throw new ConflictException('Esta pendência já foi resolvida.');
+
+      const res = await tx.workOrder.updateMany({
+        where: { id, refundStatus: RefundStatus.PENDING },
+        data: {
+          refundStatus: dto.resolution,
+          refundResolvedAt: new Date(),
+          refundResolvedBy: userName,
+          refundNotes: dto.notes.trim(),
+          ...(dto.resolution === 'REFUNDED' && dto.returnStock && wo.stockReserved ? { stockReserved: false } : {}),
+        },
+      });
+      if (res.count !== 1) throw new ConflictException('Esta pendência já foi resolvida por outra pessoa.');
+
+      if (dto.resolution === 'REFUNDED') {
+        await tx.cashTransaction.updateMany({
+          where: { workOrderId: id, type: TransactionType.INCOME, status: { not: TransactionStatus.CANCELLED } },
+          data: { status: TransactionStatus.CANCELLED, notes: `Estorno manual (OS #${wo.code} cancelada): ${dto.notes.trim()}` },
+        });
+        if (dto.returnStock && wo.stockReserved) {
+          await returnWorkOrderStock(tx, wo, `Devolução pelo estorno da OS #${wo.code}`, userName);
+        }
+      }
+      return { id, code: wo.code, refundStatus: dto.resolution };
+    });
   }
 }

@@ -9,6 +9,8 @@ import { TeamModule } from './team/team.module.js';
 import { CatalogModule } from './catalog/catalog.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
 import { FinancialModule } from './financial/financial.module.js';
+import { HealthModule } from './health/health.module.js';
+import { PortalModule } from './portal/portal.module.js';
 
 @Module({
   imports: [
@@ -22,6 +24,8 @@ import { FinancialModule } from './financial/financial.module.js';
     CatalogModule,
     DashboardModule,
     FinancialModule,
+    HealthModule,
+    PortalModule,
   ],
   controllers: [],
   providers: [],

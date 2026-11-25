@@ -33,6 +33,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     // Permissões lidas a cada requisição: mudanças de perfil valem imediatamente
     const { profile, modules } = await loadUserModules(this.prisma, user.role, user.profile);
-    return { ...user, profile, modules };
+
+    // Portal do Cliente: o cliente vinculado vem do banco (nunca do token), base do isolamento de dados
+    if (user.role === 'CLIENT') {
+      const client = await this.prisma.client.findUnique({ where: { userId: user.id }, select: { id: true } });
+      if (!client) throw new UnauthorizedException('Acesso do cliente sem cadastro vinculado.');
+      return { ...user, profile, modules, clientId: client.id };
+    }
+    return { ...user, profile, modules, clientId: null };
   }
 }

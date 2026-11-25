@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LayoutDashboard, Plus, ClipboardList, DollarSign, Calendar, Loader2, AlertCircle } from 'lucide-react';
+import { LayoutDashboard, Plus, ClipboardList, DollarSign, Calendar, Loader2, AlertCircle, AlertTriangle, PackageX, Undo2, X } from 'lucide-react';
 import { fetchApi } from '@/services/api';
 import { useAuth } from '@/services/auth';
 import { hasModule, type AppModule } from '@/services/permissions';
@@ -17,6 +17,77 @@ interface Summary {
   workOrders: { status: string; count: number; amount: number }[];
   appointments: { status: string; count: number }[];
   revenue: { orders: number; services: number; products: number; discount: number; total: number } | null;
+  alerts?: {
+    lowStock: { id: string; name: string; sku: string; stockQuantity: number; minStock: number }[];
+    items: { id: string; type: 'STOCK_SHORTAGE' | 'PAYMENT_REJECTED'; message: string; createdAt: string; workOrderId: string | null }[];
+    pendingRefunds: number;
+  };
+}
+
+/** Avisos da operação: estoque baixo, OS aguardando peças, pagamento recusado e estornos pendentes. */
+function AlertsPanel({ alerts, onResolved }: { alerts: NonNullable<Summary['alerts']>; onResolved: () => void }) {
+  const total = alerts.lowStock.length + alerts.items.length + (alerts.pendingRefunds ? 1 : 0);
+  if (!total) return null;
+
+  async function dismiss(id: string) {
+    try {
+      await fetchApi(`/dashboard/alerts/${id}/resolve`, { method: 'PATCH', successToast: 'Alerta resolvido.' });
+      onResolved();
+    } catch {
+      // erro já exibido pelo fetchApi
+    }
+  }
+
+  return (
+    <section className="bg-slate-900 border border-amber-500/30 rounded-2xl p-4 sm:p-5 space-y-3" aria-label="Alertas">
+      <h2 className="flex items-center gap-2 text-sm font-bold text-amber-300">
+        <AlertTriangle className="w-4 h-4" />
+        Alertas ({total})
+      </h2>
+      <ul className="space-y-2 text-sm">
+        {alerts.pendingRefunds > 0 && (
+          <li>
+            <Link href="/financial?tab=refunds" className="flex items-center gap-2.5 bg-rose-500/10 border border-rose-500/30 rounded-xl px-3 py-2.5 text-rose-200 hover:border-rose-400">
+              <Undo2 className="w-4 h-4 shrink-0" />
+              <span className="flex-1">
+                {alerts.pendingRefunds} OS faturada(s) cancelada(s) aguardando estorno manual
+              </span>
+            </Link>
+          </li>
+        )}
+        {alerts.items.map((a) => (
+          <li key={a.id} className="flex items-start gap-2.5 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5">
+            <AlertCircle className={`w-4 h-4 shrink-0 mt-0.5 ${a.type === 'PAYMENT_REJECTED' ? 'text-rose-400' : 'text-orange-400'}`} />
+            {a.workOrderId ? (
+              <Link href={`/os/${a.workOrderId}`} className="flex-1 min-w-0 text-slate-200 hover:text-white break-words">
+                {a.message}
+              </Link>
+            ) : (
+              <span className="flex-1 min-w-0 text-slate-200 break-words">{a.message}</span>
+            )}
+            <button onClick={() => dismiss(a.id)} className="shrink-0 p-1 -m-1 text-slate-500 hover:text-white" aria-label="Marcar alerta como resolvido">
+              <X className="w-4 h-4" />
+            </button>
+          </li>
+        ))}
+        {alerts.lowStock.length > 0 && (
+          <li className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5">
+            <Link href="/catalog?tab=products" className="flex items-center gap-2.5 text-orange-200 hover:text-white">
+              <PackageX className="w-4 h-4 shrink-0" />
+              <span className="font-semibold">Estoque baixo ({alerts.lowStock.length})</span>
+            </Link>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {alerts.lowStock.map((p) => (
+                <span key={p.id} className={`text-xs px-2 py-1 rounded-lg border ${p.stockQuantity <= 0 ? 'border-rose-500/40 text-rose-300' : 'border-orange-500/30 text-orange-200'}`}>
+                  {p.name}: {p.stockQuantity} (mín. {p.minStock})
+                </span>
+              ))}
+            </div>
+          </li>
+        )}
+      </ul>
+    </section>
+  );
 }
 
 interface Slice {
@@ -267,6 +338,8 @@ function Dashboard() {
             </label>
           </div>
         </div>
+
+        {data?.alerts && <AlertsPanel alerts={data.alerts} onResolved={() => setReloadKey((k) => k + 1)} />}
 
         {invalidRange ? (
           <Notice text="Escolha uma data inicial anterior à data final." />

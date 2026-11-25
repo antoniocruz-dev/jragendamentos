@@ -18,6 +18,11 @@ import { Public } from '../auth/decorators/public.decorator.js';
 import { RequireModules } from '../auth/decorators/require-modules.decorator.js';
 import { ManagersOnly } from '../auth/decorators/managers-only.decorator.js';
 import { BillWorkOrderDto, ReverseBillingDto } from '../financial/dto/financial.dto.js';
+import { CancelWorkOrderDto } from './dto/cancel-work-order.dto.js';
+import { CurrentUser, type AuthenticatedUser } from '../auth/decorators/current-user.decorator.js';
+import type { WorkOrderActor } from './work-orders.service.js';
+
+const staffActor = (u: AuthenticatedUser) => ({ kind: 'staff' as const, name: u.name, profile: u.profile });
 
 @RequireModules('WORK_ORDERS')
 @Controller('work-orders')
@@ -65,6 +70,25 @@ export class WorkOrdersController {
     return this.workOrdersService.reverseBilling(id, dto.reason);
   }
 
+  /**
+   * Aprovação restrita: Administrador, Gerente Geral ou Auxiliar Administrativo.
+   * Baixa as peças; se faltar alguma, a OS vai para Aguardando Peças (resposta 200 com o novo status).
+   */
+  @Patch(':id/approve')
+  approve(@Param('id', new ParseUUIDPipe()) id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.workOrdersService.approve(id, staffActor(user) as WorkOrderActor);
+  }
+
+  /** Cancelamento com motivo. OS faturada: só Administrador, com confirmação e estorno manual pendente. */
+  @Patch(':id/cancel')
+  cancel(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: CancelWorkOrderDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.workOrdersService.cancel(id, dto, staffActor(user));
+  }
+
   /** Público: é a página que o cliente abre pelo link da OS (UUID não adivinhável). */
   @Public()
   @Get(':id')
@@ -89,7 +113,8 @@ export class WorkOrdersController {
   async updateStatus(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body(new ValidationPipe({ transform: true, whitelist: true })) dto: UpdateWorkOrderStatusDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.workOrdersService.updateStatus(id, dto);
+    return this.workOrdersService.updateStatus(id, dto, staffActor(user));
   }
 }

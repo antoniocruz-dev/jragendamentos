@@ -6,6 +6,7 @@ import { CreateClientWithVehicleDto } from './dto/create-client-with-vehicle.dto
 import { UpdateClientDto } from './dto/update-client.dto.js';
 import { CreateVehicleDto } from './dto/create-vehicle.dto.js';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto.js';
+import { PortalAccessDto } from './dto/portal-access.dto.js';
 
 @RequireModules('CLIENTS')
 @Controller('clients')
@@ -67,6 +68,23 @@ export class ClientsController {
   @Delete(':id')
   remove(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.clientsService.remove(id);
+  }
+
+  @Get(':id/portal-access')
+  portalAccess(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.clientsService.portalAccess(id);
+  }
+
+  /** Cria ou redefine o login do cliente no Portal do Cliente. */
+  @Post(':id/portal-access')
+  grantPortalAccess(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: PortalAccessDto) {
+    return this.clientsService.grantPortalAccess(id, dto);
+  }
+
+  @ManagersOnly()
+  @Delete(':id/portal-access')
+  revokePortalAccess(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.clientsService.revokePortalAccess(id);
   }
 
   @Post(':id/vehicles')

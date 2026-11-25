@@ -2,7 +2,9 @@ import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Put, 
 import { FinancialService } from './financial.service.js';
 import { RequireModules } from '../auth/decorators/require-modules.decorator.js';
 import { ManagersOnly } from '../auth/decorators/managers-only.decorator.js';
-import { CreateExpenseDto, UpdateExpenseDto, UpdateSettingsDto } from './dto/financial.dto.js';
+import { CreateExpenseDto, ResolveRefundDto, UpdateExpenseDto, UpdateSettingsDto } from './dto/financial.dto.js';
+import { CurrentUser, type AuthenticatedUser } from '../auth/decorators/current-user.decorator.js';
+import { ForbiddenException } from '@nestjs/common';
 
 /** Gestão financeira da oficina: relatórios, despesas e configuração fiscal (módulo Financeiro). */
 @RequireModules('FINANCIAL')
@@ -27,6 +29,23 @@ export class FinancialController {
   @Get('orders/:id/closing')
   orderClosing(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.financial.orderClosing(id);
+  }
+
+  /** Pendências de estorno: OS faturadas que foram canceladas (?status=PENDING|REFUNDED|WAIVED|ALL). */
+  @Get('refunds')
+  refunds(@Query('status') status?: string) {
+    return this.financial.listRefunds(status);
+  }
+
+  /** Resolve a pendência de estorno (somente Administrador). */
+  @Post('refunds/:id/resolve')
+  resolveRefund(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: ResolveRefundDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    if (user.profile !== 'ADMINISTRADOR') throw new ForbiddenException('Somente o Administrador resolve estornos.');
+    return this.financial.resolveRefund(id, dto, user.name);
   }
 
   @Get('meta')

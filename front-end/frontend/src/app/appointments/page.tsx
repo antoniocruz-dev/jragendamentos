@@ -12,11 +12,12 @@ import {
   Clock,
   Share2,
   Pencil,
-  Wrench,
+
   X,
   Trash2,
 } from 'lucide-react';
 import { fetchApi } from '@/services/api';
+import { ErrorState, ListSkeleton } from '@/components/feedback';
 import { useAuth } from '@/services/auth';
 import { canManageRecords } from '@/services/permissions';
 import { useSearchParams } from 'next/navigation';
@@ -75,9 +76,11 @@ function toDatetimeLocal(date: Date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+/** Próximo dia útil às 08:00 (a API também recusa feriados e horários ocupados). */
 function defaultSlot() {
   const d = new Date();
   d.setDate(d.getDate() + 1);
+  while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
   d.setHours(8, 0, 0, 0);
   return toDatetimeLocal(d);
 }
@@ -115,12 +118,7 @@ export default function AppointmentsPage() {
 }
 
 function LoadingState() {
-  return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-16 text-center text-slate-400 flex flex-col items-center gap-3">
-      <Wrench className="w-8 h-8 text-amber-500 animate-spin" />
-      <span>Carregando agenda...</span>
-    </div>
-  );
+  return <ListSkeleton rows={4} label="Carregando agenda..." />;
 }
 
 function AppointmentsAgenda({
@@ -225,7 +223,8 @@ function AppointmentsAgenda({
       });
       reload();
     } catch (err) {
-      alert(`Erro ao atualizar status: ${errorMessage(err)}`);
+      // o aviso de erro já é mostrado pelo fetchApi (toast)
+      void err;
     } finally {
       setActionLoadingId(null);
     }
@@ -238,7 +237,8 @@ function AppointmentsAgenda({
       await fetchApi(`/appointments/${a.id}`, { method: 'DELETE' });
       reload();
     } catch (err) {
-      alert(`Erro ao excluir: ${errorMessage(err)}`);
+      // o aviso de erro já é mostrado pelo fetchApi (toast)
+      void err;
     } finally {
       setActionLoadingId(null);
     }
@@ -346,9 +346,7 @@ function AppointmentsAgenda({
 
         {/* Agenda */}
         {error ? (
-          <div className="bg-rose-500/10 border border-rose-500/30 text-rose-300 rounded-2xl p-6 text-sm">
-            Não foi possível carregar os agendamentos: {error}
-          </div>
+          <ErrorState message={`Não foi possível carregar os agendamentos: ${error}`} onRetry={reload} />
         ) : loading ? (
           <LoadingState />
         ) : (
@@ -680,8 +678,12 @@ function AppointmentModal({
               value={scheduledFor}
               min={toDatetimeLocal(new Date())}
               onChange={(e) => setScheduledFor(e.target.value)}
+              step={1800}
               className={`${inputCls} mt-1 [color-scheme:dark]`}
             />
+            <span className="block mt-1 text-[11px] text-slate-500">
+              Segunda a sexta, das 08:00 às 17:00 (cada atendimento ocupa 1 hora). Um veículo por horário; feriados nacionais bloqueados.
+            </span>
           </label>
 
           <label className="block">

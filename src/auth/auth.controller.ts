@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, ValidationPipe } from '@nestjs/common';
+import { Controller, Post, Get, Body, ValidationPipe, Ip, HttpCode, HttpStatus } from '@nestjs/common';
 import { AuthService } from './auth.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { SetupAdminDto } from './dto/setup.dto.js';
@@ -29,9 +29,12 @@ export class AuthController {
 
   @Public()
   @Post('login')
+  @HttpCode(HttpStatus.OK)
   async login(
+    @Ip() ip: string,
     @Body(new ValidationPipe({ transform: true, whitelist: true })) dto: LoginDto,
   ) {
+    await this.authService.assertLoginRateLimit(ip);
     return this.authService.login(dto);
   }
 

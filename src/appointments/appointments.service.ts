@@ -7,11 +7,9 @@ import {
 import { AppointmentStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateAppointmentDto } from './dto/create-appointment.dto.js';
+import { SLOT_MINUTES, outsideBusinessHours } from '../common/business-hours.js';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto.js';
 import { UpdateAppointmentStatusDto } from './dto/update-appointment-status.dto.js';
-
-/** Janela mínima (em minutos) entre dois agendamentos ativos do mesmo veículo. */
-const VEHICLE_CONFLICT_WINDOW_MINUTES = 60;
 
 const ACTIVE_STATUSES: AppointmentStatus[] = [
   AppointmentStatus.PENDING,
@@ -60,11 +58,15 @@ export class AppointmentsService {
       throw new BadRequestException('O veículo informado não pertence ao cliente indicado.');
     }
 
-    await this.assertNoVehicleConflict(vehicleId, scheduledFor);
-
-    return this.prisma.appointment.create({
-      data: { clientId, vehicleId, scheduledFor, notes: notes?.trim() || null },
-      include: APPOINTMENT_INCLUDE,
+    // Trava rígida: 1 veículo por horário. O lock serializa agendamentos simultâneos;
+    // quem chega depois encontra o horário ocupado e recebe 409.
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('appointments_slots'))`;
+      await this.assertSlotFree(tx, scheduledFor);
+      return tx.appointment.create({
+        data: { clientId, vehicleId, scheduledFor, notes: notes?.trim() || null },
+        include: APPOINTMENT_INCLUDE,
+      });
     });
   }
 
@@ -121,25 +123,22 @@ export class AppointmentsService {
     }
 
     const data: Prisma.AppointmentUpdateInput = {};
-
-    if (dto.scheduledFor !== undefined) {
-      const scheduledFor = this.parseFutureDate(dto.scheduledFor);
-      await this.assertNoVehicleConflict(appointment.vehicleId, scheduledFor, id);
-      data.scheduledFor = scheduledFor;
-      // Reagendar exige nova confirmação do cliente
-      if (scheduledFor.getTime() !== appointment.scheduledFor.getTime()) {
-        data.status = AppointmentStatus.PENDING;
-      }
-    }
-
     if (dto.notes !== undefined) {
       data.notes = dto.notes.trim() || null;
     }
 
-    return this.prisma.appointment.update({
-      where: { id },
-      data,
-      include: APPOINTMENT_INCLUDE,
+    return this.prisma.$transaction(async (tx) => {
+      if (dto.scheduledFor !== undefined) {
+        const scheduledFor = this.parseFutureDate(dto.scheduledFor);
+        if (scheduledFor.getTime() !== appointment.scheduledFor.getTime()) {
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('appointments_slots'))`;
+          await this.assertSlotFree(tx, scheduledFor, id);
+          data.scheduledFor = scheduledFor;
+          // Reagendar exige nova confirmação do cliente
+          data.status = AppointmentStatus.PENDING;
+        }
+      }
+      return tx.appointment.update({ where: { id }, data, include: APPOINTMENT_INCLUDE });
     });
   }
 
@@ -190,29 +189,28 @@ export class AppointmentsService {
     if (date.getTime() <= Date.now()) {
       throw new BadRequestException('O agendamento deve ser marcado para uma data/hora futura.');
     }
+    const closed = outsideBusinessHours(date);
+    if (closed) throw new BadRequestException(closed);
     return date;
   }
 
-  /** Impede dois agendamentos ativos do mesmo veículo em horários muito próximos. */
-  private async assertNoVehicleConflict(vehicleId: string, scheduledFor: Date, ignoreId?: string) {
-    const windowMs = VEHICLE_CONFLICT_WINDOW_MINUTES * 60 * 1000;
-
-    const conflict = await this.prisma.appointment.findFirst({
+  /**
+   * Cada agendamento ocupa ${SLOT_MINUTES} min. Recusa (409) se houver outro PENDENTE ou CONFIRMADO
+   * que se sobreponha a esse intervalo, de qualquer veículo.
+   */
+  private async assertSlotFree(tx: Prisma.TransactionClient, scheduledFor: Date, ignoreId?: string) {
+    const windowMs = SLOT_MINUTES * 60 * 1000;
+    const conflict = await tx.appointment.findFirst({
       where: {
-        vehicleId,
         status: { in: ACTIVE_STATUSES },
-        scheduledFor: {
-          gt: new Date(scheduledFor.getTime() - windowMs),
-          lt: new Date(scheduledFor.getTime() + windowMs),
-        },
+        scheduledFor: { gt: new Date(scheduledFor.getTime() - windowMs), lt: new Date(scheduledFor.getTime() + windowMs) },
         ...(ignoreId ? { NOT: { id: ignoreId } } : {}),
       },
+      include: { vehicle: { select: { licensePlate: true } } },
     });
-
     if (conflict) {
-      throw new ConflictException(
-        `Este veículo já possui um agendamento ativo próximo a este horário (${conflict.scheduledFor.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' })}).`,
-      );
+      const hora = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Belem', hour: '2-digit', minute: '2-digit' }).format(conflict.scheduledFor);
+      throw new ConflictException(`Horário indisponível: já existe um agendamento às ${hora} (${conflict.vehicle.licensePlate}). Escolha outro horário.`);
     }
   }
 }

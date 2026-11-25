@@ -15,6 +15,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { fetchApi } from '@/services/api';
+import { toast } from '@/components/feedback';
 import { useAuth } from '@/services/auth';
 import { PROFILE_LABELS, PROFILE_ORDER, type StaffProfile } from '@/services/permissions';
 
@@ -141,7 +142,8 @@ function UsersTab() {
       await fetchApi(`/team/users/${u.id}`, { method: 'PATCH', body: JSON.stringify(data) });
       reload();
     } catch (err) {
-      alert(errorMessage(err));
+      // o aviso de erro já é mostrado pelo fetchApi (toast)
+      void err;
     } finally {
       setBusyId(null);
     }
@@ -154,7 +156,8 @@ function UsersTab() {
       await fetchApi(`/team/users/${u.id}`, { method: 'DELETE' });
       reload();
     } catch (err) {
-      alert(errorMessage(err));
+      // o aviso de erro já é mostrado pelo fetchApi (toast)
+      void err;
     } finally {
       setBusyId(null);
     }
@@ -164,7 +167,7 @@ function UsersTab() {
     const password = prompt(`Nova senha para ${u.name} (mínimo 8 caracteres):`);
     if (password === null) return;
     if (password.length < 8) {
-      alert('A senha deve ter no mínimo 8 caracteres.');
+      toast.error('A senha deve ter no mínimo 8 caracteres.');
       return;
     }
     updateUser(u, { password });
@@ -615,7 +618,8 @@ function ProfilesTab() {
       });
       setSavedProfile(profile);
     } catch (err) {
-      alert(errorMessage(err));
+      // o aviso de erro já é mostrado pelo fetchApi (toast)
+      void err;
     } finally {
       setSavingProfile(null);
     }

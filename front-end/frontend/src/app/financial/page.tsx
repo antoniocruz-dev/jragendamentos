@@ -20,6 +20,9 @@ import {
   Info,
 } from 'lucide-react';
 import { fetchApi } from '@/services/api';
+import { useSearchParams } from 'next/navigation';
+import { ErrorState, ListSkeleton } from '@/components/feedback';
+import { toast } from '@/components/feedback';
 import { useAuth } from '@/services/auth';
 import { canManageRecords } from '@/services/permissions';
 import { ActionBtn, Field, FormError, Modal, ModalActions, errorMessage, inputCls } from '@/components/crud';
@@ -75,12 +78,13 @@ function isoRange(from: string, to: string) {
   return { from: new Date(fy, fm - 1, fd).toISOString(), to: new Date(ty, tm - 1, td, 23, 59, 59, 999).toISOString() };
 }
 
-type Tab = 'summary' | 'orders' | 'mechanics' | 'expenses' | 'settings';
+type Tab = 'summary' | 'orders' | 'mechanics' | 'expenses' | 'refunds' | 'settings';
 const TABS: { key: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { key: 'summary', label: 'Resumo e ISS', icon: DollarSign },
   { key: 'orders', label: 'Ordens de Serviço', icon: ClipboardList },
   { key: 'mechanics', label: 'Produção dos mecânicos', icon: Users },
   { key: 'expenses', label: 'Despesas', icon: Receipt },
+  { key: 'refunds', label: 'Pendências de estorno', icon: Undo2 },
   { key: 'settings', label: 'Configuração fiscal', icon: Settings2 },
 ];
 
@@ -104,7 +108,10 @@ function Financial() {
   const { user } = useAuth();
   const isManager = canManageRecords(user);
 
-  const [tab, setTab] = useState<Tab>('summary');
+  // ?tab=refunds (vindo do alerta do Dashboard) abre direto as pendências
+  const tabParam = useSearchParams().get('tab');
+  const [tab, setTab] = useState<Tab>(() => (TABS.some((t) => t.key === tabParam) ? (tabParam as Tab) : 'summary'));
+  const isAdmin = user?.profile === 'ADMINISTRADOR';
   const [preset, setPreset] = useState<Preset>('month');
   const [range, setRange] = useState(() => presetRange('month'));
   const [groupBy, setGroupBy] = useState<GroupBy>('month');
@@ -182,7 +189,7 @@ function Financial() {
       if (kind === 'excel') await (await import('@/lib/export-excel')).exportFinancialExcel(report, filtersText);
       else await (await import('@/lib/export-pdf')).exportFinancialPdf(report, filtersText);
     } catch (err) {
-      alert(`Não foi possível gerar o arquivo: ${errorMessage(err)}`);
+      toast.error(`Não foi possível gerar o arquivo: ${errorMessage(err)}`);
     } finally {
       setExporting(null);
     }
@@ -284,6 +291,8 @@ function Financial() {
 
         {tab === 'settings' ? (
           <SettingsTab isManager={isManager} meta={meta} onSaved={reload} />
+        ) : tab === 'refunds' ? (
+          <RefundsTab isAdmin={isAdmin} onChanged={reload} />
         ) : invalidRange ? (
           <Box>Escolha uma data inicial anterior à data final.</Box>
         ) : error ? (
@@ -454,7 +463,7 @@ function OrdersTab({ report, isManager, onChanged }: { report: FinancialReport; 
       const c = await fetchApi<OrderClosing>(`/financial/orders/${id}/closing`);
       await (await import('@/lib/export-pdf')).exportOrderClosingPdf(c);
     } catch (err) {
-      alert(errorMessage(err));
+      toast.error(errorMessage(err));
     } finally {
       setBusy(null);
     }
@@ -468,7 +477,8 @@ function OrdersTab({ report, isManager, onChanged }: { report: FinancialReport; 
       await fetchApi(`/work-orders/${id}/billing/reverse`, { method: 'POST', body: JSON.stringify({ reason: reason.trim() }) });
       onChanged();
     } catch (err) {
-      alert(errorMessage(err));
+      // o aviso de erro já é mostrado pelo fetchApi (toast)
+      void err;
     } finally {
       setBusy(null);
     }
@@ -621,7 +631,8 @@ function ExpensesTab({ report, staff, meta, isManager, onChanged }: { report: Fi
       await fetchApi(`/financial/expenses/${x.id}`, { method: 'DELETE' });
       onChanged();
     } catch (err) {
-      alert(errorMessage(err));
+      // o aviso de erro já é mostrado pelo fetchApi (toast)
+      void err;
     }
   }
 
@@ -883,5 +894,188 @@ function SettingsTab({ isManager, meta, onSaved }: { isManager: boolean; meta: F
         <p className="text-xs text-slate-500">Valores gerenciais estimados. A apuração oficial é a da nota fiscal de serviço (NFS-e) e do seu contador.</p>
       </section>
     </div>
+  );
+}
+
+// ==========================================
+// PENDÊNCIAS DE ESTORNO (OS faturada cancelada)
+// ==========================================
+
+interface RefundRow {
+  id: string;
+  code: number;
+  finalAmount: number;
+  billedAt: string | null;
+  payment: string;
+  cancelledAt: string | null;
+  cancelReason: string | null;
+  refundStatus: 'PENDING' | 'REFUNDED' | 'WAIVED';
+  refundResolvedAt: string | null;
+  refundResolvedBy: string | null;
+  refundNotes: string | null;
+  stockReserved: boolean;
+  parts: string[];
+  client: { name: string; phone: string };
+  vehicle: { licensePlate: string; model: string };
+}
+
+const REFUND_LABEL = { PENDING: 'Pendente', REFUNDED: 'Estornado', WAIVED: 'Sem estorno' } as const;
+
+/**
+ * OS faturadas que foram canceladas. O caixa e o estoque não voltam sozinhos: o Administrador audita
+ * e registra aqui o que foi feito. Enquanto pendente, a receita continua nos relatórios.
+ */
+function RefundsTab({ isAdmin, onChanged }: { isAdmin: boolean; onChanged: () => void }) {
+  const [status, setStatus] = useState<'PENDING' | 'ALL'>('PENDING');
+  const [rows, setRows] = useState<RefundRow[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [resolving, setResolving] = useState<RefundRow | null>(null);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    fetchApi<RefundRow[]>(`/financial/refunds?status=${status}`, { signal: ctrl.signal })
+      .then((r) => {
+        setRows(r);
+        setError(null);
+      })
+      .catch((err) => !ctrl.signal.aborted && setError(errorMessage(err)));
+    return () => ctrl.abort();
+  }, [status, reloadKey]);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-slate-400 max-w-2xl">
+          OS faturadas que foram canceladas. O caixa e as peças não são revertidos automaticamente: confira o que foi devolvido ao
+          cliente e registre aqui. Enquanto pendente, o valor continua como receita.
+        </p>
+        <div className="grid grid-cols-2 bg-slate-900 border border-slate-800 rounded-lg p-1 text-xs font-semibold">
+          {(['PENDING', 'ALL'] as const).map((k) => (
+            <button key={k} onClick={() => setStatus(k)} className={`px-3 py-1.5 rounded-md ${status === k ? 'bg-amber-500 text-slate-950' : 'text-slate-300'}`}>
+              {k === 'PENDING' ? 'Pendentes' : 'Todas'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {error && !rows ? (
+        <ErrorState message={error} onRetry={() => setReloadKey((k) => k + 1)} />
+      ) : !rows ? (
+        <ListSkeleton rows={2} />
+      ) : rows.length === 0 ? (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center text-sm text-slate-400">Nenhuma pendência de estorno.</div>
+      ) : (
+        <ul className="space-y-3">
+          {rows.map((r) => (
+            <li key={r.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="font-bold text-white">
+                    <Link href={`/os/${r.id}`} className="font-mono text-amber-400 hover:underline">#{r.code}</Link> · {r.client.name}
+                  </div>
+                  <div className="text-xs text-slate-400">
+                    {r.vehicle.licensePlate} {r.vehicle.model} · pago em {brDate(r.billedAt)} ({r.payment}) · cancelada em {brDate(r.cancelledAt)}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-lg font-extrabold text-white">{brl(r.finalAmount)}</div>
+                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${r.refundStatus === 'PENDING' ? 'text-rose-300 border-rose-500/40' : 'text-slate-300 border-slate-600'}`}>
+                    {REFUND_LABEL[r.refundStatus]}
+                  </span>
+                </div>
+              </div>
+              <p className="text-sm text-slate-300"><span className="text-slate-500">Motivo:</span> {r.cancelReason}</p>
+              {r.parts.length > 0 && <p className="text-xs text-slate-400">Peças da OS: {r.parts.join(', ')}</p>}
+              {r.refundStatus !== 'PENDING' && (
+                <p className="text-xs text-slate-400">
+                  Resolvido por {r.refundResolvedBy} em {brDate(r.refundResolvedAt)}: {r.refundNotes}
+                </p>
+              )}
+              {r.refundStatus === 'PENDING' &&
+                (isAdmin ? (
+                  <button onClick={() => setResolving(r)} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-bold">
+                    <Undo2 className="w-4 h-4" />
+                    Registrar resolução
+                  </button>
+                ) : (
+                  <p className="text-xs text-slate-500">Somente o Administrador registra a resolução do estorno.</p>
+                ))}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {resolving && (
+        <ResolveRefundModal
+          row={resolving}
+          onClose={(changed) => {
+            setResolving(null);
+            if (changed) {
+              setReloadKey((k) => k + 1);
+              onChanged();
+            }
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function ResolveRefundModal({ row, onClose }: { row: RefundRow; onClose: (changed: boolean) => void }) {
+  const [resolution, setResolution] = useState<'REFUNDED' | 'WAIVED'>('REFUNDED');
+  const [returnStock, setReturnStock] = useState(false);
+  const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    try {
+      setSaving(true);
+      await fetchApi(`/financial/refunds/${row.id}/resolve`, {
+        method: 'POST',
+        body: JSON.stringify({ resolution, returnStock: resolution === 'REFUNDED' ? returnStock : undefined, notes: notes.trim() }),
+        successToast: resolution === 'REFUNDED' ? 'Estorno registrado: entrada do caixa cancelada.' : 'Registrado: sem estorno, a receita permanece.',
+      });
+      onClose(true);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal title={`Estorno da OS #${row.code}`} onClose={() => onClose(false)}>
+      <form onSubmit={submit} className="space-y-4">
+        <div className="grid gap-2">
+          {([
+            ['REFUNDED', 'Estorno feito', 'O valor foi devolvido ao cliente: a entrada no caixa é cancelada.'],
+            ['WAIVED', 'Sem estorno', 'Nada foi devolvido: a receita permanece nos relatórios.'],
+          ] as const).map(([key, label, help]) => (
+            <label key={key} className={`flex gap-3 rounded-xl border p-3 cursor-pointer ${resolution === key ? 'border-amber-500 bg-amber-500/10' : 'border-slate-700'}`}>
+              <input type="radio" name="resolution" checked={resolution === key} onChange={() => setResolution(key)} className="mt-1 accent-amber-500" />
+              <span>
+                <span className="block text-sm font-semibold text-white">{label}</span>
+                <span className="block text-xs text-slate-400">{help}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+        {resolution === 'REFUNDED' && row.stockReserved && row.parts.length > 0 && (
+          <label className="flex items-center gap-2 text-sm text-slate-300">
+            <input type="checkbox" checked={returnStock} onChange={(e) => setReturnStock(e.target.checked)} className="w-4 h-4 accent-amber-500" />
+            Devolver as peças ao estoque ({row.parts.join(', ')})
+          </label>
+        )}
+        <Field label="O que foi feito *">
+          <textarea required minLength={3} rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Ex.: Pix de R$ 150,00 devolvido em 25/11 (comprovante 123)" className={inputCls} />
+        </Field>
+        <FormError message={error} />
+        <ModalActions onCancel={() => onClose(false)} saving={saving} label="Registrar" />
+      </form>
+    </Modal>
   );
 }

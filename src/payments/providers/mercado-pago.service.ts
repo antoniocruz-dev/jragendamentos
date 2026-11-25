@@ -1,5 +1,6 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { MercadoPagoConfig, Payment } from 'mercadopago';
+import { randomUUID } from 'node:crypto';
 
 export interface PixPaymentResponse {
   paymentId: string;
@@ -9,8 +10,35 @@ export interface PixPaymentResponse {
   ticketUrl: string;
 }
 
+/** Erros transitórios (timeout, rede, 429, 5xx) merecem nova tentativa; 4xx de validação não. */
+function isTransient(error: unknown) {
+  const e = error as { status?: number; statusCode?: number; code?: string; name?: string; message?: string; cause?: { status?: number } };
+  const status = e?.status ?? e?.statusCode ?? e?.cause?.status;
+  if (typeof status === 'number') return status === 429 || status >= 500;
+  return /timeout|ETIMEDOUT|ECONNRESET|ECONNREFUSED|EAI_AGAIN|socket|network|AbortError/i.test(`${e?.code} ${e?.name} ${e?.message}`);
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 @Injectable()
 export class MercadoPagoService {
+  /** Até 3 tentativas com espera exponencial (500 ms, 1 s) entre elas. */
+  private async withRetry<T>(label: string, fn: () => Promise<T>, attempts = 3): Promise<T> {
+    let lastError: unknown;
+    for (let i = 1; i <= attempts; i++) {
+      try {
+        return await fn();
+      } catch (err) {
+        lastError = err;
+        if (i === attempts || !isTransient(err)) break;
+        const wait = 500 * 2 ** (i - 1);
+        this.logger.warn(`${label}: falha transitória (tentativa ${i}/${attempts}), nova tentativa em ${wait} ms`);
+        await sleep(wait);
+      }
+    }
+    throw lastError;
+  }
+
   private readonly client: MercadoPagoConfig;
   private readonly payment: Payment;
   private readonly logger = new Logger(MercadoPagoService.name);
@@ -42,7 +70,9 @@ export class MercadoPagoService {
       const firstName = nameParts[0] || 'Cliente';
       const lastName = nameParts.slice(1).join(' ') || 'Oficina';
 
-      const response = await this.payment.create({
+      // Mesma chave em todas as tentativas desta cobrança (um novo pedido de Pix gera outra chave)
+      const idempotencyKey = randomUUID();
+      const response = await this.withRetry('Criar Pix', () => this.payment.create({
         body: {
           transaction_amount: params.amount,
           description: `Oficina Mecânica - OS #${params.code}`,
@@ -59,7 +89,9 @@ export class MercadoPagoService {
             },
           },
         },
-      });
+        // Mesma chave nas novas tentativas: o Mercado Pago não cria o Pix em dobro
+        requestOptions: { idempotencyKey },
+      }));
 
       const pointOfInteraction = response.point_of_interaction;
       const transactionData = pointOfInteraction?.transaction_data;
@@ -82,7 +114,7 @@ export class MercadoPagoService {
 
   async getPaymentDetails(paymentId: string) {
     try {
-      return await this.payment.get({ id: paymentId });
+      return await this.withRetry('Consultar pagamento', () => this.payment.get({ id: paymentId }));
     } catch (error: any) {
       this.logger.error(`Erro ao consultar pagamento ${paymentId}: ${error.message}`);
       throw new InternalServerErrorException('Não foi possível verificar os detalhes do pagamento no gateway.');

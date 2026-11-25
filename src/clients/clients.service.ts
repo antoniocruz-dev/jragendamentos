@@ -1,8 +1,12 @@
 import {
   Injectable,
+  BadRequestException,
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
+import { UserRole } from '@prisma/client';
+import { PortalAccessDto } from './dto/portal-access.dto.js';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { parsePage, searchTerms, toPage } from '../common/pagination.js';
@@ -60,6 +64,7 @@ export class ClientsService {
             include: { _count: { select: { workOrders: true } } },
             orderBy: { createdAt: 'asc' },
           },
+          user: { select: { email: true, isActive: true } },
         },
         orderBy: [{ name: 'asc' }, { id: 'asc' }],
         skip,
@@ -183,6 +188,9 @@ export class ClientsService {
 
   async findVehicleByPlate(licensePlate: string) {
     const sanitizedPlate = licensePlate.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    if (!/^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/.test(sanitizedPlate)) {
+      throw new BadRequestException('Placa inválida. Use o padrão antigo (ABC1234) ou Mercosul (ABC1D23).');
+    }
 
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { licensePlate: sanitizedPlate },
@@ -192,6 +200,7 @@ export class ClientsService {
         },
         workOrders: {
           orderBy: { createdAt: 'desc' },
+          take: 5, // últimas 5 OS
           select: {
             id: true,
             code: true,
@@ -209,6 +218,49 @@ export class ClientsService {
     }
 
     return vehicle;
+  }
+
+  // ==========================================
+  // ACESSO AO PORTAL DO CLIENTE
+  // ==========================================
+
+  async portalAccess(clientId: string) {
+    const client = await this.prisma.client.findUnique({
+      where: { id: clientId },
+      select: { email: true, user: { select: { email: true, isActive: true } } },
+    });
+    if (!client) throw new NotFoundException('Cliente não encontrado.');
+    return { hasAccess: !!client.user?.isActive, email: client.user?.email ?? client.email ?? '', isActive: client.user?.isActive ?? false };
+  }
+
+  /** Cria (ou atualiza e reativa) o login do cliente no portal. */
+  async grantPortalAccess(clientId: string, dto: PortalAccessDto) {
+    const client = await this.prisma.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, phone: true, userId: true } });
+    if (!client) throw new NotFoundException('Cliente não encontrado.');
+
+    const taken = await this.prisma.user.findUnique({ where: { email: dto.email }, select: { id: true } });
+    if (taken && taken.id !== client.userId) throw new ConflictException('Este e-mail já é usado por outro acesso.');
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+    await this.prisma.$transaction(async (tx) => {
+      if (client.userId) {
+        await tx.user.update({ where: { id: client.userId }, data: { email: dto.email, passwordHash, isActive: true } });
+      } else {
+        const user = await tx.user.create({
+          data: { name: client.name, email: dto.email, phone: client.phone, passwordHash, role: UserRole.CLIENT },
+        });
+        await tx.client.update({ where: { id: clientId }, data: { userId: user.id } });
+      }
+    });
+    return this.portalAccess(clientId);
+  }
+
+  /** Bloqueia o login do cliente (o cadastro e o histórico continuam). */
+  async revokePortalAccess(clientId: string) {
+    const client = await this.prisma.client.findUnique({ where: { id: clientId }, select: { userId: true } });
+    if (!client) throw new NotFoundException('Cliente não encontrado.');
+    if (client.userId) await this.prisma.user.update({ where: { id: client.userId }, data: { isActive: false } });
+    return this.portalAccess(clientId);
   }
 
   // ==========================================

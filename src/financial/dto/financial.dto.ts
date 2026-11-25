@@ -1,19 +1,6 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { Type } from 'class-transformer';
-import {
-  IsDateString,
-  IsEnum,
-  IsIn,
-  IsInt,
-  IsNotEmpty,
-  IsNumber,
-  IsOptional,
-  IsString,
-  IsUUID,
-  Length,
-  Max,
-  Min,
-} from 'class-validator';
+import { IsDateString, IsEnum, IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Length, Max, Min, IsBoolean } from 'class-validator';
 import { ExpensePayer, PaymentMethod, TaxRegime } from '@prisma/client';
 import { EXPENSE_CATEGORIES } from '../financial-calc.js';
 
@@ -117,4 +104,21 @@ export class ReverseBillingDto {
   @IsNotEmpty({ message: 'Informe o motivo do estorno.' })
   @Length(3, 255)
   reason: string;
+}
+
+/** Resolução da pendência de estorno de uma OS faturada que foi cancelada. */
+export class ResolveRefundDto {
+  /** REFUNDED: devolveu o dinheiro (cancela a entrada no caixa). WAIVED: sem devolução (a receita fica). */
+  @IsIn(['REFUNDED', 'WAIVED'], { message: 'Escolha REFUNDED (estorno feito) ou WAIVED (sem estorno).' })
+  resolution: 'REFUNDED' | 'WAIVED';
+
+  /** Devolver as peças da OS ao estoque (só no estorno). */
+  @IsOptional()
+  @IsBoolean()
+  returnStock?: boolean;
+
+  @IsString()
+  @IsNotEmpty({ message: 'Descreva o que foi feito (ex.: Pix devolvido em 25/11).' })
+  @Length(3, 500)
+  notes: string;
 }

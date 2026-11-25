@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { Package, Wrench, Plus, Pencil, Trash2, Power, PowerOff, AlertTriangle, Search } from 'lucide-react';
+import { Package, Wrench, Plus, Pencil, Trash2, Power, PowerOff, AlertTriangle, Search, ArrowDownUp } from 'lucide-react';
 import { fetchApi } from '@/services/api';
 import { useAuth } from '@/services/auth';
 import { canManageRecords } from '@/services/permissions';
@@ -50,6 +50,8 @@ export default function CatalogPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [editingService, setEditingService] = useState<ServiceItem | null | undefined>(undefined);
   const [editingProduct, setEditingProduct] = useState<ProductItem | null | undefined>(undefined);
+  const [stockProduct, setStockProduct] = useState<ProductItem | null>(null);
+  const isAdmin = user?.profile === 'ADMINISTRADOR';
 
   const [reloadKey, setReloadKey] = useState(0);
   const load = useCallback(() => setReloadKey((k) => k + 1), []);
@@ -79,7 +81,8 @@ export default function CatalogPage() {
       await action();
       await load();
     } catch (err) {
-      alert(errorMessage(err));
+      // o aviso de erro já é mostrado pelo fetchApi (toast)
+      void err;
     } finally {
       setBusyId(null);
     }
@@ -244,6 +247,7 @@ export default function CatalogPage() {
                             onEdit={() => setEditingProduct(p)}
                             onToggle={() => toggleActive(p.id, !p.isActive)}
                             onDelete={() => remove(p.id, p.name)}
+                            onStock={() => setStockProduct(p)}
                           />
                         </td>
                       </tr>
@@ -258,6 +262,16 @@ export default function CatalogPage() {
 
       {editingService !== undefined && (
         <ServiceModal item={editingService} onClose={(changed) => { setEditingService(undefined); if (changed) load(); }} />
+      )}
+      {stockProduct && (
+        <StockModal
+          product={stockProduct}
+          isAdmin={isAdmin}
+          onClose={(changed) => {
+            setStockProduct(null);
+            if (changed) load();
+          }}
+        />
       )}
       {editingProduct !== undefined && (
         <ProductModal item={editingProduct} onClose={(changed) => { setEditingProduct(undefined); if (changed) load(); }} />
@@ -282,6 +296,7 @@ function RowActions({
   onEdit,
   onToggle,
   onDelete,
+  onStock,
 }: {
   active: boolean;
   used: boolean;
@@ -290,9 +305,11 @@ function RowActions({
   onEdit: () => void;
   onToggle: () => void;
   onDelete: () => void;
+  onStock?: () => void;
 }) {
   return (
-    <div className="flex justify-end gap-1.5">
+    <div className="flex flex-wrap justify-end gap-1.5">
+      {onStock && <ActionBtn icon={ArrowDownUp} label="Estoque" onClick={onStock} />}
       <ActionBtn icon={Pencil} label="Editar" onClick={onEdit} />
       {isManager && (
         <>
@@ -431,6 +448,140 @@ function ProductModal({ item, onClose }: { item: ProductItem | null; onClose: (c
         <FormError message={error} />
         <ModalActions onCancel={() => onClose(false)} saving={saving} />
       </form>
+    </Modal>
+  );
+}
+
+// ==========================================
+// MOVIMENTAÇÃO DE ESTOQUE
+// ==========================================
+
+interface Movement {
+  id: string;
+  quantity: number;
+  balance: number;
+  reason: string;
+  userName: string | null;
+  createdAt: string;
+  workOrder: { id: string; code: number } | null;
+}
+
+/** Entrada/saída manual com motivo. Estoque negativo só com autorização do Administrador. */
+function StockModal({ product, isAdmin, onClose }: { product: ProductItem; isAdmin: boolean; onClose: (changed: boolean) => void }) {
+  const [direction, setDirection] = useState<'in' | 'out'>('in');
+  const [quantity, setQuantity] = useState('1');
+  const [reason, setReason] = useState('');
+  const [allowNegative, setAllowNegative] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [movements, setMovements] = useState<Movement[] | null>(null);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    fetchApi<Movement[]>(`/catalog/products/${product.id}/stock`, { signal: ctrl.signal })
+      .then(setMovements)
+      .catch(() => !ctrl.signal.aborted && setMovements([]));
+    return () => ctrl.abort();
+  }, [product.id]);
+
+  const qty = Math.max(0, Math.floor(Number(quantity) || 0));
+  const after = product.stockQuantity + (direction === 'in' ? qty : -qty);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (qty <= 0) return setError('Informe uma quantidade maior que zero.');
+    try {
+      setSaving(true);
+      await fetchApi(`/catalog/products/${product.id}/stock`, {
+        method: 'POST',
+        body: JSON.stringify({ quantity: direction === 'in' ? qty : -qty, reason: reason.trim(), allowNegative: allowNegative || undefined }),
+        successToast: direction === 'in' ? `Entrada de ${qty} un. registrada.` : `Saída de ${qty} un. registrada.`,
+      });
+      onClose(true);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal title={`Estoque · ${product.name}`} onClose={() => onClose(false)}>
+      <form onSubmit={submit} className="space-y-4">
+        <div className="grid grid-cols-2 gap-2">
+          {(['in', 'out'] as const).map((d) => (
+            <button
+              key={d}
+              type="button"
+              onClick={() => setDirection(d)}
+              className={`min-h-10 rounded-lg text-sm font-semibold border ${
+                direction === d
+                  ? d === 'in'
+                    ? 'bg-emerald-500 text-slate-950 border-emerald-500'
+                    : 'bg-rose-500 text-white border-rose-500'
+                  : 'bg-slate-950 text-slate-300 border-slate-700'
+              }`}
+            >
+              {d === 'in' ? 'Entrada' : 'Saída'}
+            </button>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Quantidade *">
+            <input type="number" min={1} required value={quantity} onChange={(e) => setQuantity(e.target.value)} className={inputCls} />
+          </Field>
+          <div className="text-sm text-slate-400 self-end pb-2">
+            Saldo: <strong className="text-white">{product.stockQuantity}</strong> →{' '}
+            <strong className={after < 0 ? 'text-rose-400' : 'text-emerald-400'}>{after}</strong>
+          </div>
+        </div>
+        <Field label="Motivo *">
+          <input required minLength={3} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ex.: compra NF 1234, perda, inventário" className={inputCls} />
+        </Field>
+        {direction === 'out' && after < 0 && (
+          isAdmin ? (
+            <label className="flex items-center gap-2 text-sm text-amber-300">
+              <input type="checkbox" checked={allowNegative} onChange={(e) => setAllowNegative(e.target.checked)} className="w-4 h-4 accent-amber-500" />
+              Autorizar estoque negativo (Administrador)
+            </label>
+          ) : (
+            <p className="text-xs text-rose-300">Saída maior que o saldo: só o Administrador pode autorizar estoque negativo.</p>
+          )
+        )}
+        <FormError message={error} />
+        <ModalActions onCancel={() => onClose(false)} saving={saving} label="Registrar" />
+      </form>
+
+      <div className="mt-5 border-t border-slate-800 pt-4">
+        <h3 className="text-xs font-bold uppercase text-slate-400 mb-2">Últimas movimentações</h3>
+        {!movements ? (
+          <p className="text-xs text-slate-500">Carregando...</p>
+        ) : movements.length === 0 ? (
+          <p className="text-xs text-slate-500">Nenhuma movimentação registrada.</p>
+        ) : (
+          <ul className="space-y-1.5 max-h-56 overflow-y-auto text-xs">
+            {movements.map((m) => (
+              <li key={m.id} className="flex items-start justify-between gap-3 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2">
+                <div className="min-w-0">
+                  <div className="text-slate-200 truncate">{m.reason}</div>
+                  <div className="text-slate-500">
+                    {new Date(m.createdAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                    {m.userName ? ` · ${m.userName}` : ''}
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className={`font-mono font-bold ${m.quantity > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {m.quantity > 0 ? '+' : ''}
+                    {m.quantity}
+                  </div>
+                  <div className="text-slate-500">saldo {m.balance}</div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </Modal>
   );
 }

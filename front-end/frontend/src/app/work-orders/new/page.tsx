@@ -80,6 +80,8 @@ export default function NewWorkOrderPage() {
   const [items, setItems] = useState<SelectedItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [initialStatus, setInitialStatus] = useState<'QUOTE' | 'DRAFT'>('QUOTE');
+  const [discountInput, setDiscountInput] = useState('');
 
   // Busca do veículo pela placa
   async function handleSearchPlate(e?: React.FormEvent) {
@@ -151,12 +153,18 @@ export default function NewWorkOrderPage() {
     .filter((it) => it.itemType === 'PRODUCT')
     .reduce((acc, it) => acc + it.unitPrice * it.quantity, 0);
 
-  const finalTotal = totalServices + totalProducts;
+  const discount = Math.max(0, Math.round((Number(discountInput.replace(',', '.')) || 0) * 100) / 100);
+  const grossTotal = totalServices + totalProducts;
+  const finalTotal = grossTotal - discount;
 
   // Envio da OS ao backend
   async function handleSubmitOrder() {
     if (!vehicle) {
       setSubmitError('Identifique o veículo e cliente antes de abrir a OS.');
+      return;
+    }
+    if (discount > grossTotal) {
+      setSubmitError('O desconto não pode ser maior que o valor total da OS.');
       return;
     }
     if (items.length === 0) {
@@ -173,6 +181,8 @@ export default function NewWorkOrderPage() {
         vehicleId: vehicle.id,
         reportedIssue: reportedIssue.trim() || undefined,
         technicalNotes: technicalNotes.trim() || undefined,
+        status: initialStatus,
+        discount: discount || undefined,
         items: items.map((it) => ({
           itemType: it.itemType,
           serviceId: it.itemType === 'SERVICE' ? it.serviceId : undefined,
@@ -184,6 +194,7 @@ export default function NewWorkOrderPage() {
       const created = await fetchApi('/work-orders', {
         method: 'POST',
         body: JSON.stringify(payload),
+        successToast: initialStatus === 'DRAFT' ? 'Rascunho salvo.' : 'Orçamento criado.',
       });
 
       // Redireciona para o detalhe da OS ou volta para a home
@@ -414,12 +425,39 @@ export default function NewWorkOrderPage() {
                 <span>Total em Peças/Materiais:</span>
                 <span className="font-medium text-slate-200">R$ {totalProducts.toFixed(2)}</span>
               </div>
+              <label className="flex items-center justify-between gap-3 text-slate-400">
+                <span>Desconto (R$):</span>
+                <input
+                  inputMode="decimal"
+                  value={discountInput}
+                  onChange={(e) => setDiscountInput(e.target.value.replace(/[^0-9.,]/g, ''))}
+                  placeholder="0,00"
+                  className="w-28 text-right bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200 focus:outline-none focus:border-amber-500"
+                />
+              </label>
+              {discount > grossTotal && <p className="text-xs text-rose-300">O desconto passa do valor total.</p>}
+            </div>
+
+            <div className="grid grid-cols-2 gap-1 bg-slate-900 border border-slate-700 rounded-lg p-1 mb-4 text-xs font-semibold">
+              {([
+                ['QUOTE', 'Orçamento'],
+                ['DRAFT', 'Rascunho'],
+              ] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setInitialStatus(key)}
+                  className={`py-2 rounded-md ${initialStatus === key ? 'bg-amber-500 text-slate-950' : 'text-slate-300'}`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
 
             <div className="flex justify-between items-baseline mb-6">
               <span className="text-base font-bold text-white">Valor Total da OS:</span>
               <span className="text-2xl font-extrabold text-emerald-400">
-                R$ {finalTotal.toFixed(2)}
+                R$ {Math.max(0, finalTotal).toFixed(2)}
               </span>
             </div>
 
@@ -441,13 +479,15 @@ export default function NewWorkOrderPage() {
               ) : (
                 <>
                   <CheckCircle className="w-5 h-5" />
-                  Abrir Ordem de Serviço
+                  {initialStatus === 'DRAFT' ? 'Salvar rascunho' : 'Abrir Ordem de Serviço'}
                 </>
               )}
             </button>
 
             <p className="text-[11px] text-slate-500 text-center mt-3">
-              A OS será criada inicialmente como Orçamento (`QUOTE`) aguardando aprovação do cliente.
+              {initialStatus === 'DRAFT'
+                ? 'O rascunho fica só com a equipe; envie ao cliente quando estiver pronto.'
+                : 'O orçamento fica aguardando aprovação. As peças só saem do estoque quando a OS é aprovada.'}
             </p>
           </div>
         </div>

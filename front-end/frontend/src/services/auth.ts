@@ -16,7 +16,11 @@ export interface AuthUser {
   profile: StaffProfile | null;
   /** Módulos liberados pelo perfil (a API recalcula a cada requisição) */
   modules: AppModule[];
+  /** Portal do Cliente: cliente vinculado ao login (papel CLIENT) */
+  clientId?: string;
 }
+
+export const isClientUser = (u: { role?: string } | null | undefined) => u?.role === 'CLIENT';
 
 export interface AuthSession {
   accessToken: string;

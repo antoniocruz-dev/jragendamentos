@@ -11,6 +11,8 @@ export interface AuthenticatedUser {
   profile: StaffProfile | null;
   /** Módulos liberados para o perfil (inclui TEAM para Administrador/Gerente Geral) */
   modules: AppModule[];
+  /** Só no Portal do Cliente: cliente vinculado ao usuário (papel CLIENT) */
+  clientId: string | null;
 }
 
 export const CurrentUser = createParamDecorator(

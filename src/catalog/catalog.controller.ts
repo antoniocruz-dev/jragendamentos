@@ -2,13 +2,13 @@ import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query
 import { CatalogService } from './catalog.service.js';
 import { RequireModules } from '../auth/decorators/require-modules.decorator.js';
 import { ManagersOnly } from '../auth/decorators/managers-only.decorator.js';
+import { CurrentUser, type AuthenticatedUser } from '../auth/decorators/current-user.decorator.js';
 import {
   CreateProductDto,
   CreateServiceDto,
   SetActiveDto,
   UpdateProductDto,
-  UpdateServiceDto,
-} from './dto/catalog.dto.js';
+  UpdateServiceDto, StockAdjustmentDto } from './dto/catalog.dto.js';
 
 /** Catálogo de serviços (mão de obra) e peças (estoque). */
 @RequireModules('CATALOG')
@@ -63,6 +63,21 @@ export class CatalogController {
   @Patch('products/:id')
   updateProduct(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: UpdateProductDto) {
     return this.catalog.updateProduct(id, dto);
+  }
+
+  /** Entrada/saída manual de peças (estoque negativo só com autorização do Administrador). */
+  @Post('products/:id/stock')
+  adjustStock(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: StockAdjustmentDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.catalog.adjustStock(id, dto, user);
+  }
+
+  @Get('products/:id/stock')
+  stockMovements(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.catalog.stockMovements(id);
   }
 
   @ManagersOnly()

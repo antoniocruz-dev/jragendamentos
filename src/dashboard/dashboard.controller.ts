@@ -1,5 +1,6 @@
-import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
-import { AppointmentStatus, WorkOrderStatus } from '@prisma/client';
+import { BadRequestException, Controller, Get, Param, ParseUUIDPipe, Patch, Query } from '@nestjs/common';
+import { AppointmentStatus, Prisma, RefundStatus, WorkOrderStatus } from '@prisma/client';
+import { REVENUE_ORDERS } from '../financial/financial.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { RequireModules } from '../auth/decorators/require-modules.decorator.js';
 import { CurrentUser, type AuthenticatedUser } from '../auth/decorators/current-user.decorator.js';
@@ -46,14 +47,33 @@ export class DashboardController {
       user.modules.includes('FINANCIAL')
         ? this.prisma.workOrder.aggregate({
             // Faturamento pela data do pagamento (mesma regra do módulo Financeiro)
-            where: { status: WorkOrderStatus.BILLED, billedAt: { gte: from, lte: to } },
+            where: { AND: [REVENUE_ORDERS], billedAt: { gte: from, lte: to } },
             _sum: { totalServices: true, totalProducts: true, discount: true, finalAmount: true },
             _count: { _all: true },
           })
         : Promise.resolve(null),
     ]);
 
+    // Alertas da operação (independem do período)
+    const can = (m: string) => user.modules.includes(m as never);
+    const [lowStock, alerts, pendingRefunds] = await Promise.all([
+      can('CATALOG') || can('WORK_ORDERS')
+        ? this.prisma.$queryRaw<{ id: string; name: string; sku: string; stockQuantity: number; minStock: number }[]>(Prisma.sql`
+            SELECT id, name, sku, stock_quantity AS "stockQuantity", min_stock AS "minStock"
+            FROM products WHERE is_active AND stock_quantity <= min_stock
+            ORDER BY stock_quantity - min_stock, name LIMIT 20`)
+        : Promise.resolve([]),
+      this.prisma.systemAlert.findMany({
+        where: { resolvedAt: null },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+        select: { id: true, type: true, message: true, createdAt: true, workOrderId: true },
+      }),
+      can('FINANCIAL') ? this.prisma.workOrder.count({ where: { refundStatus: RefundStatus.PENDING } }) : Promise.resolve(0),
+    ]);
+
     return {
+      alerts: { lowStock, items: alerts, pendingRefunds },
       period: { from: from.toISOString(), to: to.toISOString() },
       workOrders: Object.values(WorkOrderStatus).map((status) => {
         const g = woGroups.find((x) => x.status === status);
@@ -73,5 +93,12 @@ export class DashboardController {
           }
         : null,
     };
+  }
+
+  /** Marca um alerta como resolvido (some do Dashboard). */
+  @Patch('alerts/:id/resolve')
+  async resolveAlert(@Param('id', new ParseUUIDPipe()) id: string) {
+    await this.prisma.systemAlert.updateMany({ where: { id, resolvedAt: null }, data: { resolvedAt: new Date() } });
+    return { resolved: true };
   }
 }

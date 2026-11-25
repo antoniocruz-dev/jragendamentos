@@ -27,6 +27,7 @@ import {
 import { Field, FormError, Modal, ModalActions, errorMessage as errMsg, inputCls } from '@/components/crud';
 import { PAYMENT_OPTIONS, brl, type StaffOption } from '@/services/financial';
 import { fetchApi } from '@/services/api';
+import { toast } from '@/components/feedback';
 import { useAuth } from '@/services/auth';
 
 interface WorkOrderDetail {
@@ -90,7 +91,11 @@ export default function WorkOrderDetailPage() {
   const osId = params?.id as string;
   // Botões de andamento da oficina só aparecem para a equipe logada;
   // o cliente (sem login) só aprova/recusa o orçamento e paga.
-  const { isAuthenticated: isStaff, user } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  // Cliente logado no portal não é equipe: na OS ele age como no link público
+  const isStaff = isAuthenticated && user?.role !== 'CLIENT';
+  const canApprove = isStaff && ['ADMINISTRADOR', 'GERENTE_GERAL', 'AUXILIAR_ADMINISTRATIVO'].includes(user?.profile ?? '');
+  const isAdmin = isStaff && user?.profile === 'ADMINISTRADOR';
   const canBill = isStaff && !!user?.modules?.some((m) => m === 'WORK_ORDERS' || m === 'FINANCIAL');
   const [billingOpen, setBillingOpen] = useState(false);
 
@@ -133,24 +138,74 @@ export default function WorkOrderDetailPage() {
       setActionLoading(true);
       setActionMessage(null);
 
-      const updated = await fetchApi<WorkOrderDetail>(`/work-orders/${osId}/status`, {
+      await fetchApi(`/work-orders/${osId}/status`, {
         method: 'PATCH',
         body: JSON.stringify({
           status: newStatus,
           reason,
         }),
+        successToast: `Status atualizado: ${getStatusLabel(newStatus)}.`,
       });
 
-      setOrder(updated);
-      setActionMessage({
-        type: 'success',
-        text: `Status atualizado para "${newStatus}" com sucesso!`,
-      });
+      await loadOrderDetails();
     } catch (err: any) {
       setActionMessage({
         type: 'error',
         text: err?.message || 'Erro ao atualizar status da Ordem de Serviço.',
       });
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  // Aprovação pela equipe (Administrador, Gerente Geral ou Auxiliar Administrativo).
+  // Faltando peça, a API move a OS para "Aguardando Peças" e devolve a lista do que falta.
+  async function handleStaffApprove() {
+    try {
+      setActionLoading(true);
+      setActionMessage(null);
+      const res = await fetchApi<{ status: string; shortages: { name: string; requested: number; available: number }[] }>(
+        `/work-orders/${osId}/approve`,
+        { method: 'PATCH', successToast: false },
+      );
+      if (res.status === 'WAITING_PARTS') {
+        const list = res.shortages.map((s) => `${s.name} (precisa ${s.requested}, tem ${s.available})`).join('; ');
+        setActionMessage({ type: 'error', text: `Faltam peças no estoque: ${list}. A OS foi para "Aguardando Peças".` });
+        toast.info('OS aprovada, mas aguardando peças.');
+      } else {
+        toast.success('OS aprovada. As peças saíram do estoque.');
+      }
+      await loadOrderDetails();
+    } catch {
+      // erro já exibido pelo fetchApi
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  // Cancelamento com motivo. OS faturada: só Administrador, com confirmação (estorno manual no Financeiro).
+  async function handleCancel(billed: boolean) {
+    const reason = prompt(
+      billed
+        ? 'Cancelar esta OS JÁ FATURADA?\n\nO caixa e o estoque NÃO serão revertidos: fica uma pendência de estorno no Financeiro.\n\nMotivo do cancelamento (obrigatório):'
+        : 'Motivo do cancelamento (obrigatório):',
+    );
+    if (reason === null) return;
+    if (!reason.trim()) {
+      toast.error('Informe o motivo do cancelamento.');
+      return;
+    }
+    if (billed && !confirm(`Confirma o cancelamento da OS #${order?.code} faturada?`)) return;
+    try {
+      setActionLoading(true);
+      await fetchApi(`/work-orders/${osId}/cancel`, {
+        method: 'PATCH',
+        body: JSON.stringify({ reason: reason.trim(), confirm: billed ? true : undefined }),
+        successToast: billed ? 'OS cancelada. Pendência de estorno criada no Financeiro.' : 'OS cancelada.',
+      });
+      await loadOrderDetails();
+    } catch {
+      // erro já exibido pelo fetchApi
     } finally {
       setActionLoading(false);
     }
@@ -498,8 +553,37 @@ export default function WorkOrderDetailPage() {
 
             {/* Fluxo de Ações Baseado no Status */}
             <div className="space-y-3">
-              {/* Status: QUOTE -> Aprovar ou Cancelar */}
-              {order.status === 'QUOTE' && (
+              {/* Rascunho: equipe envia como orçamento ao cliente */}
+              {isStaff && order.status === 'DRAFT' && (
+                <button
+                  onClick={() => handleUpdateStatus('QUOTE')}
+                  disabled={actionLoading}
+                  className="w-full bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  Enviar orçamento ao cliente
+                </button>
+              )}
+
+              {/* Equipe: aprovação restrita (baixa as peças do estoque) */}
+              {canApprove && (order.status === 'QUOTE' || order.status === 'DRAFT') && (
+                <button
+                  onClick={handleStaffApprove}
+                  disabled={actionLoading}
+                  className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-slate-950 font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2 transition-all shadow-md"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  Aprovar OS (equipe)
+                </button>
+              )}
+              {isStaff && !canApprove && order.status === 'QUOTE' && (
+                <p className="text-xs text-slate-500 text-center">
+                  Aguardando aprovação do cliente ou do Administrador, Gerente Geral ou Auxiliar Administrativo.
+                </p>
+              )}
+
+              {/* Status: QUOTE -> o cliente aprova ou recusa (link público ou portal) */}
+              {!isStaff && order.status === 'QUOTE' && (
                 <>
                   <button
                     onClick={() => handleCustomerDecision('APPROVE')}
@@ -598,6 +682,30 @@ export default function WorkOrderDetailPage() {
                       Gerar Pagamento Pix
                     </>
                   )}
+                </button>
+              )}
+
+              {/* Cancelamento pela equipe (motivo obrigatório) */}
+              {isStaff && ['DRAFT', 'QUOTE', 'APPROVED', 'IN_PROGRESS', 'WAITING_PARTS'].includes(order.status) && (
+                <button
+                  onClick={() => handleCancel(false)}
+                  disabled={actionLoading}
+                  className="w-full bg-slate-900 hover:bg-rose-950/40 text-rose-400 border border-rose-500/30 font-medium py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                >
+                  <XCircle className="w-4 h-4" />
+                  Cancelar OS
+                </button>
+              )}
+
+              {/* OS faturada: só o Administrador cancela (estorno manual) */}
+              {isAdmin && order.status === 'BILLED' && (
+                <button
+                  onClick={() => handleCancel(true)}
+                  disabled={actionLoading}
+                  className="w-full bg-slate-900 hover:bg-rose-950/40 text-rose-400 border border-rose-500/30 font-medium py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                >
+                  <XCircle className="w-4 h-4" />
+                  Cancelar OS faturada (estorno manual)
                 </button>
               )}
 
