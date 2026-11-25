@@ -157,7 +157,7 @@ export class AuthService {
 
   async login(dto: LoginDto) {
     if (!dto.accessCode && !dto.email) {
-      throw new UnauthorizedException('Informe o código de acesso e a senha.');
+      throw new UnauthorizedException('Informe o usuário (código de 4 dígitos) e a senha.');
     }
     const user = dto.accessCode
       ? await this.prisma.user.findUnique({ where: { accessCode: dto.accessCode } })
@@ -166,14 +166,14 @@ export class AuthService {
     // Mesma mensagem para código inexistente e senha errada (não revela qual dos dois falhou)
     const isPasswordValid = user && !user.firstAccessPending ? await bcrypt.compare(dto.password, user.passwordHash) : false;
     if (!user || !isPasswordValid) {
-      throw new UnauthorizedException(dto.accessCode ? 'Código de acesso ou senha inválidos.' : 'E-mail ou senha inválidos.');
+      throw new UnauthorizedException(dto.accessCode ? 'Usuário ou senha inválidos.' : 'E-mail ou senha inválidos.');
     }
     // Aba errada (só depois da senha válida, para não revelar o tipo da conta)
     if (dto.tab === 'CLIENTE' && user.role !== UserRole.CLIENT) {
-      throw new UnauthorizedException('Este código é da equipe da oficina. Use a aba "Equipe".');
+      throw new UnauthorizedException('Este usuário é da equipe da oficina. Use a aba "Equipe".');
     }
     if (dto.tab === 'EQUIPE' && user.role === UserRole.CLIENT) {
-      throw new UnauthorizedException('Este código é de cliente. Use a aba "Cliente".');
+      throw new UnauthorizedException('Este usuário é de cliente. Use a aba "Cliente".');
     }
     if (!user.isActive) {
       throw new UnauthorizedException('Conta desativada. Fale com a oficina para reativar o acesso.');
@@ -219,7 +219,8 @@ export class AuthService {
    * - Cliente: o WhatsApp precisa ser o telefone do cadastro feito pela oficina (as credenciais só chegam
    *   ao dono daquele número); cria o login e vincula ao cadastro.
    * - Equipe: só para quem o gestor cadastrou sem senha (convite pendente) com este e-mail.
-   * O código nunca volta na resposta: só pelo WhatsApp (ou com a equipe, em Clientes/Equipe).
+   * O usuário (código) nunca volta na resposta: só pelo WhatsApp (ou com a equipe, em Clientes/Equipe).
+   * A senha é sempre a que a própria pessoa cadastra aqui: a equipe não define senhas.
    */
   async firstAccess(dto: FirstAccessDto, ip: string | undefined) {
     if ((await this.hit(`first-access:ip:${(ip || 'desconhecido').slice(0, 90)}`)) > LOGIN_MAX_FAILURES) throw this.tooMany();
@@ -236,9 +237,7 @@ export class AuthService {
 
     let user: { id: string; name: string; accessCode: string };
     if (dto.tab === 'CLIENTE') {
-      if (await this.prisma.user.findUnique({ where: { email }, select: { id: true } })) {
-        throw new ConflictException('Já existe um acesso com este e-mail. Entre com seu código e senha.');
-      }
+
       const matches = await this.prisma.$queryRaw<{ id: string; name: string; user_id: string | null }[]>`
         SELECT "id", "name", "user_id" FROM "clients"
          WHERE right(regexp_replace("phone", '[^0-9]', '', 'g'), 11) = ${whatsapp}
@@ -249,17 +248,32 @@ export class AuthService {
         );
       }
       const client = matches[0];
-      if (client.user_id) {
-        throw new ConflictException('Este cadastro já tem acesso. Entre com seu código ou peça à oficina para redefinir.');
+      const linkedUser = client.user_id
+        ? await this.prisma.user.findUnique({ where: { id: client.user_id }, select: { id: true, firstAccessPending: true, isActive: true } })
+        : null;
+      if (linkedUser && (!linkedUser.firstAccessPending || !linkedUser.isActive)) {
+        throw new ConflictException('Este cadastro já tem acesso. Entre com seu usuário e senha, ou peça à oficina para redefinir o acesso.');
       }
-      user = await this.prisma.$transaction(async (tx) => {
+      const emailOwner = await this.prisma.user.findUnique({ where: { email }, select: { id: true } });
+      if (emailOwner && emailOwner.id !== linkedUser?.id) {
+        throw new ConflictException('Já existe um acesso com este e-mail. Entre com seu usuário e senha.');
+      }
+      if (linkedUser) {
+        // Acesso redefinido pela oficina: a pessoa cadastra a própria senha de novo (o usuário/código continua o mesmo)
+        const res = await this.prisma.user.updateMany({
+          where: { id: linkedUser.id, firstAccessPending: true },
+          data: { email, whatsapp, phone: whatsapp, passwordHash, firstAccessPending: false },
+        });
+        if (res.count !== 1) throw new ConflictException('Este primeiro acesso já foi concluído. Entre com seu usuário e senha.');
+        user = await this.prisma.user.findUniqueOrThrow({ where: { id: linkedUser.id }, select: { id: true, name: true, accessCode: true } });
+      } else user = await this.prisma.$transaction(async (tx) => {
         const created = await tx.user.create({
           data: { name: client.name, email, whatsapp, phone: whatsapp, passwordHash, role: UserRole.CLIENT },
           select: { id: true, name: true, accessCode: true },
         });
         // Condicional: dois cadastros simultâneos não vinculam o mesmo cliente
         const linked = await tx.client.updateMany({ where: { id: client.id, userId: null }, data: { userId: created.id } });
-        if (linked.count !== 1) throw new ConflictException('Este cadastro acabou de receber um acesso. Entre com seu código.');
+        if (linked.count !== 1) throw new ConflictException('Este cadastro acabou de receber um acesso. Entre com seu usuário e senha.');
         return created;
       });
     } else {
@@ -276,7 +290,7 @@ export class AuthService {
         where: { id: staff.id, firstAccessPending: true },
         data: { passwordHash, whatsapp, phone: whatsapp, firstAccessPending: false },
       });
-      if (res.count !== 1) throw new ConflictException('Este primeiro acesso já foi concluído. Entre com seu código.');
+      if (res.count !== 1) throw new ConflictException('Este primeiro acesso já foi concluído. Entre com seu usuário e senha.');
       user = await this.prisma.user.findUniqueOrThrow({ where: { id: staff.id }, select: { id: true, name: true, accessCode: true } });
     }
 

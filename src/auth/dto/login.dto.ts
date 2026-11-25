@@ -1,9 +1,9 @@
 import { IsEmail, IsIn, IsNotEmpty, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 
 export class LoginDto {
-  /** Código de acesso de 4 dígitos (forma principal de login) */
+  /** Usuário: código de 4 dígitos gerado pelo banco (a senha é a que a pessoa cadastrou) */
   @IsOptional()
-  @Matches(/^\d{4}$/, { message: 'O código de acesso tem 4 dígitos.' })
+  @Matches(/^\d{4}$/, { message: 'O usuário é o código de 4 dígitos.' })
   accessCode?: string;
 
   /** Alternativa da equipe: entrar com o e-mail */

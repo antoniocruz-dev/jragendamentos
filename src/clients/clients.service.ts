@@ -5,8 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { UserRole } from '@prisma/client';
-import { PortalAccessDto } from './dto/portal-access.dto.js';
+import { randomBytes } from 'crypto';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { parsePage, searchTerms, toPage } from '../common/pagination.js';
@@ -227,37 +226,35 @@ export class ClientsService {
   async portalAccess(clientId: string) {
     const client = await this.prisma.client.findUnique({
       where: { id: clientId },
-      select: { email: true, user: { select: { email: true, isActive: true, accessCode: true } } },
+      select: { email: true, phone: true, user: { select: { email: true, isActive: true, accessCode: true, firstAccessPending: true } } },
     });
     if (!client) throw new NotFoundException('Cliente não encontrado.');
     return {
       hasAccess: !!client.user?.isActive,
       email: client.user?.email ?? client.email ?? '',
       isActive: client.user?.isActive ?? false,
-      // Código de 4 dígitos do login (a equipe informa ao cliente se o WhatsApp não chegar)
+      // Usuário (código de 4 dígitos) do login: a equipe informa ao cliente se o WhatsApp não chegar
       accessCode: client.user?.accessCode ?? null,
+      // true: o cliente ainda precisa cadastrar a própria senha em "É meu primeiro acesso"
+      firstAccessPending: client.user ? client.user.firstAccessPending : true,
+      phone: client.phone,
     };
   }
 
-  /** Cria (ou atualiza e reativa) o login do cliente no portal. */
-  async grantPortalAccess(clientId: string, dto: PortalAccessDto) {
-    const client = await this.prisma.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, phone: true, userId: true } });
+  /**
+   * Libera (ou redefine) o acesso do cliente. A equipe NÃO define senha: o acesso fica pendente e o
+   * cliente cadastra a própria senha em "É meu primeiro acesso", com o WhatsApp deste cadastro.
+   * O usuário (código de 4 dígitos) continua o mesmo.
+   */
+  async grantPortalAccess(clientId: string) {
+    const client = await this.prisma.client.findUnique({ where: { id: clientId }, select: { id: true, userId: true } });
     if (!client) throw new NotFoundException('Cliente não encontrado.');
-
-    const taken = await this.prisma.user.findUnique({ where: { email: dto.email }, select: { id: true } });
-    if (taken && taken.id !== client.userId) throw new ConflictException('Este e-mail já é usado por outro acesso.');
-
-    const passwordHash = await bcrypt.hash(dto.password, 10);
-    await this.prisma.$transaction(async (tx) => {
-      if (client.userId) {
-        await tx.user.update({ where: { id: client.userId }, data: { email: dto.email, passwordHash, isActive: true } });
-      } else {
-        const user = await tx.user.create({
-          data: { name: client.name, email: dto.email, phone: client.phone, passwordHash, role: UserRole.CLIENT },
-        });
-        await tx.client.update({ where: { id: clientId }, data: { userId: user.id } });
-      }
-    });
+    if (client.userId) {
+      await this.prisma.user.update({
+        where: { id: client.userId },
+        data: { isActive: true, firstAccessPending: true, passwordHash: await bcrypt.hash(randomBytes(24).toString('hex'), 10) },
+      });
+    }
     return this.portalAccess(clientId);
   }
 

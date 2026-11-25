@@ -287,81 +287,97 @@ export default function ClientsPage() {
   );
 }
 
-/** Login do cliente no Portal do Cliente: criar, redefinir senha ou bloquear. */
+/**
+ * Acesso do cliente à Área do Cliente. A equipe NÃO define senha: o cliente cadastra a própria em
+ * "É meu primeiro acesso", com o WhatsApp deste cadastro. Aqui a equipe vê o usuário (código de 4 dígitos),
+ * libera/redefine o acesso (a senha atual deixa de valer) ou bloqueia.
+ */
 function PortalAccessModal({ client, canRevoke, onClose }: { client: Client; canRevoke: boolean; onClose: (changed: boolean) => void }) {
-  const active = !!client.user?.isActive;
-  const [email, setEmail] = useState(client.user?.email ?? client.email ?? '');
-  const [password, setPassword] = useState('');
+  const [info, setInfo] = useState<{ hasAccess: boolean; accessCode: string | null; firstAccessPending: boolean; email: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [accessCode, setAccessCode] = useState<string | null>(null);
 
-  // Código de 4 dígitos do login do cliente (para informar se o WhatsApp não chegou)
   useEffect(() => {
     const ctrl = new AbortController();
-    fetchApi<{ accessCode: string | null }>(`/clients/${client.id}/portal-access`, { signal: ctrl.signal })
-      .then((r) => setAccessCode(r.accessCode))
-      .catch(() => undefined);
+    fetchApi<{ hasAccess: boolean; accessCode: string | null; firstAccessPending: boolean; email: string }>(`/clients/${client.id}/portal-access`, { signal: ctrl.signal })
+      .then(setInfo)
+      .catch((err) => !ctrl.signal.aborted && setError(errorMessage(err)));
     return () => ctrl.abort();
   }, [client.id]);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
+  async function resetAccess() {
+    if (!confirm(`Redefinir o acesso de ${client.name}? A senha atual deixa de valer e o cliente cadastra uma nova em "É meu primeiro acesso".`)) return;
     try {
       setSaving(true);
       await fetchApi(`/clients/${client.id}/portal-access`, {
         method: 'POST',
-        body: JSON.stringify({ email: email.trim(), password }),
-        successToast: active ? 'Acesso do cliente atualizado.' : 'Acesso criado. Informe ao cliente o código de acesso e a senha.',
+        successToast: 'Acesso redefinido. O cliente cadastra a nova senha em "É meu primeiro acesso".',
       });
-      onClose(true);
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function revoke() {
-    if (!confirm(`Bloquear o acesso de ${client.name} ao portal? O cadastro e o histórico continuam.`)) return;
-    try {
-      setSaving(true);
-      await fetchApi(`/clients/${client.id}/portal-access`, { method: 'DELETE', successToast: 'Acesso ao portal bloqueado.' });
       onClose(true);
     } catch {
       setSaving(false);
     }
   }
 
+  async function revoke() {
+    if (!confirm(`Bloquear o acesso de ${client.name}? O cadastro e o histórico continuam.`)) return;
+    try {
+      setSaving(true);
+      await fetchApi(`/clients/${client.id}/portal-access`, { method: 'DELETE', successToast: 'Acesso bloqueado.' });
+      onClose(true);
+    } catch {
+      setSaving(false);
+    }
+  }
+
+  const linked = !!info?.accessCode;
   return (
-    <Modal title={`Portal do Cliente · ${client.name}`} onClose={() => onClose(false)}>
-      <form onSubmit={submit} className="space-y-4">
+    <Modal title={`Acesso do cliente · ${client.name}`} onClose={() => onClose(false)}>
+      <div className="space-y-4">
         <p className="text-sm text-slate-400">
-          {active
-            ? 'O cliente já tem acesso. Ele vê só os próprios veículos, orçamentos e histórico, e pode aprovar orçamentos.'
-            : 'Crie um login para o cliente acompanhar os veículos, aprovar orçamentos e ver o histórico de OS. O cliente também pode criar sozinho em "É meu primeiro acesso", com o WhatsApp deste cadastro.'}
+          O cliente entra com o <strong className="text-slate-200">usuário</strong> (código de 4 dígitos) e a <strong className="text-slate-200">senha que ele mesmo cadastrou</strong>.
+          Para criar o acesso, ele toca em &quot;É meu primeiro acesso&quot; na tela de login e informa o WhatsApp deste cadastro ({client.phone}).
         </p>
-        {accessCode && (
-          <div className="flex items-center justify-between gap-3 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5">
-            <span className="text-xs text-slate-400">Código de acesso (login)</span>
-            <span className="font-mono text-xl font-extrabold tracking-[0.3em] text-amber-300">{accessCode}</span>
+        {!info && !error ? (
+          <p className="text-sm text-slate-500">Carregando...</p>
+        ) : linked ? (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-3 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5">
+              <span className="text-xs text-slate-400">Usuário (login)</span>
+              <span className="font-mono text-xl font-extrabold tracking-[0.3em] text-amber-300">{info?.accessCode}</span>
+            </div>
+            <p className="text-xs text-slate-400">
+              {!info?.hasAccess
+                ? 'Acesso bloqueado.'
+                : info?.firstAccessPending
+                  ? 'Aguardando o cliente cadastrar a senha em "É meu primeiro acesso".'
+                  : `Acesso ativo (${info?.email}).`}
+            </p>
           </div>
+        ) : (
+          <p className="text-sm text-amber-300">O cliente ainda não fez o primeiro acesso.</p>
         )}
-        <Field label="E-mail de acesso *">
-          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} autoComplete="off" />
-        </Field>
-        <Field label={active ? 'Nova senha (mín. 8 caracteres) *' : 'Senha inicial (mín. 8 caracteres) *'}>
-          <input type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} className={inputCls} autoComplete="new-password" />
-        </Field>
         <FormError message={error} />
-        {active && canRevoke && (
-          <button type="button" onClick={revoke} disabled={saving} className="text-sm font-semibold text-rose-300 hover:text-rose-200 disabled:opacity-50">
-            Bloquear acesso ao portal
-          </button>
-        )}
-        <ModalActions onCancel={() => onClose(false)} saving={saving} label={active ? 'Atualizar acesso' : 'Criar acesso'} />
-      </form>
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-2">
+          {linked && info?.hasAccess && canRevoke ? (
+            <button type="button" onClick={revoke} disabled={saving} className="min-h-11 text-sm font-semibold text-rose-300 hover:text-rose-200 disabled:opacity-50">
+              Bloquear acesso
+            </button>
+          ) : (
+            <span />
+          )}
+          {linked && (
+            <button
+              type="button"
+              onClick={resetAccess}
+              disabled={saving}
+              className="min-h-11 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-bold disabled:opacity-50"
+            >
+              {info?.hasAccess ? 'Redefinir acesso' : 'Reativar acesso'}
+            </button>
+          )}
+        </div>
+      </div>
     </Modal>
   );
 }

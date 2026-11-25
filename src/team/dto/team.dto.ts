@@ -9,7 +9,6 @@ import {
   IsOptional,
   IsString,
   Length,
-  MinLength,
   IsNumber,
   Min,
   Max,
@@ -28,12 +27,6 @@ export class CreateTeamUserDto {
 
   @IsEmail({}, { message: 'Forneça um e-mail válido.' })
   email: string;
-
-  /** Sem senha: a pessoa define no "primeiro acesso" da tela de login (aba Equipe) */
-  @IsOptional()
-  @IsString()
-  @MinLength(8, { message: 'A senha inicial deve ter no mínimo 8 caracteres.' })
-  password?: string;
 
   @IsOptional()
   @IsString()
@@ -77,11 +70,13 @@ export class UpdateTeamUserDto {
   @Max(100, { message: 'A comissão não pode passar de 100%.' })
   commissionRate?: number;
 
-  /** Redefinição de senha pelo gestor (opcional) */
+  /**
+   * Redefinir acesso: a senha atual deixa de valer e a pessoa cadastra uma nova em "É meu primeiro acesso".
+   * O gestor nunca define a senha de ninguém; o usuário (código de 4 dígitos) continua o mesmo.
+   */
   @IsOptional()
-  @IsString()
-  @MinLength(8, { message: 'A nova senha deve ter no mínimo 8 caracteres.' })
-  password?: string;
+  @IsBoolean()
+  resetAccess?: boolean;
 }
 
 export class UpdateProfilePermissionsDto {

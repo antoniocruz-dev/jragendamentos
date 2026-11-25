@@ -123,7 +123,7 @@ function LoginForm({ tab, onFirstAccess }: { tab: Tab; onFirstAccess: () => void
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!byEmail && !/^\d{4}$/.test(accessCode)) return setError('O código de acesso tem 4 dígitos.');
+    if (!byEmail && !/^\d{4}$/.test(accessCode)) return setError('O usuário é o seu código de 4 dígitos.');
     if (byEmail && !isValidEmail(email)) return setError('Informe um e-mail válido.');
     if (!password) return setError('Informe a senha.');
     setSubmitting(true);
@@ -153,8 +153,8 @@ function LoginForm({ tab, onFirstAccess }: { tab: Tab; onFirstAccess: () => void
         <Input label="E-mail" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required />
       ) : (
         <Input
-          label="Código de acesso"
-          hint="4 dígitos recebidos no WhatsApp"
+          label="Usuário"
+          hint="Seu código de 4 dígitos (recebido no WhatsApp)"
           inputMode="numeric"
           pattern="\d{4}"
           maxLength={4}
@@ -166,7 +166,7 @@ function LoginForm({ tab, onFirstAccess }: { tab: Tab; onFirstAccess: () => void
           required
         />
       )}
-      <PasswordInput label="Senha" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+      <PasswordInput label="Senha" hint="A senha que você cadastrou no primeiro acesso" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
       <InlineError message={error} />
       <Button type="submit" block loading={submitting} icon={<LogIn className="w-4 h-4" aria-hidden />}>
         Entrar
@@ -181,7 +181,7 @@ function LoginForm({ tab, onFirstAccess }: { tab: Tab; onFirstAccess: () => void
             onClick={() => setUseEmail((v) => !v)}
             className="min-h-11 px-3 text-xs font-semibold text-brand-brown-light hover:text-brand-brown"
           >
-            {useEmail ? 'Entrar com o código de acesso' : 'Entrar com e-mail'}
+            {useEmail ? 'Entrar com o usuário (código)' : 'Entrar com e-mail'}
           </button>
         )}
       </div>
@@ -242,8 +242,8 @@ function FirstAccessForm({ tab, onBack }: { tab: Tab; onBack: () => void }) {
           <h2 className="text-lg font-extrabold">Primeiro acesso</h2>
           <p className="text-sm text-brand-brown-light">
             {tab === 'CLIENTE'
-              ? 'Use o WhatsApp que você informou na oficina. Enviaremos seu código de acesso para ele.'
-              : 'Use o e-mail que o gestor cadastrou para você. O código de acesso chega no seu WhatsApp.'}
+              ? 'Cadastre a sua senha. Use o WhatsApp que você informou na oficina: seu usuário (código de 4 dígitos) chega nele.'
+              : 'Cadastre a sua senha. Use o e-mail que o gestor cadastrou para você: seu usuário (código de 4 dígitos) chega no WhatsApp.'}
           </p>
         </div>
         <Input label="E-mail" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} error={errors.email} required />
@@ -298,13 +298,13 @@ function FirstAccessForm({ tab, onBack }: { tab: Tab; onBack: () => void }) {
             </div>
             {result.whatsappSent ? (
               <p className="text-sm">
-                Enviamos seu <strong>código de acesso</strong>, a senha cadastrada e o link de entrada para o WhatsApp{' '}
-                <strong>{result.whatsappMasked}</strong>.
+                Enviamos seu <strong>usuário</strong> (código de 4 dígitos) e o link de entrada para o WhatsApp{' '}
+                <strong>{result.whatsappMasked}</strong>. Para entrar, use esse usuário e a <strong>senha que você acabou de cadastrar</strong>.
               </p>
             ) : (
               <p className="text-sm">
                 Seu acesso foi criado, mas não conseguimos enviar o WhatsApp para <strong>{result.whatsappMasked}</strong> agora.
-                Peça seu <strong>código de acesso de 4 dígitos</strong> à oficina.
+                Peça seu <strong>usuário (código de 4 dígitos)</strong> à oficina. A senha é a que você acabou de cadastrar.
               </p>
             )}
             <Button

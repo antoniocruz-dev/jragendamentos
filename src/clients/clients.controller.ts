@@ -6,7 +6,6 @@ import { CreateClientWithVehicleDto } from './dto/create-client-with-vehicle.dto
 import { UpdateClientDto } from './dto/update-client.dto.js';
 import { CreateVehicleDto } from './dto/create-vehicle.dto.js';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto.js';
-import { PortalAccessDto } from './dto/portal-access.dto.js';
 
 @RequireModules('CLIENTS')
 @Controller('clients')
@@ -75,10 +74,10 @@ export class ClientsController {
     return this.clientsService.portalAccess(id);
   }
 
-  /** Cria ou redefine o login do cliente no Portal do Cliente. */
+  /** Libera/redefine o acesso: o cliente cadastra a própria senha no primeiro acesso. */
   @Post(':id/portal-access')
-  grantPortalAccess(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: PortalAccessDto) {
-    return this.clientsService.grantPortalAccess(id, dto);
+  grantPortalAccess(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.clientsService.grantPortalAccess(id);
   }
 
   @ManagersOnly()

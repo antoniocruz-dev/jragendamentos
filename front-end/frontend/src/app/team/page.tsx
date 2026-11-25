@@ -139,7 +139,7 @@ function UsersTab() {
   // Gerente Geral não pode atribuir o perfil Administrador
   const assignableProfiles = PROFILE_ORDER.filter((p) => iAmAdmin || p !== 'ADMINISTRADOR');
 
-  async function updateUser(u: TeamUser, data: Partial<{ profile: StaffProfile; isActive: boolean; password: string }>) {
+  async function updateUser(u: TeamUser, data: Partial<{ profile: StaffProfile; isActive: boolean; resetAccess: boolean }>) {
     try {
       setBusyId(u.id);
       await fetchApi(`/team/users/${u.id}`, { method: 'PATCH', body: JSON.stringify(data) });
@@ -166,14 +166,15 @@ function UsersTab() {
     }
   }
 
-  function handleResetPassword(u: TeamUser) {
-    const password = prompt(`Nova senha para ${u.name} (mínimo 8 caracteres):`);
-    if (password === null) return;
-    if (password.length < 8) {
-      toast.error('A senha deve ter no mínimo 8 caracteres.');
+  // O gestor não define senha: a senha atual deixa de valer e a pessoa cadastra outra no primeiro acesso
+  function handleResetAccess(u: TeamUser) {
+    if (
+      !confirm(
+        `Redefinir o acesso de ${u.name}?\n\nA senha atual deixa de valer. A pessoa cadastra uma nova em "É meu primeiro acesso" (aba Equipe), com o e-mail ${u.email}. O usuário (código ${u.accessCode ?? ''}) continua o mesmo.`,
+      )
+    )
       return;
-    }
-    updateUser(u, { password });
+    updateUser(u, { resetAccess: true });
   }
 
   return (
@@ -228,7 +229,7 @@ function UsersTab() {
                             <span className="text-amber-300">Aguardando primeiro acesso</span>
                           ) : (
                             <>
-                              Código: <span className="font-mono font-bold text-amber-300 tracking-wider">{u.accessCode}</span>
+                              Usuário: <span className="font-mono font-bold text-amber-300 tracking-wider">{u.accessCode}</span>
                             </>
                           )}
                         </div>
@@ -310,13 +311,13 @@ function UsersTab() {
                           )}
                           {!locked && (
                             <button
-                              onClick={() => handleResetPassword(u)}
+                              onClick={() => handleResetAccess(u)}
                               disabled={busy}
-                              title="Redefinir senha"
+                              title="Redefinir acesso (a pessoa cadastra nova senha)"
                               className="inline-flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
                             >
                               <KeyRound className="w-3.5 h-3.5" />
-                              Senha
+                              Redefinir acesso
                             </button>
                           )}
                           {!locked && !isSelf && (
@@ -392,7 +393,6 @@ function NewUserModal({
     name: '',
     email: '',
     phone: '',
-    password: '',
     profile: (profiles.includes('MECANICO') ? 'MECANICO' : profiles[0]) as StaffProfile,
   });
   const [saving, setSaving] = useState(false);
@@ -409,7 +409,7 @@ function NewUserModal({
       await fetchApi('/team/users', {
         method: 'POST',
         // Sem senha: a pessoa conclui em "É meu primeiro acesso" (aba Equipe) e recebe o código no WhatsApp
-        body: JSON.stringify({ ...form, phone: form.phone || undefined, whatsapp: form.phone || undefined, password: form.password || undefined }),
+        body: JSON.stringify({ ...form, phone: form.phone || undefined, whatsapp: form.phone || undefined }),
       });
       onSaved();
     } catch (err) {
@@ -465,22 +465,10 @@ function NewUserModal({
                 ))}
               </select>
             </label>
-            <label className="block">
-              <span className="text-xs font-semibold text-slate-400">Senha inicial (opcional)</span>
-              <input
-                type="password"
-                minLength={8}
-                placeholder="Em branco: primeiro acesso"
-                value={form.password}
-                onChange={set('password')}
-                className={`${inputCls} mt-1`}
-                autoComplete="new-password"
-              />
-            </label>
           </div>
           <p className="text-[11px] text-slate-500">
-            Os módulos que o usuário verá dependem do perfil (aba &quot;Perfis e permissões&quot;). Sem senha, a pessoa cria a
-            própria em &quot;É meu primeiro acesso&quot; (aba Equipe) com este e-mail e recebe o código de acesso no WhatsApp.
+            Os módulos que o usuário verá dependem do perfil (aba &quot;Perfis e permissões&quot;). A senha é cadastrada pela
+            própria pessoa em &quot;É meu primeiro acesso&quot; (aba Equipe), com este e-mail; o usuário (código de 4 dígitos) chega no WhatsApp.
             Perfil Mecânico usa só o Portal do Mecânico.
           </p>
 

@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Prisma, StaffProfile, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuthService } from '../auth/auth.service.js';
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator.js';
@@ -58,7 +59,8 @@ export class TeamService {
 
   async createUser(actor: AuthenticatedUser, dto: CreateTeamUserDto) {
     this.assertCanAssignProfile(actor, dto.profile);
-    return this.authService.register(dto);
+    // Sempre como convite: a senha é cadastrada pela própria pessoa no primeiro acesso
+    return this.authService.register({ ...dto, password: undefined });
   }
 
   async updateUser(actor: AuthenticatedUser, id: string, dto: UpdateTeamUserDto) {
@@ -117,9 +119,9 @@ export class TeamService {
       data.profile = dto.profile;
       data.role = roleForProfile(dto.profile);
     }
-    if (dto.password) {
-      data.passwordHash = await bcrypt.hash(dto.password, 10);
-      data.firstAccessPending = false;
+    if (dto.resetAccess) {
+      data.passwordHash = await bcrypt.hash(randomBytes(24).toString('hex'), 10);
+      data.firstAccessPending = true;
     }
 
     const updated = await this.prisma.user.update({ where: { id }, data, select: USER_SELECT });

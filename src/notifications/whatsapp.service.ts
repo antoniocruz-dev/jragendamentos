@@ -12,7 +12,7 @@ export interface WhatsappResult {
  * Variáveis de ambiente:
  * - WHATSAPP_TOKEN e WHATSAPP_PHONE_NUMBER_ID: obrigatórias para enviar;
  * - WHATSAPP_TEMPLATE_NAME (recomendado): modelo aprovado na Meta com 3 variáveis no corpo
- *   ({{1}} código, {{2}} senha, {{3}} link). Sem modelo, envia texto livre, que a Meta só entrega
+ *   ({{1}} usuário/código, {{2}} senha cadastrada, {{3}} link). Sem modelo, envia texto livre, que a Meta só entrega
  *   se o cliente falou com a oficina nas últimas 24 h;
  * - WHATSAPP_TEMPLATE_LANG (padrão pt_BR).
  * Sem configuração, nada é enviado e a resposta informa isso (a equipe vê o código em Clientes/Equipe).
@@ -29,7 +29,7 @@ export class WhatsappService {
   async sendCredentials(whatsapp: string, data: { name: string; accessCode: string; password: string; link: string }): Promise<WhatsappResult> {
     const text =
       `Olá, ${data.name}! Seu acesso à JR Garage Center está pronto.\n\n` +
-      `Código de acesso: ${data.accessCode}\nSenha: ${data.password}\n\n` +
+      `Usuário: ${data.accessCode}\nSenha: ${data.password} (a que você cadastrou)\n\n` +
       `Entre em: ${data.link}\n\nNão compartilhe estes dados.`;
     const template = process.env.WHATSAPP_TEMPLATE_NAME;
     return this.send(
