@@ -230,36 +230,44 @@ export class AuthService {
     }
     const email = dto.email.trim().toLowerCase();
 
-    const byPhone = await this.prisma.$queryRaw<{ id: string; email: string | null }[]>`
-      SELECT "id", "email" FROM "clients"
-       WHERE regexp_replace("phone", '[^0-9]', '', 'g') IN (${phone}, ${'55' + phone})
-       ORDER BY "created_at" ASC LIMIT 1`;
-    const byEmail = await this.prisma.client.findFirst({
-      where: { email: { equals: email, mode: 'insensitive' } },
-      orderBy: { createdAt: 'asc' },
-      select: { id: true },
-    });
-
-    const mismatch = () =>
-      new UnauthorizedException(
-        'Os dados não conferem com o cadastro da oficina. Confira o e-mail e o contato ou fale com a oficina.',
-      );
-    let clientId: string;
-    if (byPhone[0]) {
-      const c = byPhone[0];
-      if ((c.email && c.email.toLowerCase() !== email) || (byEmail && byEmail.id !== c.id)) throw mismatch();
-      clientId = c.id;
-      if (!c.email) await this.prisma.client.update({ where: { id: c.id }, data: { email } });
-    } else if (byEmail) {
-      throw mismatch();
-    } else {
-      if ((await this.hit(`client-entry:new:${ipKey}`)) > 10) throw this.tooMany();
-      const created = await this.prisma.client.create({
-        data: { name: dto.name, email, phone },
+    // Trava por contato e por e-mail (sempre nessa ordem): entradas simultâneas do mesmo
+    // cliente novo esperam umas pelas outras e não criam cadastros duplicados
+    const clientId = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'client-entry:p:' + phone}))`;
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'client-entry:e:' + email}))`;
+      let clientId: string;
+      const byPhone = await tx.$queryRaw<{ id: string; email: string | null }[]>`
+        SELECT "id", "email" FROM "clients"
+         WHERE regexp_replace("phone", '[^0-9]', '', 'g') IN (${phone}, ${'55' + phone})
+         ORDER BY "created_at" ASC LIMIT 1`;
+      const byEmail = await tx.client.findFirst({
+        where: { email: { equals: email, mode: 'insensitive' } },
+        orderBy: { createdAt: 'asc' },
         select: { id: true },
       });
-      clientId = created.id;
-    }
+
+      const mismatch = () =>
+        new UnauthorizedException(
+          'Os dados não conferem com o cadastro da oficina. Confira o e-mail e o contato ou fale com a oficina.',
+        );
+      if (byPhone[0]) {
+        const c = byPhone[0];
+        if ((c.email && c.email.toLowerCase() !== email) || (byEmail && byEmail.id !== c.id)) throw mismatch();
+        clientId = c.id;
+        if (!c.email) await tx.client.update({ where: { id: c.id }, data: { email } });
+      } else if (byEmail) {
+        throw mismatch();
+      } else {
+        if ((await this.hit(`client-entry:new:${ipKey}`)) > 10) throw this.tooMany();
+        const created = await tx.client.create({
+          data: { name: dto.name, email, phone },
+          select: { id: true },
+        });
+        clientId = created.id;
+      }
+
+      return clientId;
+    });
 
     const user = await this.ensureClientUser(clientId, email);
     if (!user.isActive) {

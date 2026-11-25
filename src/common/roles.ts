@@ -23,6 +23,9 @@ export function isPrivileged(user: { profile?: string | null }) {
   return !!user.profile && (PRIVILEGED_PROFILES as string[]).includes(user.profile);
 }
 
+/** Cargos que podem ser o mecânico responsável de uma OS. */
+export const MECHANIC_PROFILES: StaffProfile[] = [StaffProfile.MECANICO, StaffProfile.MECANICO_CHEFE];
+
 export function isMechanic(user: { role?: string; profile?: string | null } | undefined | null) {
   return !!user && user.role !== UserRole.CLIENT && user.profile === StaffProfile.MECANICO;
 }

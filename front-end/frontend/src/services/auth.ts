@@ -126,3 +126,7 @@ export function useAuth() {
 
   return { ready, session, user: session?.user ?? null, isAuthenticated: !!session?.accessToken };
 }
+
+/** Administrador e Gerente Geral: atribuem e trocam o mecânico responsável da OS. */
+export const isPrivilegedUser = (u: { role?: string; profile?: string | null } | null | undefined) =>
+  !!u && u.role !== 'CLIENT' && (u.profile === 'ADMINISTRADOR' || u.profile === 'GERENTE_GERAL');

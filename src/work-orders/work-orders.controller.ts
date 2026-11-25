@@ -19,6 +19,7 @@ import { RequireModules } from '../auth/decorators/require-modules.decorator.js'
 import { ManagersOnly } from '../auth/decorators/managers-only.decorator.js';
 import { BillWorkOrderDto, ReverseBillingDto } from '../financial/dto/financial.dto.js';
 import { CancelWorkOrderDto } from './dto/cancel-work-order.dto.js';
+import { AssignOperatorDto } from './dto/assign-operator.dto.js';
 import { CurrentUser, type AuthenticatedUser } from '../auth/decorators/current-user.decorator.js';
 import type { WorkOrderActor } from './work-orders.service.js';
 
@@ -32,8 +33,9 @@ export class WorkOrdersController {
   @Post()
   async create(
     @Body(new ValidationPipe({ transform: true, whitelist: true })) dto: CreateWorkOrderDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.workOrdersService.create(dto);
+    return this.workOrdersService.create(dto, user);
   }
 
   // Lista de OS (o Dashboard usa /dashboard/summary)
@@ -44,8 +46,25 @@ export class WorkOrdersController {
     @Query('q') q?: string,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
+    @Query('operatorId') operatorId?: string,
   ) {
-    return this.workOrdersService.listAll({ status, q, page, pageSize });
+    return this.workOrdersService.listAll({ status, q, page, pageSize, operatorId });
+  }
+
+  /** Mecânicos ativos, para atribuir o responsável e filtrar a lista de OS. */
+  @Get('mechanics')
+  listMechanics() {
+    return this.workOrdersService.listMechanics();
+  }
+
+  /** Atribui ou troca o mecânico responsável (Administrador e Gerente Geral; OS não faturada). */
+  @Patch(':id/operator')
+  assignOperator(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: AssignOperatorDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.workOrdersService.assignOperator(id, dto.operatorId, user);
   }
 
   /** Equipe ativa, para escolher o mecânico responsável ao registrar o pagamento. */

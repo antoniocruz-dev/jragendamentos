@@ -17,6 +17,8 @@ import {
   FileText
 } from 'lucide-react';
 import { fetchApi } from '@/services/api';
+import { isPrivilegedUser, useAuth } from '@/services/auth';
+import { MechanicSelect, useMechanics } from '@/components/mechanic/MechanicSelect';
 
 interface VehicleFound {
   id: string;
@@ -76,6 +78,11 @@ export default function NewWorkOrderPage() {
 
   // Estados da OS
   const [reportedIssue, setReportedIssue] = useState('');
+  // Mecânico responsável: só Administrador e Gerente Geral escolhem na abertura
+  const { user } = useAuth();
+  const canAssign = isPrivilegedUser(user);
+  const mech = useMechanics(canAssign);
+  const [operatorId, setOperatorId] = useState('');
   const [technicalNotes, setTechnicalNotes] = useState('');
   const [items, setItems] = useState<SelectedItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -181,6 +188,7 @@ export default function NewWorkOrderPage() {
         vehicleId: vehicle.id,
         reportedIssue: reportedIssue.trim() || undefined,
         technicalNotes: technicalNotes.trim() || undefined,
+        operatorId: canAssign && operatorId ? operatorId : undefined,
         status: initialStatus,
         discount: discount || undefined,
         items: items.map((it) => ({
@@ -299,6 +307,19 @@ export default function NewWorkOrderPage() {
               onChange={(e) => setReportedIssue(e.target.value)}
               className="w-full bg-surface-white border border-line rounded-lg p-3 text-sm text-brand-brown-dark placeholder-brand-brown-light focus:outline-none focus:border-neon-deep"
             />
+            {canAssign && (
+              <div className="mt-4">
+                <MechanicSelect
+                  value={operatorId}
+                  onChange={setOperatorId}
+                  mechanics={mech.mechanics}
+                  loading={mech.loading}
+                  error={mech.error}
+                  emptyLabel="Sem mecânico (atribuir depois)"
+                  hint="Com mecânico escolhido, a OS já aparece na Área do Mecânico dele."
+                />
+              </div>
+            )}
           </div>
 
           {/* Etapa 3: Itens da OS */}

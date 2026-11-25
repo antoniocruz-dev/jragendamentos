@@ -28,7 +28,8 @@ import { Field, FormError, Modal, ModalActions, errorMessage as errMsg, inputCls
 import { PAYMENT_OPTIONS, brl, type StaffOption } from '@/services/financial';
 import { fetchApi } from '@/services/api';
 import { toast } from '@/components/feedback';
-import { useAuth } from '@/services/auth';
+import { isPrivilegedUser, useAuth } from '@/services/auth';
+import { AssignMechanicModal } from '@/components/mechanic/AssignMechanicModal';
 
 interface WorkOrderDetail {
   id: string;
@@ -102,6 +103,9 @@ export default function WorkOrderDetailPage() {
   const [observations, setObservations] = useState<{ id: string; authorName: string; type: string; message: string; createdAt: string }[]>([]);
   const canBill = isStaff && !!user?.modules?.some((m) => m === 'WORK_ORDERS' || m === 'FINANCIAL');
   const [billingOpen, setBillingOpen] = useState(false);
+  // Mecânico responsável: Administrador e Gerente Geral atribuem/trocam até a OS ser faturada
+  const [assignOpen, setAssignOpen] = useState(false);
+  const canAssignMechanic = isStaff && isPrivilegedUser(user);
 
   const [order, setOrder] = useState<WorkOrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -123,7 +127,7 @@ export default function WorkOrderDetailPage() {
   }, [osId]);
 
   // Observações (cliente, mecânico, reaberturas): só a equipe vê; recarrega quando a OS muda
-  const orderStamp = order ? `${order.status}-${order.reopenCount ?? 0}` : '';
+  const orderStamp = order ? `${order.status}-${order.reopenCount ?? 0}-${order.operator?.id ?? ''}` : '';
   useEffect(() => {
     if (!isStaff || !orderStamp) return;
     const ctrl = new AbortController();
@@ -471,6 +475,41 @@ export default function WorkOrderDetailPage() {
             </div>
           </div>
 
+          {/* Card: Mecânico responsável (só a equipe vê) */}
+          {isStaff && (
+            <div className="bg-surface-white border border-line-soft rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full ${order.operator ? 'bg-brand-brown text-neon-primary' : 'bg-orange-500/10 text-orange-700'}`}>
+                  <Wrench className="h-5 w-5" aria-hidden />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-brand-brown">Mecânico responsável</p>
+                  {order.operator ? (
+                    <p className="truncate text-lg font-bold text-brand-brown-dark">{order.operator.name}</p>
+                  ) : (
+                    <span className="mt-1 inline-flex rounded-full border border-orange-500/30 bg-orange-500/10 px-2.5 py-0.5 text-xs font-bold text-orange-700">
+                      Sem mecânico atribuído
+                    </span>
+                  )}
+                </div>
+              </div>
+              {canAssignMechanic && order.status !== 'BILLED' && order.status !== 'CANCELLED' && (
+                <button
+                  type="button"
+                  onClick={() => setAssignOpen(true)}
+                  className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition-all active:scale-95 ${
+                    order.operator
+                      ? 'border border-brand-brown bg-surface-white text-brand-brown hover:bg-brand-brown hover:text-white'
+                      : 'bg-neon-primary text-brand-brown-dark hover:bg-neon-soft hover:shadow-[0_0_16px_rgba(57,255,20,0.45)]'
+                  }`}
+                >
+                  <User className="h-4 w-4" aria-hidden />
+                  {order.operator ? 'Trocar mecânico' : 'Atribuir mecânico'}
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Card: Relato e Notas Técnicas */}
           {(order.reportedIssue || order.technicalNotes) && (
             <div className="bg-surface-muted/80 border border-line/60 rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
@@ -512,7 +551,7 @@ export default function WorkOrderDetailPage() {
                   <li key={o.id} className="text-sm bg-surface-white/60 p-3 rounded-lg border border-line-soft">
                     <div className="flex flex-wrap justify-between gap-2 text-xs text-brand-brown">
                       <span className="font-semibold text-brand-brown">
-                        {o.authorName} · {o.type === 'ORCAMENTO_CLIENTE' ? 'Cliente' : o.type === 'REABERTURA' ? 'Reabertura' : 'Mecânico'}
+                        {o.authorName} · {o.type === 'ORCAMENTO_CLIENTE' ? 'Cliente' : o.type === 'REABERTURA' ? 'Reabertura' : o.type === 'ATRIBUICAO_MECANICO' ? 'Atribuição de mecânico' : 'Mecânico'}
                       </span>
                       <span>{new Date(o.createdAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
                     </div>
@@ -904,6 +943,19 @@ export default function WorkOrderDetailPage() {
         </div>
       </div>
 
+      {assignOpen && order && (
+        <AssignMechanicModal
+          workOrderId={order.id}
+          code={order.code}
+          current={order.operator ?? null}
+          onClose={() => setAssignOpen(false)}
+          onSaved={() => {
+            setAssignOpen(false);
+            loadOrderDetails();
+          }}
+        />
+      )}
+
       {billingOpen && order && (
         <BillingModal
           order={order}
@@ -977,7 +1029,7 @@ function BillingModal({ order, onClose, onBilled }: { order: WorkOrderDetail; on
           <span className="text-brand-brown">Peças <b className="block text-brand-brown-dark">{brl(Number(order.totalProducts))}</b></span>
           <span className="text-brand-brown">Mão de obra <b className="block text-brand-brown-dark">{brl(Number(order.totalServices))}</b></span>
         </div>
-        <Field label="Mecânico responsável (base da comissão) *">
+        <Field label={order.operator ? 'Mecânico responsável (base da comissão) * · já atribuído na OS' : 'Mecânico responsável (base da comissão) *'}>
           <select required value={form.operatorId} onChange={(e) => set('operatorId', e.target.value)} className={inputCls}>
             <option value="">Selecione...</option>
             {staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}

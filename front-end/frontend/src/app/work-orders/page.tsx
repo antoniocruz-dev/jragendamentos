@@ -2,7 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ClipboardList, Play, CheckCircle, Share2, Eye, PlusCircle } from 'lucide-react';
+import { ClipboardList, Play, CheckCircle, Share2, Eye, PlusCircle, UserCog, UserX } from 'lucide-react';
+import { useMechanics } from '@/components/mechanic/MechanicSelect';
+import { fieldCls } from '@/components/ui';
 import { useSearchParams } from 'next/navigation';
 import { fetchApi } from '@/services/api';
 import { ErrorState, ListSkeleton } from '@/components/feedback';
@@ -40,6 +42,7 @@ interface WorkOrder {
   createdAt: string;
   client: { name: string; phone: string };
   vehicle: { licensePlate: string; brand: string; model: string; year: number };
+  operator: { id: string; name: string } | null;
 }
 
 type WorkOrderPage = Page<WorkOrder> & { counts: Record<string, number> };
@@ -123,6 +126,21 @@ function OrderActions({
   );
 }
 
+/** Mecânico responsável no cartão: nome com ícone, ou tag "Sem mecânico". */
+function MechanicTag({ operator }: { operator: WorkOrder['operator'] }) {
+  return operator ? (
+    <span className="inline-flex items-center gap-1 text-xs text-brand-brown min-w-0">
+      <UserCog className="w-3.5 h-3.5 shrink-0 text-neon-deep" aria-hidden />
+      <span className="truncate">{operator.name}</span>
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-0.5 text-[11px] font-semibold text-orange-700 whitespace-nowrap">
+      <UserX className="w-3 h-3" aria-hidden />
+      Sem mecânico
+    </span>
+  );
+}
+
 function StatusBadge({ status }: { status: string }) {
   const st = statusOf(status);
   return (
@@ -138,6 +156,9 @@ export default function WorkOrdersGeneralPage() {
   const [statusFilter, setStatusFilter] = useState<string>(() =>
     statusParam && statusParam in STATUS_CONFIG ? statusParam : 'ALL',
   );
+  // Filtro por mecânico: '' = todos, 'none' = sem mecânico, ou o id do mecânico
+  const [mechanicFilter, setMechanicFilter] = useState('');
+  const { mechanics } = useMechanics();
   const [searchTerm, setSearchTerm] = useState('');
   const search = useDebouncedValue(searchTerm.trim());
   const [page, setPage] = useState(1);
@@ -154,6 +175,7 @@ export default function WorkOrdersGeneralPage() {
     const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
     if (statusFilter !== 'ALL') params.set('status', statusFilter);
     if (search) params.set('q', search);
+    if (mechanicFilter) params.set('operatorId', mechanicFilter);
     fetchApi<WorkOrderPage>(`/work-orders?${params}`, { signal: ctrl.signal })
       .then((d) => {
         setData(d);
@@ -166,7 +188,13 @@ export default function WorkOrdersGeneralPage() {
         if (!ctrl.signal.aborted) setLoading(false);
       });
     return () => ctrl.abort();
-  }, [page, statusFilter, search, reloadKey]);
+  }, [page, statusFilter, search, mechanicFilter, reloadKey]);
+
+  function changeMechanic(next: string) {
+    setMechanicFilter(next);
+    setPage(1);
+    setLoading(true);
+  }
 
   function changeFilter(next: string) {
     setStatusFilter(next);
@@ -224,7 +252,35 @@ export default function WorkOrdersGeneralPage() {
 
       {/* Busca + abas de status (rolagem horizontal no celular, com contagem por status) */}
       <div className="space-y-3">
-        <SearchInput value={searchTerm} onChange={changeSearch} placeholder="Placa, cliente ou nº da OS..." className="w-full sm:max-w-sm" />
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <SearchInput value={searchTerm} onChange={changeSearch} placeholder="Placa, cliente ou nº da OS..." className="w-full sm:max-w-sm" />
+          <div className="flex gap-2">
+            <label className="sr-only" htmlFor="filtro-mecanico">Filtrar por mecânico</label>
+            <select
+              id="filtro-mecanico"
+              value={mechanicFilter}
+              onChange={(e) => changeMechanic(e.target.value)}
+              className={`${fieldCls} min-h-11 flex-1 sm:w-56 sm:flex-none`}
+            >
+              <option value="">Mecânico: todos</option>
+              <option value="none">Sem mecânico</option>
+              {mechanics.map((m) => (
+                <option key={m.id} value={m.id}>{m.name}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => changeMechanic(mechanicFilter === 'none' ? '' : 'none')}
+              aria-pressed={mechanicFilter === 'none'}
+              className={`inline-flex items-center gap-1.5 px-3 min-h-11 rounded-xl text-xs font-semibold whitespace-nowrap border transition-colors ${
+                mechanicFilter === 'none' ? 'bg-neon-primary text-brand-brown-dark border-neon-deep' : 'bg-surface-white text-brand-brown border-line/60 hover:bg-surface-muted'
+              }`}
+            >
+              <UserX className="w-4 h-4" aria-hidden />
+              Sem mecânico
+            </button>
+          </div>
+        </div>
         <div className="scroll-x -mx-4 px-4 sm:mx-0 sm:px-0">
           <div className="flex gap-1.5 w-max pb-1">
             {Object.keys(STATUS_CONFIG).map((statusKey) => {
@@ -292,6 +348,7 @@ export default function WorkOrdersGeneralPage() {
                     <div className="min-w-0 text-sm">
                       <div className="font-medium text-brand-brown-dark truncate">{wo.client.name}</div>
                       <div className="text-xs text-brand-brown">{new Date(wo.createdAt).toLocaleDateString('pt-BR')}</div>
+                      <div className="mt-1 flex min-w-0"><MechanicTag operator={wo.operator} /></div>
                     </div>
                     <div className="font-bold text-brand-brown-dark whitespace-nowrap">{money(wo.finalAmount)}</div>
                   </div>
@@ -311,6 +368,7 @@ export default function WorkOrdersGeneralPage() {
                       <th className="py-3.5 px-4">OS #</th>
                       <th className="py-3.5 px-4">Veículo / Placa</th>
                       <th className="py-3.5 px-4">Cliente</th>
+                      <th className="py-3.5 px-4">Mecânico</th>
                       <th className="py-3.5 px-4">Status</th>
                       <th className="py-3.5 px-4 text-right">Valor</th>
                       <th className="py-3.5 px-4 text-right">Ações</th>
@@ -329,6 +387,9 @@ export default function WorkOrdersGeneralPage() {
                         <td className="py-3.5 px-4">
                           <div className="font-medium text-brand-brown-dark">{wo.client.name}</div>
                           <div className="text-xs text-brand-brown">{wo.client.phone}</div>
+                        </td>
+                        <td className="py-3.5 px-4 max-w-40">
+                          <MechanicTag operator={wo.operator} />
                         </td>
                         <td className="py-3.5 px-4">
                           <StatusBadge status={wo.status} />

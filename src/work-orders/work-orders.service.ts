@@ -28,6 +28,7 @@ import {
 } from '@prisma/client';
 import { BillWorkOrderDto } from '../financial/dto/financial.dto.js';
 import { CancelWorkOrderDto } from './dto/cancel-work-order.dto.js';
+import { MECHANIC_PROFILES, isPrivileged, observationRole } from '../common/roles.js';
 import { InsufficientStockError, reserveWorkOrderStock, returnWorkOrderStock, shortageText, type StockShortage } from '../common/stock.js';
 
 /** Quem está agindo na OS: alguém da equipe (com cargo) ou o próprio cliente (link/portal). */
@@ -53,8 +54,15 @@ export interface ApprovalResult {
 export class WorkOrdersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(dto: CreateWorkOrderDto) {
-    const { clientId, vehicleId, operatorId, reportedIssue, technicalNotes, items } = dto;
+  /** Quem está criando ou alterando a OS (para as travas de perfil do mecânico responsável). */
+  async create(dto: CreateWorkOrderDto, actor?: { id: string; name: string; role: string; profile: StaffProfile | null }) {
+    const { clientId, vehicleId, reportedIssue, technicalNotes, items } = dto;
+    const operatorId = dto.operatorId || undefined;
+    // Só Administrador e Gerente Geral escolhem o mecânico na abertura
+    if (dto.operatorId !== undefined && dto.operatorId !== null && (!actor || !isPrivileged(actor))) {
+      throw new ForbiddenException('Só Administrador e Gerente Geral podem atribuir o mecânico responsável.');
+    }
+    if (operatorId) await this.assertActiveMechanic(this.prisma, operatorId);
     const initialStatus = dto.status === 'DRAFT' ? WorkOrderStatus.DRAFT : WorkOrderStatus.QUOTE;
 
     // 1. Validar integridade Cliente x Veículo
@@ -251,7 +259,7 @@ export class WorkOrdersService {
    * Grid de OS paginado no banco. A busca (nº da OS, placa ou cliente) e o status são filtrados
    * no SQL; `counts` traz o total por status para as abas (respeitando a busca).
    */
-  async listAll(filters: { status?: string; q?: string; page?: string; pageSize?: string }) {
+  async listAll(filters: { status?: string; q?: string; page?: string; pageSize?: string; operatorId?: string }) {
     const { page, pageSize, skip, take } = parsePage(filters.page, filters.pageSize);
     const { text, digits, plate } = searchTerms(filters.q);
 
@@ -262,6 +270,13 @@ export class WorkOrdersService {
       if (digits && digits.length <= 9 && digits === text.replace(/^#/, '')) or.push({ code: Number(digits) });
     }
     const searchWhere: Prisma.WorkOrderWhereInput = or.length ? { OR: or } : {};
+    // Filtro por mecânico: id do mecânico ou "none" (sem mecânico). Combina com a busca e o status.
+    const op = filters.operatorId?.trim();
+    if (op === 'none') searchWhere.operatorId = null;
+    else if (op) {
+      if (!/^[0-9a-f-]{36}$/i.test(op)) throw new BadRequestException('Mecânico inválido no filtro.');
+      searchWhere.operatorId = op;
+    }
 
     const status = filters.status && filters.status in WorkOrderStatus ? (filters.status as WorkOrderStatus) : undefined;
     const where: Prisma.WorkOrderWhereInput = status ? { ...searchWhere, status } : searchWhere;
@@ -277,6 +292,7 @@ export class WorkOrdersService {
           createdAt: true,
           client: { select: { name: true, phone: true } },
           vehicle: { select: { licensePlate: true, brand: true, model: true, year: true } },
+          operator: { select: { id: true, name: true } },
         },
         orderBy: [{ createdAt: 'desc' }, { code: 'desc' }],
         skip,
@@ -691,6 +707,78 @@ export class WorkOrdersService {
       where: { role: { in: [UserRole.ADMIN, UserRole.OPERATOR] }, isActive: true },
       select: { id: true, name: true, profile: true },
       orderBy: { name: 'asc' },
+    });
+  }
+
+  // ==========================================
+  // MECÂNICO RESPONSÁVEL
+  // ==========================================
+
+  /** Mecânicos ativos (Mecânico e Mecânico Chefe), para os seletores e filtros. */
+  listMechanics() {
+    return this.prisma.user.findMany({
+      where: { role: { not: UserRole.CLIENT }, profile: { in: MECHANIC_PROFILES }, isActive: true },
+      select: { id: true, name: true, profile: true },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  private async assertActiveMechanic(db: Prisma.TransactionClient | PrismaService, id: string) {
+    const m = await db.user.findUnique({ where: { id }, select: { id: true, name: true, role: true, profile: true, isActive: true } });
+    if (!m || m.role === UserRole.CLIENT || !m.profile || !MECHANIC_PROFILES.includes(m.profile) || !m.isActive) {
+      throw new BadRequestException('Mecânico não encontrado, inativo ou sem cargo de mecânico.');
+    }
+    return m;
+  }
+
+  /**
+   * Atribui ou troca o mecânico responsável (só Administrador e Gerente Geral; OS não faturada nem cancelada).
+   * Grava a troca nas observações da OS na mesma transação.
+   */
+  async assignOperator(id: string, operatorId: string, user: { id: string; name: string; role: string; profile: StaffProfile | null }) {
+    if (!isPrivileged(user)) {
+      throw new ForbiddenException('Só Administrador e Gerente Geral podem atribuir ou trocar o mecânico.');
+    }
+    return this.prisma.$transaction(async (tx) => {
+      const wo = await tx.workOrder.findUnique({
+        where: { id },
+        select: { id: true, status: true, operatorId: true, operator: { select: { name: true } } },
+      });
+      if (!wo) throw new NotFoundException('Ordem de Serviço não encontrada.');
+      if (wo.status === WorkOrderStatus.BILLED) {
+        throw new ConflictException('Esta OS já foi faturada: o mecânico não pode mais ser trocado.');
+      }
+      if (wo.status === WorkOrderStatus.CANCELLED) {
+        throw new ConflictException('Esta OS está cancelada: o mecânico não pode mais ser trocado.');
+      }
+      if (wo.operatorId === operatorId) {
+        throw new BadRequestException('Este mecânico já é o responsável pela OS.');
+      }
+      const mechanic = await this.assertActiveMechanic(tx, operatorId);
+
+      // Condicionada ao mecânico e ao status lidos: duas trocas ao mesmo tempo não se sobrepõem
+      const updated = await tx.workOrder.updateMany({
+        where: {
+          id,
+          operatorId: wo.operatorId,
+          status: { notIn: [WorkOrderStatus.BILLED, WorkOrderStatus.CANCELLED] },
+        },
+        data: { operatorId: mechanic.id },
+      });
+      if (updated.count !== 1) throw new ConflictException('A OS mudou enquanto você editava. Atualize a página e tente de novo.');
+
+      const previous = wo.operator?.name ?? 'Sem mecânico';
+      await tx.workOrderObservation.create({
+        data: {
+          workOrderId: id,
+          authorId: user.id,
+          authorName: user.name,
+          authorRole: observationRole(user),
+          type: ObservationType.ATRIBUICAO_MECANICO,
+          message: `Mecânico alterado de ${previous} para ${mechanic.name} por ${user.name}.`,
+        },
+      });
+      return { id, operator: { id: mechanic.id, name: mechanic.name }, previousOperatorId: wo.operatorId };
     });
   }
 

@@ -56,6 +56,7 @@ enum ObservationType {
   ORCAMENTO_CLIENTE // Cliente ao aprovar/reprovar o orçamento
   TECNICA_MECANICO // Nota técnica do mecânico
   REABERTURA // Justificativa de reabertura
+  ATRIBUICAO_MECANICO // Atribuição/troca do mecânico responsável
 }
 
 /// Papel de quem escreveu a observação (CLIENTE, MECANICO, GESTOR, ADMIN)
@@ -337,6 +338,7 @@ model WorkOrder {
   @@index([status])
   @@index([createdAt])
   @@index([refundStatus])
+  @@index([operatorId])
   @@map("work_orders")
 }
 
