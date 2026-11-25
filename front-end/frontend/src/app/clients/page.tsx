@@ -65,6 +65,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   APPROVED: { label: 'Aprovado', color: 'text-sky-400 bg-sky-500/10 border-sky-500/30' },
   IN_PROGRESS: { label: 'Em Execução', color: 'text-purple-400 bg-purple-500/10 border-purple-500/30' },
   WAITING_PARTS: { label: 'Aguardando Peças', color: 'text-orange-400 bg-orange-500/10 border-orange-500/30' },
+  TESTING: { label: 'Em Teste', color: 'text-cyan-300 bg-cyan-500/10 border-cyan-500/30' },
   COMPLETED: { label: 'Finalizado', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' },
   BILLED: { label: 'Pago', color: 'text-emerald-300 bg-emerald-500/20 border-emerald-500/50' },
   CANCELLED: { label: 'Cancelado', color: 'text-rose-400 bg-rose-500/10 border-rose-500/30' },
@@ -293,6 +294,16 @@ function PortalAccessModal({ client, canRevoke, onClose }: { client: Client; can
   const [password, setPassword] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [accessCode, setAccessCode] = useState<string | null>(null);
+
+  // Código de 4 dígitos do login do cliente (para informar se o WhatsApp não chegou)
+  useEffect(() => {
+    const ctrl = new AbortController();
+    fetchApi<{ accessCode: string | null }>(`/clients/${client.id}/portal-access`, { signal: ctrl.signal })
+      .then((r) => setAccessCode(r.accessCode))
+      .catch(() => undefined);
+    return () => ctrl.abort();
+  }, [client.id]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -302,7 +313,7 @@ function PortalAccessModal({ client, canRevoke, onClose }: { client: Client; can
       await fetchApi(`/clients/${client.id}/portal-access`, {
         method: 'POST',
         body: JSON.stringify({ email: email.trim(), password }),
-        successToast: active ? 'Acesso do cliente atualizado.' : 'Acesso ao portal criado. Envie o e-mail e a senha ao cliente.',
+        successToast: active ? 'Acesso do cliente atualizado.' : 'Acesso criado. Informe ao cliente o código de acesso e a senha.',
       });
       onClose(true);
     } catch (err) {
@@ -329,8 +340,14 @@ function PortalAccessModal({ client, canRevoke, onClose }: { client: Client; can
         <p className="text-sm text-slate-400">
           {active
             ? 'O cliente já tem acesso. Ele vê só os próprios veículos, orçamentos e histórico, e pode aprovar orçamentos.'
-            : 'Crie um login para o cliente acompanhar os veículos, aprovar orçamentos e ver o histórico de OS.'}
+            : 'Crie um login para o cliente acompanhar os veículos, aprovar orçamentos e ver o histórico de OS. O cliente também pode criar sozinho em "É meu primeiro acesso", com o WhatsApp deste cadastro.'}
         </p>
+        {accessCode && (
+          <div className="flex items-center justify-between gap-3 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5">
+            <span className="text-xs text-slate-400">Código de acesso (login)</span>
+            <span className="font-mono text-xl font-extrabold tracking-[0.3em] text-amber-300">{accessCode}</span>
+          </div>
+        )}
         <Field label="E-mail de acesso *">
           <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} autoComplete="off" />
         </Field>

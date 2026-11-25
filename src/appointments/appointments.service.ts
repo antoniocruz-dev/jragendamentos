@@ -7,7 +7,7 @@ import {
 import { AppointmentStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateAppointmentDto } from './dto/create-appointment.dto.js';
-import { SLOT_MINUTES, outsideBusinessHours } from '../common/business-hours.js';
+import { CLOSE_HOUR, OPEN_HOUR, SLOT_MINUTES, outsideBusinessHours } from '../common/business-hours.js';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto.js';
 import { UpdateAppointmentStatusDto } from './dto/update-appointment-status.dto.js';
 
@@ -48,6 +48,7 @@ export class AppointmentsService {
 
   async create(dto: CreateAppointmentDto) {
     const { clientId, vehicleId, notes } = dto;
+    const serviceType = dto.serviceType?.trim() || null;
     const scheduledFor = this.parseFutureDate(dto.scheduledFor);
 
     const vehicle = await this.prisma.vehicle.findUnique({ where: { id: vehicleId } });
@@ -64,7 +65,7 @@ export class AppointmentsService {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('appointments_slots'))`;
       await this.assertSlotFree(tx, scheduledFor);
       return tx.appointment.create({
-        data: { clientId, vehicleId, scheduledFor, notes: notes?.trim() || null },
+        data: { clientId, vehicleId, scheduledFor, serviceType, notes: notes?.trim() || null },
         include: APPOINTMENT_INCLUDE,
       });
     });
@@ -170,6 +171,41 @@ export class AppointmentsService {
       data,
       include: APPOINTMENT_INCLUDE,
     });
+  }
+
+  /**
+   * Horários de início livres num dia (YYYY-MM-DD, fuso da oficina): expediente, feriados,
+   * horários passados e agendamentos ativos já descontados. Não revela de quem é o horário ocupado.
+   */
+  async availableSlots(date: string) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new BadRequestException('Data inválida (use AAAA-MM-DD).');
+    const slots: { time: string; at: string; available: boolean }[] = [];
+    let closedReason: string | null = null;
+    for (let m = OPEN_HOUR * 60; m + SLOT_MINUTES <= CLOSE_HOUR * 60; m += SLOT_MINUTES) {
+      const time = `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+      const at = new Date(`${date}T${time}:00-03:00`);
+      if (Number.isNaN(at.getTime())) throw new BadRequestException('Data inválida.');
+      const closed = outsideBusinessHours(at);
+      if (closed) {
+        closedReason = closed;
+        break;
+      }
+      slots.push({ time, at: at.toISOString(), available: at.getTime() > Date.now() });
+    }
+    if (closedReason) return { date, closedReason, slots: [] };
+
+    const dayStart = new Date(`${date}T00:00:00-03:00`);
+    const dayEnd = new Date(dayStart.getTime() + 86400_000);
+    const busy = await this.prisma.appointment.findMany({
+      where: { status: { in: ACTIVE_STATUSES }, scheduledFor: { gte: new Date(dayStart.getTime() - SLOT_MINUTES * 60_000), lt: dayEnd } },
+      select: { scheduledFor: true },
+    });
+    const windowMs = SLOT_MINUTES * 60_000;
+    for (const slot of slots) {
+      const t = new Date(slot.at).getTime();
+      if (busy.some((b) => Math.abs(b.scheduledFor.getTime() - t) < windowMs)) slot.available = false;
+    }
+    return { date, closedReason: null, slots };
   }
 
   // ==========================================

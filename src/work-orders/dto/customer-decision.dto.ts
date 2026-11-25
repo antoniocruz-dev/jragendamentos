@@ -7,6 +7,6 @@ export class CustomerDecisionDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(500)
+  @MaxLength(1000)
   reason?: string;
 }

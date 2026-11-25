@@ -40,6 +40,8 @@ interface WorkOrderDetail {
   discount: string;
   reportedIssue?: string;
   technicalNotes?: string;
+  reopenCount?: number;
+  budgetStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
   createdAt: string;
   finishedAt?: string;
   operator?: { id: string; name: string } | null;
@@ -96,6 +98,8 @@ export default function WorkOrderDetailPage() {
   const isStaff = isAuthenticated && user?.role !== 'CLIENT';
   const canApprove = isStaff && ['ADMINISTRADOR', 'GERENTE_GERAL', 'AUXILIAR_ADMINISTRATIVO'].includes(user?.profile ?? '');
   const isAdmin = isStaff && user?.profile === 'ADMINISTRADOR';
+  const canReopen = isStaff && ['ADMINISTRADOR', 'GERENTE_GERAL'].includes(user?.profile ?? '');
+  const [observations, setObservations] = useState<{ id: string; authorName: string; type: string; message: string; createdAt: string }[]>([]);
   const canBill = isStaff && !!user?.modules?.some((m) => m === 'WORK_ORDERS' || m === 'FINANCIAL');
   const [billingOpen, setBillingOpen] = useState(false);
 
@@ -118,12 +122,24 @@ export default function WorkOrderDetailPage() {
     }
   }, [osId]);
 
+  // Observações (cliente, mecânico, reaberturas): só a equipe vê; recarrega quando a OS muda
+  const orderStamp = order ? `${order.status}-${order.reopenCount ?? 0}` : '';
+  useEffect(() => {
+    if (!isStaff || !orderStamp) return;
+    const ctrl = new AbortController();
+    fetchApi<typeof observations>(`/work-orders/${osId}/observations`, { signal: ctrl.signal })
+      .then(setObservations)
+      .catch(() => !ctrl.signal.aborted && setObservations([]));
+    return () => ctrl.abort();
+  }, [isStaff, osId, orderStamp]);
+
   async function loadOrderDetails() {
     try {
       setLoading(true);
       setError(null);
       const data = await fetchApi<WorkOrderDetail>(`/work-orders/${osId}`);
       setOrder(data);
+
     } catch (err: any) {
       console.error('Erro ao carregar OS:', err);
       setError(err?.message || 'Falha ao buscar os dados da Ordem de Serviço.');
@@ -211,6 +227,29 @@ export default function WorkOrderDetailPage() {
     }
   }
 
+  // Reabertura de OS concluída (privilegiados: sem limite)
+  async function handleReopen() {
+    const justification = prompt('Justificativa da reabertura (obrigatória):');
+    if (justification === null) return;
+    if (justification.trim().length < 5) {
+      toast.error('Informe a justificativa (mínimo de 5 caracteres).');
+      return;
+    }
+    try {
+      setActionLoading(true);
+      await fetchApi(`/mecanico/os/${osId}/reopen`, {
+        method: 'POST',
+        body: JSON.stringify({ justification: justification.trim() }),
+        successToast: 'OS reaberta: voltou para Em Execução.',
+      });
+      await loadOrderDetails();
+    } catch {
+      // erro já exibido pelo fetchApi
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
   // Decisão do cliente sobre o orçamento (rota pública, só vale para OS em orçamento)
   async function handleCustomerDecision(decision: 'APPROVE' | 'REJECT', reason?: string) {
     try {
@@ -277,6 +316,8 @@ export default function WorkOrderDetailPage() {
         return 'bg-sky-500/10 text-sky-400 border-sky-500/30';
       case 'WAITING_PARTS':
         return 'bg-purple-500/10 text-purple-400 border-purple-500/30';
+      case 'TESTING':
+        return 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30';
       case 'APPROVED':
         return 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30';
       case 'QUOTE':
@@ -295,6 +336,7 @@ export default function WorkOrderDetailPage() {
       APPROVED: 'Aprovado pelo Cliente',
       IN_PROGRESS: 'Em Execução',
       WAITING_PARTS: 'Aguardando Peças',
+      TESTING: 'Em Teste',
       COMPLETED: 'Serviço Concluído',
       BILLED: 'Faturada e Paga',
       CANCELLED: 'Cancelada',
@@ -458,6 +500,29 @@ export default function WorkOrderDetailPage() {
             </div>
           )}
 
+          {/* Card: Observações registradas (cliente, mecânico e reaberturas) */}
+          {isStaff && observations.length > 0 && (
+            <div className="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-4 sm:p-6 shadow-sm">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase text-slate-400 mb-3">
+                <FileText className="w-4 h-4 text-amber-400" />
+                Observações
+              </div>
+              <ul className="space-y-2">
+                {observations.map((o) => (
+                  <li key={o.id} className="text-sm bg-slate-900/60 p-3 rounded-lg border border-slate-800">
+                    <div className="flex flex-wrap justify-between gap-2 text-xs text-slate-400">
+                      <span className="font-semibold text-slate-300">
+                        {o.authorName} · {o.type === 'ORCAMENTO_CLIENTE' ? 'Cliente' : o.type === 'REABERTURA' ? 'Reabertura' : 'Mecânico'}
+                      </span>
+                      <span>{new Date(o.createdAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                    </div>
+                    <p className="mt-1 text-slate-200 whitespace-pre-wrap break-words">{o.message}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {/* Card: Tabela de Itens e Peças */}
           <div className="bg-slate-800/80 border border-slate-700/60 rounded-xl overflow-hidden shadow-sm">
             <div className="p-5 border-b border-slate-700/80 flex items-center justify-between">
@@ -595,8 +660,13 @@ export default function WorkOrderDetailPage() {
                   </button>
                   <button
                     onClick={() => {
-                      const reason = prompt('Informe o motivo da recusa (opcional):');
-                      if (reason !== null) handleCustomerDecision('REJECT', reason || undefined);
+                      const reason = prompt('Informe o motivo da recusa (obrigatório):');
+                      if (reason === null) return;
+                      if (reason.trim().length < 3) {
+                        toast.error('Conte para a oficina o motivo da recusa.');
+                        return;
+                      }
+                      handleCustomerDecision('REJECT', reason.trim());
                     }}
                     disabled={actionLoading}
                     className="w-full bg-slate-900 hover:bg-rose-950/40 text-rose-400 border border-rose-500/30 font-medium py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all"
@@ -619,9 +689,17 @@ export default function WorkOrderDetailPage() {
                 </button>
               )}
 
-              {/* Status: IN_PROGRESS -> Concluir ou Aguardar Peças */}
+              {/* Status: IN_PROGRESS -> Em teste, Concluir ou Aguardar Peças */}
               {isStaff && order.status === 'IN_PROGRESS' && (
                 <>
+                  <button
+                    onClick={() => handleUpdateStatus('TESTING')}
+                    disabled={actionLoading}
+                    className="w-full bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-slate-950 font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2 transition-all shadow-md"
+                  >
+                    <Play className="w-4 h-4" />
+                    Enviar para Teste
+                  </button>
                   <button
                     onClick={() => handleUpdateStatus('COMPLETED')}
                     disabled={actionLoading}
@@ -639,6 +717,40 @@ export default function WorkOrderDetailPage() {
                     Aguardando Peças de Fornecedor
                   </button>
                 </>
+              )}
+
+              {/* Status: TESTING -> Concluir ou voltar para execução */}
+              {isStaff && order.status === 'TESTING' && (
+                <>
+                  <button
+                    onClick={() => handleUpdateStatus('COMPLETED')}
+                    disabled={actionLoading}
+                    className="w-full bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-slate-950 font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2 transition-all shadow-md"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    Teste aprovado: Concluir
+                  </button>
+                  <button
+                    onClick={() => handleUpdateStatus('IN_PROGRESS')}
+                    disabled={actionLoading}
+                    className="w-full bg-slate-700 hover:bg-slate-600 text-sky-300 font-medium py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all"
+                  >
+                    <Pause className="w-4 h-4" />
+                    Teste reprovado: voltar à execução
+                  </button>
+                </>
+              )}
+
+              {/* Concluída: Administrador/Gerente Geral reabrem sem limite (justificativa obrigatória) */}
+              {canReopen && order.status === 'COMPLETED' && (
+                <button
+                  onClick={handleReopen}
+                  disabled={actionLoading}
+                  className="w-full bg-slate-900 hover:bg-slate-800 text-amber-300 border border-amber-500/30 font-medium py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                >
+                  <Play className="w-4 h-4" />
+                  Reabrir OS{order.reopenCount ? ` (já reaberta ${order.reopenCount}x)` : ''}
+                </button>
               )}
 
               {/* Status: WAITING_PARTS -> Retomar Execução */}
@@ -686,7 +798,7 @@ export default function WorkOrderDetailPage() {
               )}
 
               {/* Cancelamento pela equipe (motivo obrigatório) */}
-              {isStaff && ['DRAFT', 'QUOTE', 'APPROVED', 'IN_PROGRESS', 'WAITING_PARTS'].includes(order.status) && (
+              {isStaff && ['DRAFT', 'QUOTE', 'APPROVED', 'IN_PROGRESS', 'WAITING_PARTS', 'TESTING'].includes(order.status) && (
                 <button
                   onClick={() => handleCancel(false)}
                   disabled={actionLoading}

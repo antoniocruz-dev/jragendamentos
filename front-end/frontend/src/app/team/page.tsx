@@ -31,6 +31,9 @@ interface TeamUser {
   profile: StaffProfile | null;
   isActive: boolean;
   commissionRate: string | number;
+  accessCode?: string;
+  whatsapp?: string | null;
+  firstAccessPending?: boolean;
   createdAt: string;
 }
 
@@ -220,6 +223,15 @@ function UsersTab() {
                           {isSelf && <span className="ml-2 text-[10px] text-amber-400">(você)</span>}
                         </div>
                         <div className="md:hidden text-xs text-slate-400 break-all">{u.email}</div>
+                        <div className="text-[11px] text-slate-400">
+                          {u.firstAccessPending ? (
+                            <span className="text-amber-300">Aguardando primeiro acesso</span>
+                          ) : (
+                            <>
+                              Código: <span className="font-mono font-bold text-amber-300 tracking-wider">{u.accessCode}</span>
+                            </>
+                          )}
+                        </div>
                         <div className="lg:hidden text-xs text-slate-500">
                           Comissão {Number(u.commissionRate).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%
                           {!u.isActive && <span className="md:hidden"> · Inativo</span>}
@@ -396,7 +408,8 @@ function NewUserModal({
       setSaving(true);
       await fetchApi('/team/users', {
         method: 'POST',
-        body: JSON.stringify({ ...form, phone: form.phone || undefined }),
+        // Sem senha: a pessoa conclui em "É meu primeiro acesso" (aba Equipe) e recebe o código no WhatsApp
+        body: JSON.stringify({ ...form, phone: form.phone || undefined, whatsapp: form.phone || undefined, password: form.password || undefined }),
       });
       onSaved();
     } catch (err) {
@@ -453,11 +466,11 @@ function NewUserModal({
               </select>
             </label>
             <label className="block">
-              <span className="text-xs font-semibold text-slate-400">Senha inicial</span>
+              <span className="text-xs font-semibold text-slate-400">Senha inicial (opcional)</span>
               <input
                 type="password"
-                required
                 minLength={8}
+                placeholder="Em branco: primeiro acesso"
                 value={form.password}
                 onChange={set('password')}
                 className={`${inputCls} mt-1`}
@@ -466,7 +479,9 @@ function NewUserModal({
             </label>
           </div>
           <p className="text-[11px] text-slate-500">
-            Os módulos que o usuário verá dependem do perfil (aba &quot;Perfis e permissões&quot;).
+            Os módulos que o usuário verá dependem do perfil (aba &quot;Perfis e permissões&quot;). Sem senha, a pessoa cria a
+            própria em &quot;É meu primeiro acesso&quot; (aba Equipe) com este e-mail e recebe o código de acesso no WhatsApp.
+            Perfil Mecânico usa só o Portal do Mecânico.
           </p>
 
           {error && (

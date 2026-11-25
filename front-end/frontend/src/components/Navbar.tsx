@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import type { AppModule } from '@/services/permissions';
 import { useAuth, clearSession, isClientUser } from '@/services/auth';
-import { isPublicPath } from '@/components/AuthGate';
+import { isOwnLayoutPath, isPublicPath } from '@/components/AuthGate';
 
 type NavItem = { name: string; short: string; href: string; icon: typeof Wrench; module: AppModule };
 
@@ -70,11 +70,11 @@ export default function Navbar() {
   }, [isOpen]);
 
   // Oculta a navegação administrativa na página pública do cliente (/os/[id]) e no login
-  if (isPublicPath(pathname)) return null;
+  if (isPublicPath(pathname) || isOwnLayoutPath(pathname)) return null;
 
   // Cliente: só o próprio portal
   const visibleItems = isClientUser(user)
-    ? [{ name: 'Meu portal', short: 'Portal', href: '/portal', icon: Home, module: 'DASHBOARD' as AppModule }]
+    ? [{ name: 'Minha área', short: 'Início', href: '/cliente', icon: Home, module: 'DASHBOARD' as AppModule }]
     : navItems.filter((item) => user?.modules?.includes(item.module));
   const current = activeHref(pathname, visibleItems);
   const bottomItems = visibleItems.slice(0, 4);

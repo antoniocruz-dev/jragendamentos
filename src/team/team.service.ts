@@ -30,6 +30,9 @@ const USER_SELECT = {
   profile: true,
   isActive: true,
   commissionRate: true,
+  accessCode: true,
+  whatsapp: true,
+  firstAccessPending: true,
   createdAt: true,
 } satisfies Prisma.UserSelect;
 
@@ -114,7 +117,10 @@ export class TeamService {
       data.profile = dto.profile;
       data.role = roleForProfile(dto.profile);
     }
-    if (dto.password) data.passwordHash = await bcrypt.hash(dto.password, 10);
+    if (dto.password) {
+      data.passwordHash = await bcrypt.hash(dto.password, 10);
+      data.firstAccessPending = false;
+    }
 
     const updated = await this.prisma.user.update({ where: { id }, data, select: USER_SELECT });
     return { ...updated, profile: effectiveProfile(updated.role, updated.profile) };

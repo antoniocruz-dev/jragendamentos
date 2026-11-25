@@ -12,6 +12,11 @@ export class CreateAppointmentDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(255)
+  serviceType?: string;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(2000)
   notes?: string;
 }

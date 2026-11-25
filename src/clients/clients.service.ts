@@ -227,10 +227,16 @@ export class ClientsService {
   async portalAccess(clientId: string) {
     const client = await this.prisma.client.findUnique({
       where: { id: clientId },
-      select: { email: true, user: { select: { email: true, isActive: true } } },
+      select: { email: true, user: { select: { email: true, isActive: true, accessCode: true } } },
     });
     if (!client) throw new NotFoundException('Cliente não encontrado.');
-    return { hasAccess: !!client.user?.isActive, email: client.user?.email ?? client.email ?? '', isActive: client.user?.isActive ?? false };
+    return {
+      hasAccess: !!client.user?.isActive,
+      email: client.user?.email ?? client.email ?? '',
+      isActive: client.user?.isActive ?? false,
+      // Código de 4 dígitos do login (a equipe informa ao cliente se o WhatsApp não chegar)
+      accessCode: client.user?.accessCode ?? null,
+    };
   }
 
   /** Cria (ou atualiza e reativa) o login do cliente no portal. */

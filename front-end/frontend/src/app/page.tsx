@@ -108,6 +108,7 @@ const WO_STATUS: { key: string; label: string }[] = [
   { key: 'APPROVED', label: 'Aprovada' },
   { key: 'IN_PROGRESS', label: 'Em execução' },
   { key: 'WAITING_PARTS', label: 'Aguardando peças' },
+  { key: 'TESTING', label: 'Em teste' },
   { key: 'COMPLETED', label: 'Concluída' },
   { key: 'BILLED', label: 'Faturada / paga' },
   { key: 'CANCELLED', label: 'Cancelada' },
@@ -270,7 +271,7 @@ function Dashboard() {
 
   const totalOrders = woSlices.reduce((a, s) => a + s.value, 0);
   const inShop = woSlices
-    .filter((s) => ['APPROVED', 'IN_PROGRESS', 'WAITING_PARTS'].includes(s.key))
+    .filter((s) => ['APPROVED', 'IN_PROGRESS', 'WAITING_PARTS', 'TESTING'].includes(s.key))
     .reduce((a, s) => a + s.value, 0);
   const totalAppts = apptSlices.reduce((a, s) => a + s.value, 0);
 

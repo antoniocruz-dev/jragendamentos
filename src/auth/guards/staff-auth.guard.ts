@@ -7,6 +7,8 @@ import { REQUIRED_MODULES_KEY } from '../decorators/require-modules.decorator.js
 import { MANAGERS_ONLY_KEY } from '../decorators/managers-only.decorator.js';
 import { CLIENT_PORTAL_KEY } from '../decorators/client-portal.decorator.js';
 import { TEAM_MANAGER_PROFILES } from '../permissions.js';
+import { ANY_STAFF_KEY, MECHANIC_AREA_KEY } from '../decorators/mechanic-area.decorator.js';
+import { isMechanic, isPrivileged } from '../../common/roles.js';
 
 /** Perfis da equipe da oficina que podem usar o sistema interno. */
 const STAFF_ROLES: string[] = [UserRole.ADMIN, UserRole.OPERATOR];
@@ -47,6 +49,20 @@ export class StaffAuthGuard extends AuthGuard('jwt') {
 
     if (!user?.role || !STAFF_ROLES.includes(user.role)) {
       throw new ForbiddenException('Acesso restrito à equipe da oficina.');
+    }
+
+    const meta = (key: string) => this.reflector.getAllAndOverride<boolean>(key, [context.getHandler(), context.getClass()]);
+
+    // Portal do Mecânico: o Mecânico só usa as rotas dele (nunca vê valores, custos ou faturamento)
+    if (meta(MECHANIC_AREA_KEY)) {
+      if (!isMechanic(user) && !isPrivileged(user ?? {})) {
+        throw new ForbiddenException('Área exclusiva do Portal do Mecânico.');
+      }
+      return true;
+    }
+    if (isMechanic(user)) {
+      if (meta(ANY_STAFF_KEY)) return true;
+      throw new ForbiddenException('Perfil Mecânico: use o Portal do Mecânico.');
     }
 
     // Permissão por módulo (definida pelo perfil do usuário)

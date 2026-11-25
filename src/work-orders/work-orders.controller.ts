@@ -89,6 +89,12 @@ export class WorkOrdersController {
     return this.workOrdersService.cancel(id, dto, staffActor(user));
   }
 
+  /** Observações da OS (cliente, mecânico e reaberturas) para a equipe. */
+  @Get(':id/observations')
+  observations(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.workOrdersService.listObservations(id);
+  }
+
   /** Público: é a página que o cliente abre pelo link da OS (UUID não adivinhável). */
   @Public()
   @Get(':id')

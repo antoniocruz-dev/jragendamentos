@@ -8,7 +8,7 @@ export default function Footer() {
   const pathname = usePathname();
 
   // Oculta o rodapé na tela pública do cliente (/os/[id])
-  if (pathname.startsWith('/os/')) {
+  if (pathname.startsWith('/os/') || pathname === '/login' || /^\/(cliente|mecanico|portal)(\/|$)/.test(pathname)) {
     return null;
   }
 

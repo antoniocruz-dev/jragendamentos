@@ -50,3 +50,61 @@ body:has([data-bottom-nav]) {
     display: none;
   }
 }
+
+/* ==========================================================================
+   Design System das áreas Cliente / Mecânico / Login (SPEC-front-end)
+   Marrom médio + branco + verde neon. Mobile first (360px–430px), sm:/md:/lg: ampliam.
+   Contraste: fundo neon-primary usa texto brand-brown-dark; verde sobre branco usa neon-deep.
+   ========================================================================== */
+@theme {
+  --color-brand-brown: #6d4c41;
+  --color-brand-brown-dark: #4e342e;
+  --color-brand-brown-light: #8d6e63;
+  --color-surface-white: #ffffff;
+  --color-surface-offwhite: #f8f6f4;
+  --color-neon-primary: #39ff14;
+  --color-neon-soft: #7cff63;
+  --color-neon-muted: #e8ffe3;
+  --color-neon-deep: #1fb800;
+
+  --animate-fade-up: fade-up 0.35s ease-out both;
+  --animate-neon-pulse: neon-pulse 1.6s ease-in-out infinite;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes neon-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgba(57, 255, 20, 0.55);
+    }
+    50% {
+      box-shadow: 0 0 0 6px rgba(57, 255, 20, 0);
+    }
+  }
+}
+
+/* Páginas com o tema claro: o fundo da página acompanha (inclusive sob a barra inferior) */
+body:has([data-area]) {
+  background: var(--color-surface-offwhite);
+  color: var(--color-brand-brown-dark);
+}
+[data-area] {
+  color-scheme: light;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-area] *,
+  [data-area] *::before,
+  [data-area] *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

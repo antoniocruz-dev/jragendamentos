@@ -22,6 +22,9 @@ import {
   StaffProfile,
   AlertType,
   RefundStatus,
+  BudgetStatus,
+  ObservationAuthorRole,
+  ObservationType,
 } from '@prisma/client';
 import { BillWorkOrderDto } from '../financial/dto/financial.dto.js';
 import { CancelWorkOrderDto } from './dto/cancel-work-order.dto.js';
@@ -200,6 +203,8 @@ export class WorkOrdersService {
         vehicleId: true,
         operatorId: true,
         status: true,
+        budgetStatus: true,
+        reopenCount: true,
         totalServices: true,
         totalProducts: true,
         discount: true,
@@ -299,30 +304,58 @@ export class WorkOrdersService {
     [WorkOrderStatus.APPROVED]: [WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.CANCELLED],
     [WorkOrderStatus.IN_PROGRESS]: [
       WorkOrderStatus.WAITING_PARTS,
+      WorkOrderStatus.TESTING,
       WorkOrderStatus.COMPLETED,
       WorkOrderStatus.CANCELLED,
     ],
+    [WorkOrderStatus.TESTING]: [WorkOrderStatus.COMPLETED, WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.CANCELLED],
     [WorkOrderStatus.WAITING_PARTS]: [WorkOrderStatus.APPROVED, WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.CANCELLED],
     [WorkOrderStatus.COMPLETED]: [WorkOrderStatus.BILLED],
     [WorkOrderStatus.BILLED]: [], // Estado final
     [WorkOrderStatus.CANCELLED]: [], // Estado final
   };
 
-  /** Decisão do cliente sobre o orçamento (rota pública). Só vale para OS em QUOTE. */
-  async customerDecision(id: string, dto: CustomerDecisionDto) {
+  /**
+   * Decisão do cliente sobre o orçamento (link público ou Área do Cliente). Só vale para OS em QUOTE
+   * com orçamento ainda pendente: uma segunda decisão recebe 409.
+   * Registra a observação (tipo ORCAMENTO_CLIENTE) e o budget_status. Reprovar exige observação.
+   */
+  async customerDecision(id: string, dto: CustomerDecisionDto, author?: { id: string; name: string }) {
     const workOrder = await this.findById(id);
+    const reason = dto.reason?.trim() || '';
 
-    if (workOrder.status !== WorkOrderStatus.QUOTE) {
-      throw new BadRequestException('Este orçamento não está mais aguardando aprovação.');
+    if (workOrder.status !== WorkOrderStatus.QUOTE || workOrder.budgetStatus !== BudgetStatus.PENDING) {
+      throw new ConflictException('Este orçamento não está mais aguardando aprovação.');
+    }
+    if (dto.decision === 'REJECT' && reason.length < 3) {
+      throw new UnprocessableEntityException('Conte para a oficina o motivo da reprovação (observação obrigatória).');
     }
 
-    const actor: WorkOrderActor = { kind: 'client', name: workOrder.client.name };
+    // Trava a decisão (duas abas/cliques simultâneos: só a primeira vale)
+    const locked = await this.prisma.workOrder.updateMany({
+      where: { id, status: WorkOrderStatus.QUOTE, budgetStatus: BudgetStatus.PENDING },
+      data: { budgetStatus: dto.decision === 'APPROVE' ? BudgetStatus.APPROVED : BudgetStatus.REJECTED },
+    });
+    if (locked.count !== 1) throw new ConflictException('Este orçamento já recebeu uma decisão.');
+
+    await this.prisma.workOrderObservation.create({
+      data: {
+        workOrderId: id,
+        authorId: author?.id ?? null,
+        authorName: author?.name ?? workOrder.client.name,
+        authorRole: ObservationAuthorRole.CLIENTE,
+        type: ObservationType.ORCAMENTO_CLIENTE,
+        message: reason || (dto.decision === 'APPROVE' ? 'Orçamento aprovado.' : 'Orçamento reprovado.'),
+      },
+    });
+
+    const actor: WorkOrderActor = { kind: 'client', name: author?.name ?? workOrder.client.name };
     if (dto.decision === 'APPROVE') {
       await this.approve(id, actor);
     } else {
       await this.updateStatus(
         id,
-        { status: WorkOrderStatus.CANCELLED, reason: `Recusado pelo cliente${dto.reason ? `: ${dto.reason}` : ''}` },
+        { status: WorkOrderStatus.CANCELLED, reason: `Recusado pelo cliente: ${reason}` },
         actor,
       );
     }
@@ -471,7 +504,10 @@ export class WorkOrdersService {
         }
 
         if (!wo.stockReserved) await reserveWorkOrderStock(tx, wo, actor.name);
-        await tx.workOrder.update({ where: { id }, data: { status: WorkOrderStatus.APPROVED, stockReserved: true } });
+        await tx.workOrder.update({
+          where: { id },
+          data: { status: WorkOrderStatus.APPROVED, stockReserved: true, budgetStatus: BudgetStatus.APPROVED },
+        });
         await tx.systemAlert.updateMany({
           where: { workOrderId: id, type: AlertType.STOCK_SHORTAGE, resolvedAt: null },
           data: { resolvedAt: new Date() },
@@ -495,6 +531,7 @@ export class WorkOrdersService {
         where: { id },
         data: {
           status: WorkOrderStatus.WAITING_PARTS,
+          budgetStatus: BudgetStatus.APPROVED,
           technicalNotes: `${previousNotes}[Falta de peças na aprovação por ${actor.name}]: ${text}`,
         },
       });
@@ -654,6 +691,19 @@ export class WorkOrdersService {
       where: { role: { in: [UserRole.ADMIN, UserRole.OPERATOR] }, isActive: true },
       select: { id: true, name: true, profile: true },
       orderBy: { name: 'asc' },
+    });
+  }
+
+  // ==========================================
+  // OBSERVAÇÕES
+  // ==========================================
+
+  /** Histórico de observações da OS (orçamento, técnicas e reaberturas), da mais antiga para a mais nova. */
+  listObservations(id: string) {
+    return this.prisma.workOrderObservation.findMany({
+      where: { workOrderId: id },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, authorName: true, authorRole: true, type: true, message: true, createdAt: true },
     });
   }
 }

@@ -29,13 +29,19 @@ export class CreateTeamUserDto {
   @IsEmail({}, { message: 'Forneça um e-mail válido.' })
   email: string;
 
+  /** Sem senha: a pessoa define no "primeiro acesso" da tela de login (aba Equipe) */
+  @IsOptional()
   @IsString()
   @MinLength(8, { message: 'A senha inicial deve ter no mínimo 8 caracteres.' })
-  password: string;
+  password?: string;
 
   @IsOptional()
   @IsString()
   phone?: string;
+
+  @IsOptional()
+  @IsString()
+  whatsapp?: string;
 
   @IsEnum(StaffProfile, { message: PROFILE_MESSAGE })
   profile: StaffProfile;

@@ -4,9 +4,16 @@ import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Wrench, ShieldOff } from 'lucide-react';
-import { useAuth, updateSessionUser, isClientUser, type AuthUser } from '@/services/auth';
+import { useAuth, updateSessionUser, isClientUser, isMechanicUser, CLIENT_HOME, MECHANIC_HOME, type AuthUser } from '@/services/auth';
 import { fetchApi } from '@/services/api';
 import { firstAllowedPath, hasModule, moduleForPath } from '@/services/permissions';
+
+export const isAreaPath = (pathname: string, base: string) => pathname === base || pathname.startsWith(`${base}/`);
+
+/** Áreas com layout próprio (sem a Navbar/rodapé da equipe). */
+export function isOwnLayoutPath(pathname: string) {
+  return isAreaPath(pathname, '/cliente') || isAreaPath(pathname, '/mecanico') || isAreaPath(pathname, '/portal');
+}
 
 /** Rotas acessíveis sem login: a tela de login e o link da OS enviado ao cliente. */
 export function isPublicPath(pathname: string) {
@@ -25,13 +32,27 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const isPublic = isPublicPath(pathname);
   const mustLogin = ready && !isPublic && !isAuthenticated;
 
-  // Portal do Cliente: o cliente só usa /portal; a equipe não usa o portal
+  // Áreas separadas: cliente só em /cliente; mecânico só em /mecanico; a equipe nas telas internas
   const isClient = isClientUser(user);
-  const isPortalPath = pathname === '/portal' || pathname.startsWith('/portal/');
+  const isMechanic = isMechanicUser(user);
+  const inClientArea = isAreaPath(pathname, '/cliente') || isAreaPath(pathname, '/portal');
+  const inMechanicArea = isAreaPath(pathname, '/mecanico');
   const requiredModule = moduleForPath(pathname);
-  const allowed = isClient ? isPortalPath : !isPortalPath && hasModule(user?.modules, requiredModule);
-  // Quem não tem Dashboard cai direto na primeira tela permitida (cliente: no portal)
-  const fallbackPath = !allowed && (pathname === '/' || isClient) ? (isClient ? '/portal' : firstAllowedPath(user?.modules)) : null;
+  const allowed = isClient
+    ? isAreaPath(pathname, '/cliente')
+    : isMechanic
+      ? inMechanicArea && pathname !== '/mecanico'
+      : !inClientArea && !inMechanicArea && hasModule(user?.modules, requiredModule);
+  // Fora da própria área: vai direto para a tela inicial (equipe sem Dashboard: primeira tela permitida)
+  const fallbackPath = allowed
+    ? null
+    : isClient
+      ? CLIENT_HOME
+      : isMechanic
+        ? MECHANIC_HOME
+        : pathname === '/'
+          ? firstAllowedPath(user?.modules)
+          : null;
 
   useEffect(() => {
     if (mustLogin) {
@@ -57,8 +78,12 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   if (isPublic) return <>{children}</>;
 
   if (!ready || !isAuthenticated || fallbackPath) {
+    const light = inClientArea || inMechanicArea || isClient || isMechanic;
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3 text-slate-400">
+      <div
+        {...(light ? { 'data-area': '' } : {})}
+        className={`min-h-[60vh] flex flex-col items-center justify-center gap-3 ${light ? 'text-brand-brown-light' : 'text-slate-400'}`}
+      >
         <Wrench className="w-8 h-8 text-amber-500 animate-spin" />
         <span>Verificando acesso...</span>
       </div>

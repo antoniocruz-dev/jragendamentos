@@ -26,6 +26,7 @@ const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string; b
   APPROVED: { label: 'Aprovado', bg: 'bg-sky-500/10', text: 'text-sky-400', border: 'border-sky-500/30' },
   IN_PROGRESS: { label: 'Em Execução', bg: 'bg-purple-500/10', text: 'text-purple-400', border: 'border-purple-500/30' },
   WAITING_PARTS: { label: 'Aguardando Peças', bg: 'bg-orange-500/10', text: 'text-orange-400', border: 'border-orange-500/30' },
+  TESTING: { label: 'Em Teste', bg: 'bg-cyan-500/10', text: 'text-cyan-400', border: 'border-cyan-500/30' },
   COMPLETED: { label: 'Finalizado', bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30' },
   BILLED: { label: 'Pago e Faturado', bg: 'bg-emerald-500/20', text: 'text-emerald-300', border: 'border-emerald-500/50' },
   CANCELLED: { label: 'Cancelado', bg: 'bg-rose-500/10', text: 'text-rose-400', border: 'border-rose-500/30' },

@@ -38,9 +38,32 @@ enum WorkOrderStatus {
   APPROVED // Orçamento aprovado pelo cliente
   IN_PROGRESS // Em execução na oficina
   WAITING_PARTS // Bloqueado aguardando peças
+  TESTING // Em teste (rodagem / conferência final)
   COMPLETED // Serviço concluído fisicamente
   BILLED // Faturado e pago
   CANCELLED // Cancelado
+}
+
+/// Decisão do cliente sobre o orçamento
+enum BudgetStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// Tipo da observação registrada na OS
+enum ObservationType {
+  ORCAMENTO_CLIENTE // Cliente ao aprovar/reprovar o orçamento
+  TECNICA_MECANICO // Nota técnica do mecânico
+  REABERTURA // Justificativa de reabertura
+}
+
+/// Papel de quem escreveu a observação (CLIENTE, MECANICO, GESTOR, ADMIN)
+enum ObservationAuthorRole {
+  CLIENTE
+  MECANICO
+  GESTOR
+  ADMIN
 }
 
 enum WorkOrderItemType {
@@ -117,21 +140,28 @@ enum PaymentStatus {
 // ==========================================
 
 model User {
-  id             String        @id @default(uuid()) @db.Uuid
-  name           String        @db.VarChar(150)
-  email          String        @unique @db.VarChar(255)
-  passwordHash   String        @map("password_hash") @db.VarChar(255)
-  phone          String?       @db.VarChar(20)
-  role           UserRole      @default(CLIENT)
+  id                 String        @id @default(uuid()) @db.Uuid
+  name               String        @db.VarChar(150)
+  email              String        @unique @db.VarChar(255)
+  passwordHash       String        @map("password_hash") @db.VarChar(255)
+  phone              String?       @db.VarChar(20)
+  /// Código de acesso de 4 dígitos (login), gerado pelo banco: gen_access_code()
+  accessCode         String        @unique @default(dbgenerated("gen_access_code()")) @map("access_code") @db.Char(4)
+  /// WhatsApp (11 dígitos, DDD + número) para onde vão as credenciais
+  whatsapp           String?       @db.VarChar(20)
+  /// Conta da equipe criada pelo gestor sem senha: a pessoa define no "primeiro acesso"
+  firstAccessPending Boolean       @default(false) @map("first_access_pending")
+  role               UserRole      @default(CLIENT)
   // Cargo do usuário da equipe (null para usuários CLIENT)
-  profile        StaffProfile?
-  isActive       Boolean       @default(true) @map("is_active")
+  profile            StaffProfile?
+  isActive           Boolean       @default(true) @map("is_active")
   // Comissão do mecânico sobre a mão de obra (%), ajustável na tela Equipe
-  commissionRate Decimal       @default(50) @map("commission_rate") @db.Decimal(5, 2)
+  commissionRate     Decimal       @default(50) @map("commission_rate") @db.Decimal(5, 2)
 
   client           Client?
-  expensesReceived CashTransaction[] @relation("ExpenseBeneficiary")
-  workOrders       WorkOrder[]       @relation("OperatorWorkOrders")
+  expensesReceived CashTransaction[]      @relation("ExpenseBeneficiary")
+  workOrders       WorkOrder[]            @relation("OperatorWorkOrders")
+  observations     WorkOrderObservation[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -248,12 +278,16 @@ model Product {
 // ==========================================
 
 model WorkOrder {
-  id         String          @id @default(uuid()) @db.Uuid
-  code       Int             @unique @default(autoincrement()) // OS #1001, #1002...
-  clientId   String          @map("client_id") @db.Uuid
-  vehicleId  String          @map("vehicle_id") @db.Uuid
-  operatorId String?         @map("operator_id") @db.Uuid
-  status     WorkOrderStatus @default(DRAFT)
+  id           String          @id @default(uuid()) @db.Uuid
+  code         Int             @unique @default(autoincrement()) // OS #1001, #1002...
+  clientId     String          @map("client_id") @db.Uuid
+  vehicleId    String          @map("vehicle_id") @db.Uuid
+  operatorId   String?         @map("operator_id") @db.Uuid
+  status       WorkOrderStatus @default(DRAFT)
+  /// Decisão do cliente sobre o orçamento
+  budgetStatus BudgetStatus    @default(PENDING) @map("budget_status")
+  /// Reaberturas depois de concluída (o mecânico só pode reabrir quando é 0)
+  reopenCount  Int             @default(0) @map("reopen_count")
 
   totalServices Decimal @default(0.00) @map("total_services") @db.Decimal(10, 2)
   totalProducts Decimal @default(0.00) @map("total_products") @db.Decimal(10, 2)
@@ -294,6 +328,7 @@ model WorkOrder {
 
   stockMovements StockMovement[]
   alerts         SystemAlert[]
+  observations   WorkOrderObservation[]
 
   @@index([billedAt])
   @@index([clientId])
@@ -327,6 +362,24 @@ model WorkOrderItem {
   @@map("work_order_items")
 }
 
+/// Observações da OS: orçamento (cliente), notas técnicas (mecânico) e reaberturas
+model WorkOrderObservation {
+  id          String                @id @default(uuid()) @db.Uuid
+  workOrderId String                @map("os_id") @db.Uuid
+  authorId    String?               @map("author_id") @db.Uuid
+  authorName  String                @map("author_name") @db.VarChar(150)
+  authorRole  ObservationAuthorRole @map("author_role")
+  type        ObservationType
+  message     String                @db.Text
+  createdAt   DateTime              @default(now()) @map("created_at")
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  author    User?     @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([workOrderId, createdAt])
+  @@map("os_observations")
+}
+
 // ==========================================
 // AGENDAMENTO
 // ==========================================
@@ -336,6 +389,8 @@ model Appointment {
   clientId     String            @map("client_id") @db.Uuid
   vehicleId    String            @map("vehicle_id") @db.Uuid
   scheduledFor DateTime          @map("scheduled_for")
+  /// Serviço pedido pelo cliente no agendamento (ex.: revisão, troca de óleo)
+  serviceType  String?           @map("service_type") @db.VarChar(255)
   status       AppointmentStatus @default(PENDING)
   notes        String?           @db.Text
 

@@ -18,9 +18,20 @@ export interface AuthUser {
   modules: AppModule[];
   /** Portal do Cliente: cliente vinculado ao login (papel CLIENT) */
   clientId?: string;
+  /** Papel do SPEC: CLIENTE, MECANICO, GESTOR ou ADMIN */
+  specRole?: 'CLIENTE' | 'MECANICO' | 'GESTOR' | 'ADMIN';
+  /** Código de acesso de 4 dígitos */
+  accessCode?: string;
 }
 
 export const isClientUser = (u: { role?: string } | null | undefined) => u?.role === 'CLIENT';
+/** Perfil Mecânico: usa só o Portal do Mecânico */
+export const isMechanicUser = (u: { role?: string; profile?: string | null } | null | undefined) =>
+  !!u && u.role !== 'CLIENT' && u.profile === 'MECANICO';
+
+/** Tela inicial de cada tipo de usuário */
+export const CLIENT_HOME = '/cliente';
+export const MECHANIC_HOME = '/mecanico/dashboard';
 
 export interface AuthSession {
   accessToken: string;
