@@ -9,6 +9,7 @@ export function BrandMark({ className, size = 40 }: { className?: string; size?:
       src="/logo-mark.webp"
       alt=""
       aria-hidden
+      unoptimized
       width={size}
       height={size}
       className={cn('rounded-xl shrink-0 ring-1 ring-gold/60 bg-brand-ink', className)}

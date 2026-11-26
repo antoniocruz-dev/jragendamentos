@@ -66,6 +66,7 @@ export default function LoginPage() {
             width={880}
             height={758}
             priority
+            unoptimized
             className="logo-fade animate-logo-in w-60 sm:w-72 lg:w-[30rem] h-auto drop-shadow-[0_0_30px_rgba(62,224,31,0.28)]"
           />
           <p className="hidden lg:block mt-2 max-w-md text-silver text-base leading-relaxed">
