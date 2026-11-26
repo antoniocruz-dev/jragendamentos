@@ -2,13 +2,13 @@ import React from 'react';
 import Link from 'next/link';
 import { cn } from '@/lib/cn';
 
-export type Accent = 'neon' | 'brown' | 'muted' | 'deep' | 'danger' | 'none';
+export type Accent = 'neon' | 'graphite' | 'muted' | 'deep' | 'danger' | 'none';
 
 const ACCENT: Record<Accent, string> = {
   neon: 'border-l-neon-primary',
   deep: 'border-l-neon-deep',
-  brown: 'border-l-brand-brown',
-  muted: 'border-l-brand-brown-light/50',
+  graphite: 'border-l-brand-graphite',
+  muted: 'border-l-brand-steel/50',
   danger: 'border-l-red-600',
   none: '',
 };
@@ -31,7 +31,7 @@ export function Card({
   return (
     <Tag
       className={cn(
-        'bg-surface-white border border-brand-brown-light/30 rounded-2xl p-4 shadow-sm animate-fade-up',
+        'bg-surface-white border border-brand-steel/30 rounded-2xl p-4 shadow-sm animate-fade-up',
         accent !== 'none' && 'border-l-4',
         ACCENT[accent],
         className,
@@ -61,7 +61,7 @@ export function CardLink({
     <Link
       href={href}
       className={cn(
-        'block bg-surface-white border border-brand-brown-light/30 rounded-2xl p-4 shadow-sm animate-fade-up transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-brown',
+        'block bg-surface-white border border-brand-steel/30 rounded-2xl p-4 shadow-sm animate-fade-up transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-graphite',
         accent !== 'none' && 'border-l-4',
         ACCENT[accent],
         className,

@@ -166,11 +166,11 @@ export default function ClienteAgendamento() {
                     onClick={() => setVehicleId(v.id)}
                     className={cn(
                       'min-h-14 text-left rounded-xl border px-3 py-2 transition-all duration-200 active:scale-[0.98]',
-                      vehicleId === v.id ? 'border-brand-brown bg-neon-muted ring-2 ring-neon-primary' : 'border-brand-brown-light/40 hover:border-brand-brown',
+                      vehicleId === v.id ? 'border-brand-graphite bg-neon-muted ring-2 ring-neon-primary' : 'border-brand-steel/40 hover:border-brand-graphite',
                     )}
                   >
                     <span className="block font-mono font-bold">{v.licensePlate}</span>
-                    <span className="block text-xs text-brand-brown-light">
+                    <span className="block text-xs text-brand-steel">
                       {v.brand} {v.model} {v.year}
                     </span>
                   </button>
@@ -191,7 +191,7 @@ export default function ClienteAgendamento() {
                   onClick={() => setServiceType(s)}
                   className={cn(
                     'min-h-11 px-4 rounded-full border text-sm font-semibold transition-all duration-200 active:scale-95',
-                    serviceType === s ? 'bg-brand-brown text-white border-brand-brown' : 'border-brand-brown-light/50 text-brand-brown hover:border-brand-brown',
+                    serviceType === s ? 'bg-brand-graphite text-white border-brand-graphite' : 'border-brand-steel/50 text-brand-graphite hover:border-brand-graphite',
                   )}
                 >
                   {s}
@@ -219,11 +219,11 @@ export default function ClienteAgendamento() {
               {!slots ? (
                 <div className="grid grid-cols-3 sm:grid-cols-5 gap-2" aria-label="Carregando horários" role="status">
                   {Array.from({ length: 10 }, (_, i) => (
-                    <div key={i} className="h-11 rounded-xl bg-brand-brown-light/10 animate-pulse" />
+                    <div key={i} className="h-11 rounded-xl bg-brand-steel/10 animate-pulse" />
                   ))}
                 </div>
               ) : slots.closedReason ? (
-                <p className="text-sm text-brand-brown-light flex items-start gap-2">
+                <p className="text-sm text-brand-steel flex items-start gap-2">
                   <CalendarX className="w-4 h-4 shrink-0 mt-0.5" aria-hidden />
                   {slots.closedReason}
                 </p>
@@ -240,8 +240,8 @@ export default function ClienteAgendamento() {
                       className={cn(
                         'min-h-11 rounded-xl border text-sm font-bold transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:line-through disabled:cursor-not-allowed',
                         time === s.time
-                          ? 'bg-neon-primary text-brand-brown-dark border-neon-deep shadow-[0_0_12px_rgba(57,255,20,0.45)]'
-                          : 'border-brand-brown-light/40 hover:border-brand-brown',
+                          ? 'bg-neon-primary text-brand-ink border-neon-deep shadow-[0_0_12px_rgba(63,224,31,0.45)]'
+                          : 'border-brand-steel/40 hover:border-brand-graphite',
                       )}
                     >
                       {s.time}
@@ -275,7 +275,7 @@ export default function ClienteAgendamento() {
                       <Clock className="w-4 h-4" aria-hidden />
                       {brDate(a.scheduledFor, true)}
                     </p>
-                    <p className="text-sm text-brand-brown-light">
+                    <p className="text-sm text-brand-steel">
                       {a.vehicle.licensePlate} {a.vehicle.model}
                       {a.serviceType ? ` · ${a.serviceType}` : ''}
                     </p>

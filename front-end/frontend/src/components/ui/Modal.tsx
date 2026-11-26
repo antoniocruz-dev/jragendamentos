@@ -39,16 +39,16 @@ export function Modal({
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center" data-area>
-      <div className="absolute inset-0 bg-brand-brown-dark/50 backdrop-blur-[2px]" onClick={dismissible ? onClose : undefined} aria-hidden />
+      <div className="absolute inset-0 bg-brand-ink/50 backdrop-blur-[2px]" onClick={dismissible ? onClose : undefined} aria-hidden />
       <div
         ref={panel}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="relative w-full sm:max-w-md max-h-[90dvh] overflow-y-auto bg-surface-white text-brand-brown-dark rounded-t-3xl sm:rounded-3xl shadow-2xl p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] animate-fade-up focus:outline-none"
+        className="relative w-full sm:max-w-md max-h-[90dvh] overflow-y-auto bg-surface-white text-brand-ink rounded-t-3xl sm:rounded-3xl shadow-2xl p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] animate-fade-up focus:outline-none"
       >
-        <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-brand-brown-light/30 sm:hidden" aria-hidden />
+        <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-brand-steel/30 sm:hidden" aria-hidden />
         <div className="flex items-start justify-between gap-3 mb-4">
           <h2 id={titleId} className="text-lg font-extrabold">
             {title}
@@ -58,7 +58,7 @@ export function Modal({
               type="button"
               onClick={onClose}
               aria-label="Fechar"
-              className="-mr-2 -mt-2 w-11 h-11 inline-flex items-center justify-center rounded-xl text-brand-brown-light hover:text-brand-brown hover:bg-brand-brown-light/10"
+              className="-mr-2 -mt-2 w-11 h-11 inline-flex items-center justify-center rounded-xl text-brand-steel hover:text-brand-graphite hover:bg-brand-steel/10"
             >
               <X className="w-5 h-5" />
             </button>

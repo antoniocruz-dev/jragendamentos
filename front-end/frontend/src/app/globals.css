@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Tema claro do Design System (marrom + branco + verde neon) em todo o sistema; fonte do sistema operacional. */
+/* Design System JR Garage Center: grafite carbono + verde da logo + prata + dourado. Fonte do sistema operacional. */
 @theme inline {
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 }
@@ -11,8 +11,8 @@ html {
 }
 
 body {
-  background: #f8f6f4;
-  color: #4e342e;
+  background: #f3f5f4;
+  color: #0c100d;
   font-family: var(--font-sans);
   -webkit-tap-highlight-color: transparent;
 }
@@ -52,29 +52,41 @@ body:has([data-bottom-nav]) {
 }
 
 /* ==========================================================================
-   Design System das áreas Cliente / Mecânico / Login (SPEC-front-end)
-   Marrom médio + branco + verde neon. Mobile first (360px–430px), sm:/md:/lg: ampliam.
-   Contraste: fundo neon-primary usa texto brand-brown-dark; verde sobre branco usa neon-deep.
+   Design System JR Garage Center (cores da logo)
+   - ink / graphite: fibra de carbono do fundo da logo (cabeçalhos, texto, botões secundários)
+   - neon: verde do contorno do carro e do "JR" (ação principal)
+   - silver: cromado das letras (detalhes e bordas em fundo escuro)
+   - gold: filete dourado do escudo (destaques, selos, linhas decorativas)
+   Contraste: fundo neon-primary usa texto ink; verde sobre branco usa neon-deep;
+   dourado em texto usa gold-deep. Mobile first (360px–430px), sm:/md:/lg: ampliam.
    ========================================================================== */
 @theme {
-  --color-brand-brown: #6d4c41;
-  --color-brand-brown-dark: #4e342e;
-  --color-brand-brown-light: #8d6e63;
+  --color-brand-ink: #0c100d;
+  --color-brand-graphite: #29302b;
+  --color-brand-steel: #66706a;
   --color-surface-white: #ffffff;
-  --color-surface-offwhite: #f8f6f4;
-  --color-neon-primary: #39ff14;
-  --color-neon-soft: #7cff63;
-  --color-neon-muted: #e8ffe3;
-  --color-neon-deep: #1fb800;
+  --color-surface-offwhite: #f3f5f4;
+  --color-neon-primary: #3ee01f;
+  --color-neon-soft: #7cf264;
+  --color-neon-muted: #e7fbe3;
+  --color-neon-deep: #17870a;
 
-  /* Neutros quentes das telas internas (fundos, bordas e divisórias) */
-  --color-surface-muted: #f3eeeb;
-  --color-surface-strong: #e9e1dc;
-  --color-line: #ddd2cc;
-  --color-line-soft: #ebe4e0;
+  --color-silver: #c5cbcf;
+  --color-silver-soft: #e4e8ea;
+  --color-gold: #c9a24a;
+  --color-gold-soft: #e3c474;
+  --color-gold-muted: #faf3e0;
+  --color-gold-deep: #7d5f17;
+
+  /* Neutros frios das telas internas (fundos, bordas e divisórias) */
+  --color-surface-muted: #eaeeec;
+  --color-surface-strong: #dde3e0;
+  --color-line: #cfd6d2;
+  --color-line-soft: #e2e7e4;
 
   --animate-fade-up: fade-up 0.35s ease-out both;
   --animate-neon-pulse: neon-pulse 1.6s ease-in-out infinite;
+  --animate-logo-in: logo-in 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 
   @keyframes fade-up {
     from {
@@ -89,10 +101,20 @@ body:has([data-bottom-nav]) {
   @keyframes neon-pulse {
     0%,
     100% {
-      box-shadow: 0 0 0 0 rgba(57, 255, 20, 0.55);
+      box-shadow: 0 0 0 0 rgba(62, 224, 31, 0.55);
     }
     50% {
-      box-shadow: 0 0 0 6px rgba(57, 255, 20, 0);
+      box-shadow: 0 0 0 6px rgba(62, 224, 31, 0);
+    }
+  }
+  @keyframes logo-in {
+    from {
+      opacity: 0;
+      transform: translateY(14px) scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
     }
   }
 }
@@ -100,7 +122,7 @@ body:has([data-bottom-nav]) {
 /* Páginas com o tema claro: o fundo da página acompanha (inclusive sob a barra inferior) */
 body:has([data-area]) {
   background: var(--color-surface-offwhite);
-  color: var(--color-brand-brown-dark);
+  color: var(--color-brand-ink);
 }
 [data-area] {
   color-scheme: light;
@@ -113,4 +135,95 @@ body:has([data-area]) {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ---- Componentes de marca ---------------------------------------------- */
+
+/* Fibra de carbono (padrão do fundo da logo) */
+.bg-carbon {
+  background-color: #0a0d0b;
+  background-image:
+    linear-gradient(45deg, rgba(255, 255, 255, 0.045) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.045) 75%),
+    linear-gradient(45deg, rgba(255, 255, 255, 0.045) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.045) 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 4px 4px;
+}
+
+/* Cabeçalho escuro com o filete verde + dourado da logo */
+.brand-header {
+  background-color: #0a0d0b;
+  border-bottom: 3px solid transparent;
+  border-image: linear-gradient(90deg, #3ee01f 0%, #3ee01f 55%, #c9a24a 55%, #e3c474 100%) 1;
+}
+
+/* Título no estilo da marca: itálico forte, caixa alta */
+.font-display {
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+/* Login: brilho verde + toque dourado sobre a fibra de carbono */
+.login-bg {
+  background-color: #070a08;
+  background-image:
+    radial-gradient(60% 45% at 50% 0%, rgba(62, 224, 31, 0.22), transparent 70%),
+    radial-gradient(50% 40% at 100% 100%, rgba(201, 162, 74, 0.16), transparent 70%),
+    linear-gradient(45deg, rgba(255, 255, 255, 0.035) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.035) 75%),
+    linear-gradient(45deg, rgba(255, 255, 255, 0.035) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.035) 75%);
+  background-size: auto, auto, 10px 10px, 10px 10px;
+  background-position: 0 0, 0 0, 0 0, 5px 5px;
+}
+
+/* A logo tem fundo preto: a máscara dissolve as bordas no fundo da página */
+.logo-fade {
+  -webkit-mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, #000 62%, transparent 100%);
+  mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, #000 62%, transparent 100%);
+}
+
+/* ---- Usabilidade de formulários ---------------------------------------- */
+
+/* Campo obrigatório: asterisco automático no rótulo (<label> que contém um campo :required) */
+label:has(:required) > .field-label::after {
+  content: " *";
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+/* Foco visível e consistente com a marca em links e botões (teclado) */
+:where(a, button, [role="tab"], summary):focus-visible {
+  outline: 2px solid var(--color-neon-deep);
+  outline-offset: 2px;
+}
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+select:not(:disabled) {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* Campos de data/hora no tema claro; números sem as setas que mudam o valor sem querer */
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+input[type="month"] {
+  color-scheme: light;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Seleção de texto na cor da marca */
+::selection {
+  background: rgba(62, 224, 31, 0.35);
+  color: #0c100d;
 }

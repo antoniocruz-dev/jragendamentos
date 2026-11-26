@@ -74,7 +74,7 @@ export default function ClienteHome() {
             <CalendarClock className="w-5 h-5 text-neon-deep shrink-0 mt-0.5" aria-hidden />
             <div className="min-w-0 text-sm">
               <p className="font-bold">Próximo agendamento</p>
-              <p className="text-brand-brown-light">
+              <p className="text-brand-steel">
                 {brDate(upcoming[upcoming.length - 1].scheduledFor, true)} · {upcoming[upcoming.length - 1].vehicle.licensePlate}
                 {upcoming[upcoming.length - 1].serviceType ? ` · ${upcoming[upcoming.length - 1].serviceType}` : ''}
               </p>
@@ -109,7 +109,7 @@ export default function ClienteHome() {
                   <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
                     <div className="min-w-0">
                       <p className="font-mono text-lg font-extrabold">O.S #{o.code}</p>
-                      <p className="text-sm text-brand-brown-light flex items-center gap-1.5 truncate">
+                      <p className="text-sm text-brand-steel flex items-center gap-1.5 truncate">
                         <Car className="w-4 h-4 shrink-0" aria-hidden />
                         {o.vehicle.brand} {o.vehicle.model} · {o.vehicle.licensePlate}
                       </p>
@@ -125,7 +125,7 @@ export default function ClienteHome() {
                   <div className="mt-3">
                     <StatusProgress status={o.status} />
                   </div>
-                  <p className="mt-2 text-xs text-brand-brown-light">Aberta em {brDate(o.createdAt)}</p>
+                  <p className="mt-2 text-xs text-brand-steel">Aberta em {brDate(o.createdAt)}</p>
                 </CardLink>
               </li>
             );

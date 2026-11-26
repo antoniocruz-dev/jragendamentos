@@ -40,7 +40,7 @@ function AlertsPanel({ alerts, onResolved }: { alerts: NonNullable<Summary['aler
 
   return (
     <section className="bg-surface-white border border-neon-deep/30 rounded-2xl p-4 sm:p-5 space-y-3" aria-label="Alertas">
-      <h2 className="flex items-center gap-2 text-sm font-bold text-brand-brown">
+      <h2 className="flex items-center gap-2 text-sm font-bold text-brand-graphite">
         <AlertTriangle className="w-4 h-4" />
         Alertas ({total})
       </h2>
@@ -59,20 +59,20 @@ function AlertsPanel({ alerts, onResolved }: { alerts: NonNullable<Summary['aler
           <li key={a.id} className="flex items-start gap-2.5 bg-surface-offwhite border border-line-soft rounded-xl px-3 py-2.5">
             <AlertCircle className={`w-4 h-4 shrink-0 mt-0.5 ${a.type === 'PAYMENT_REJECTED' ? 'text-rose-700' : 'text-orange-700'}`} />
             {a.workOrderId ? (
-              <Link href={`/os/${a.workOrderId}`} className="flex-1 min-w-0 text-brand-brown-dark hover:text-brand-brown-dark break-words">
+              <Link href={`/os/${a.workOrderId}`} className="flex-1 min-w-0 text-brand-ink hover:text-brand-ink break-words">
                 {a.message}
               </Link>
             ) : (
-              <span className="flex-1 min-w-0 text-brand-brown-dark break-words">{a.message}</span>
+              <span className="flex-1 min-w-0 text-brand-ink break-words">{a.message}</span>
             )}
-            <button onClick={() => dismiss(a.id)} className="shrink-0 p-1 -m-1 text-brand-brown-light hover:text-brand-brown-dark" aria-label="Marcar alerta como resolvido">
+            <button onClick={() => dismiss(a.id)} className="shrink-0 p-1 -m-1 text-brand-steel hover:text-brand-ink" aria-label="Marcar alerta como resolvido">
               <X className="w-4 h-4" />
             </button>
           </li>
         ))}
         {alerts.lowStock.length > 0 && (
           <li className="bg-surface-offwhite border border-line-soft rounded-xl px-3 py-2.5">
-            <Link href="/catalog?tab=products" className="flex items-center gap-2.5 text-orange-800 hover:text-brand-brown-dark">
+            <Link href="/catalog?tab=products" className="flex items-center gap-2.5 text-orange-800 hover:text-brand-ink">
               <PackageX className="w-4 h-4 shrink-0" />
               <span className="font-semibold">Estoque baixo ({alerts.lowStock.length})</span>
             </Link>
@@ -99,7 +99,7 @@ interface Slice {
 }
 
 // Paleta categórica (ordem fixa, tons médios legíveis no fundo claro). A cor segue a entidade, nunca a posição.
-const SERIES = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#0ca30c', '#9085e9', '#e66767'];
+const SERIES = ['#2fb81f', '#c9a24a', '#3987e5', '#d95926', '#9085e9', '#d55181', '#6b747a', '#199e70'];
 const SURFACE = '#ffffff'; // fundo dos cartões (surface-white): separa as fatias
 
 const WO_STATUS: { key: string; label: string }[] = [
@@ -179,7 +179,7 @@ export default function DashboardPage() {
 
 function LoadingBlock() {
   return (
-    <div className="min-h-[60vh] flex items-center justify-center text-brand-brown">
+    <div className="min-h-[60vh] flex items-center justify-center text-brand-graphite">
       <Loader2 className="w-6 h-6 animate-spin" />
     </div>
   );
@@ -276,22 +276,22 @@ function Dashboard() {
   const totalAppts = apptSlices.reduce((a, s) => a + s.value, 0);
 
   return (
-    <div className="min-h-full bg-surface-offwhite text-brand-brown-dark px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+    <div className="min-h-full bg-surface-offwhite text-brand-ink px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
       <div className="max-w-7xl mx-auto space-y-5 sm:space-y-6">
         <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4 border-b border-line-soft pb-4 sm:pb-6">
           <div>
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-brand-brown-dark flex items-center gap-2.5">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-brand-ink flex items-center gap-2.5">
               <LayoutDashboard className="w-6 h-6 sm:w-7 sm:h-7 text-neon-deep shrink-0" />
               Dashboard
             </h1>
-            <p className="text-xs sm:text-sm text-brand-brown mt-1">
+            <p className="text-xs sm:text-sm text-brand-graphite mt-1">
               Visão do período. Clique numa fatia ou na legenda para abrir a tela correspondente.
             </p>
           </div>
           {can('WORK_ORDERS') && (
             <Link
               href="/work-orders/new"
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-neon-primary hover:bg-neon-soft text-brand-brown-dark font-bold text-sm rounded-xl sm:self-end"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-neon-primary hover:bg-neon-soft text-brand-ink font-bold text-sm rounded-xl sm:self-end"
             >
               <Plus className="w-4 h-4" />
               Nova Ordem de Serviço
@@ -308,8 +308,8 @@ function Dashboard() {
                 onClick={() => choosePreset(p.key)}
                 className={`shrink-0 whitespace-nowrap px-3 py-2 sm:py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
                   preset === p.key
-                    ? 'bg-neon-primary text-brand-brown-dark border-neon-deep'
-                    : 'bg-surface-muted/80 text-brand-brown border-line/60 hover:bg-surface-strong'
+                    ? 'bg-neon-primary text-brand-ink border-neon-deep'
+                    : 'bg-surface-muted/80 text-brand-graphite border-line/60 hover:bg-surface-strong'
                 }`}
               >
                 {p.label}
@@ -317,24 +317,24 @@ function Dashboard() {
             ))}
           </div>
           <div className="grid grid-cols-2 gap-2 lg:flex lg:items-center lg:ml-auto text-sm">
-            <label className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-brand-brown min-w-0">
+            <label className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-brand-graphite min-w-0">
               De
               <input
                 type="date"
                 value={range.from}
                 max={range.to}
                 onChange={(e) => changeDate('from', e.target.value)}
-                className="w-full min-w-0 bg-surface-offwhite border border-line rounded-lg px-2 py-2 sm:py-1.5 text-brand-brown-dark [color-scheme:light]"
+                className="w-full min-w-0 bg-surface-offwhite border border-line rounded-lg px-2 py-2 sm:py-1.5 text-brand-ink [color-scheme:light]"
               />
             </label>
-            <label className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-brand-brown min-w-0">
+            <label className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-brand-graphite min-w-0">
               até
               <input
                 type="date"
                 value={range.to}
                 min={range.from}
                 onChange={(e) => changeDate('to', e.target.value)}
-                className="w-full min-w-0 bg-surface-offwhite border border-line rounded-lg px-2 py-2 sm:py-1.5 text-brand-brown-dark [color-scheme:light]"
+                className="w-full min-w-0 bg-surface-offwhite border border-line rounded-lg px-2 py-2 sm:py-1.5 text-brand-ink [color-scheme:light]"
               />
             </label>
           </div>
@@ -347,13 +347,13 @@ function Dashboard() {
         ) : error ? (
           <div className="bg-surface-white border border-line-soft rounded-2xl p-8 text-center space-y-3">
             <AlertCircle className="w-8 h-8 text-rose-700 mx-auto" />
-            <p className="text-sm text-brand-brown">{error}</p>
+            <p className="text-sm text-brand-graphite">{error}</p>
             <button
               onClick={() => {
                 setLoading(true);
                 setReloadKey((k) => k + 1);
               }}
-              className="text-sm font-semibold text-brand-brown hover:text-brand-brown"
+              className="text-sm font-semibold text-brand-graphite hover:text-brand-graphite"
             >
               Tentar novamente
             </button>
@@ -408,7 +408,7 @@ function Dashboard() {
 }
 
 function Notice({ text }: { text: string }) {
-  return <div className="bg-surface-white border border-line-soft rounded-2xl p-8 text-center text-sm text-brand-brown">{text}</div>;
+  return <div className="bg-surface-white border border-line-soft rounded-2xl p-8 text-center text-sm text-brand-graphite">{text}</div>;
 }
 
 // ==========================================
@@ -471,17 +471,17 @@ function PieCard({
   return (
     <section className="bg-surface-white border border-line-soft rounded-2xl p-5 flex flex-col">
       <div className="flex items-start gap-3 mb-4">
-        <div className="bg-surface-muted border border-line p-2 rounded-lg text-brand-brown">
+        <div className="bg-surface-muted border border-line p-2 rounded-lg text-brand-graphite">
           <Icon className="w-4 h-4" />
         </div>
         <div>
-          <h2 className="font-bold text-brand-brown-dark">{title}</h2>
-          <p className="text-xs text-brand-brown">{subtitle}</p>
+          <h2 className="font-bold text-brand-ink">{title}</h2>
+          <p className="text-xs text-brand-graphite">{subtitle}</p>
         </div>
       </div>
 
       {total === 0 ? (
-        <div className="flex-1 flex items-center justify-center py-16 text-sm text-brand-brown-light text-center">{emptyText}</div>
+        <div className="flex-1 flex items-center justify-center py-16 text-sm text-brand-steel text-center">{emptyText}</div>
       ) : (
         <>
           <div className="relative mx-auto" style={{ width: size, height: size }}>
@@ -517,10 +517,10 @@ function PieCard({
             </svg>
             {/* Centro: total ou fatia sob o mouse */}
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-12">
-              <div className="text-lg font-extrabold text-brand-brown-dark leading-tight">
+              <div className="text-lg font-extrabold text-brand-ink leading-tight">
                 {hovered ? format(hovered.value) : centerValue}
               </div>
-              <div className="text-[11px] text-brand-brown leading-tight">
+              <div className="text-[11px] text-brand-graphite leading-tight">
                 {hovered ? `${hovered.label} · ${pct(hovered.value)}` : centerLabel}
               </div>
             </div>
@@ -543,9 +543,9 @@ function PieCard({
                     } ${hover === s.key ? 'bg-surface-muted' : ''} ${s.value === 0 ? 'opacity-40' : ''}`}
                   >
                     <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: s.color }} />
-                    <span className="flex-1 text-brand-brown truncate">{s.label}</span>
-                    <span className="font-semibold text-brand-brown-dark tabular-nums">{format(s.value)}</span>
-                    <span className="w-12 text-right text-xs text-brand-brown-light tabular-nums">{pct(s.value)}</span>
+                    <span className="flex-1 text-brand-graphite truncate">{s.label}</span>
+                    <span className="font-semibold text-brand-ink tabular-nums">{format(s.value)}</span>
+                    <span className="w-12 text-right text-xs text-brand-steel tabular-nums">{pct(s.value)}</span>
                   </button>
                 </li>
               );
@@ -554,7 +554,7 @@ function PieCard({
         </>
       )}
 
-      <p className="mt-4 pt-3 border-t border-line-soft text-xs text-brand-brown-light">
+      <p className="mt-4 pt-3 border-t border-line-soft text-xs text-brand-steel">
         {footer}
         {!canOpen && ' · Seu perfil não acessa a tela de detalhes.'}
       </p>

@@ -103,21 +103,21 @@ export default function CatalogPage() {
   );
 
   return (
-    <div className="min-h-full bg-surface-offwhite text-brand-brown-dark px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+    <div className="min-h-full bg-surface-offwhite text-brand-ink px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
       <div className="max-w-6xl mx-auto space-y-5 sm:space-y-6">
         <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4 border-b border-line-soft pb-4 sm:pb-6">
           <div>
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-brand-brown-dark flex items-center gap-2.5">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-brand-ink flex items-center gap-2.5">
               <Package className="w-6 h-6 sm:w-7 sm:h-7 text-neon-deep shrink-0" />
               Peças &amp; Serviços
             </h1>
-            <p className="text-brand-brown mt-1 text-xs sm:text-sm">
+            <p className="text-brand-graphite mt-1 text-xs sm:text-sm">
               Tabela de mão de obra e estoque de peças usados na abertura das OS.
             </p>
           </div>
           <button
             onClick={() => (tab === 'services' ? setEditingService(null) : setEditingProduct(null))}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-neon-primary hover:bg-neon-soft text-brand-brown-dark font-bold text-sm rounded-xl"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-neon-primary hover:bg-neon-soft text-brand-ink font-bold text-sm rounded-xl"
           >
             <Plus className="w-4 h-4" />
             {tab === 'services' ? 'Novo serviço' : 'Nova peça'}
@@ -134,7 +134,7 @@ export default function CatalogPage() {
                 key={key}
                 onClick={() => setTab(key)}
                 className={`inline-flex items-center justify-center gap-1.5 px-4 py-2 sm:py-1.5 rounded-md text-sm font-semibold ${
-                  tab === key ? 'bg-neon-primary text-brand-brown-dark' : 'text-brand-brown hover:text-brand-brown-dark'
+                  tab === key ? 'bg-neon-primary text-brand-ink' : 'text-brand-graphite hover:text-brand-ink'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -143,25 +143,25 @@ export default function CatalogPage() {
             ))}
           </div>
           <div className="relative w-full sm:w-72">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-brand-brown" />
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-brand-graphite" />
             <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nome ou código..." className={`${inputCls} pl-9 py-2.5`} />
           </div>
         </div>
 
-        <p className="text-xs text-brand-brown-light">
+        <p className="text-xs text-brand-steel">
           Itens inativos não aparecem na Nova OS. Itens já usados em OS não podem ser excluídos, só inativados.
           {!isManager && ' Excluir e inativar são exclusivos do Administrador e do Gerente Geral.'}
         </p>
 
         {loading ? (
-          <div className="p-12 text-center text-brand-brown">Carregando catálogo...</div>
+          <div className="p-12 text-center text-brand-graphite">Carregando catálogo...</div>
         ) : error ? (
           <FormError message={error} />
         ) : (
           <div className="bg-surface-white border border-line-soft rounded-2xl overflow-x-auto">
             {tab === 'services' ? (
-              <table className="w-full text-left text-sm text-brand-brown">
-                <thead className="bg-surface-white/60 text-xs uppercase text-brand-brown border-b border-line">
+              <table className="w-full text-left text-sm text-brand-graphite">
+                <thead className="bg-surface-white/60 text-xs uppercase text-brand-graphite border-b border-line">
                   <tr>
                     <th className="py-3 px-3 sm:px-4">Serviço</th>
                     <th className="py-3 px-3 sm:px-4">Preço</th>
@@ -172,18 +172,18 @@ export default function CatalogPage() {
                 </thead>
                 <tbody className="divide-y divide-line/60">
                   {visibleServices.length === 0 && (
-                    <tr><td colSpan={5} className="p-8 text-center text-brand-brown">Nenhum serviço cadastrado.</td></tr>
+                    <tr><td colSpan={5} className="p-8 text-center text-brand-graphite">Nenhum serviço cadastrado.</td></tr>
                   )}
                   {visibleServices.map((s) => (
                     <tr key={s.id} className={s.isActive ? '' : 'opacity-60'}>
                       <td className="py-3 px-3 sm:px-4">
-                        <div className="font-semibold text-brand-brown-dark">{s.name}</div>
-                        {s.description && <div className="text-xs text-brand-brown line-clamp-2">{s.description}</div>}
-                        <div className="sm:hidden mt-1 flex items-center gap-2 text-xs text-brand-brown">
+                        <div className="font-semibold text-brand-ink">{s.name}</div>
+                        {s.description && <div className="text-xs text-brand-graphite line-clamp-2">{s.description}</div>}
+                        <div className="sm:hidden mt-1 flex items-center gap-2 text-xs text-brand-graphite">
                           {s.estimatedMinutes} min <ActiveBadge active={s.isActive} />
                         </div>
                       </td>
-                      <td className="py-3 px-3 sm:px-4 font-semibold text-brand-brown-dark whitespace-nowrap">{brl(s.basePrice)}</td>
+                      <td className="py-3 px-3 sm:px-4 font-semibold text-brand-ink whitespace-nowrap">{brl(s.basePrice)}</td>
                       <td className="hidden sm:table-cell py-3 px-4 whitespace-nowrap">{s.estimatedMinutes} min</td>
                       <td className="hidden sm:table-cell py-3 px-4"><ActiveBadge active={s.isActive} /></td>
                       <td className="py-3 px-3 sm:px-4">
@@ -202,8 +202,8 @@ export default function CatalogPage() {
                 </tbody>
               </table>
             ) : (
-              <table className="w-full text-left text-sm text-brand-brown">
-                <thead className="bg-surface-white/60 text-xs uppercase text-brand-brown border-b border-line">
+              <table className="w-full text-left text-sm text-brand-graphite">
+                <thead className="bg-surface-white/60 text-xs uppercase text-brand-graphite border-b border-line">
                   <tr>
                     <th className="py-3 px-3 sm:px-4">Peça</th>
                     <th className="hidden sm:table-cell py-3 px-4">Custo</th>
@@ -215,27 +215,27 @@ export default function CatalogPage() {
                 </thead>
                 <tbody className="divide-y divide-line/60">
                   {visibleProducts.length === 0 && (
-                    <tr><td colSpan={6} className="p-8 text-center text-brand-brown">Nenhuma peça cadastrada.</td></tr>
+                    <tr><td colSpan={6} className="p-8 text-center text-brand-graphite">Nenhuma peça cadastrada.</td></tr>
                   )}
                   {visibleProducts.map((p) => {
                     const low = p.stockQuantity <= p.minStock;
                     return (
                       <tr key={p.id} className={p.isActive ? '' : 'opacity-60'}>
                         <td className="py-3 px-3 sm:px-4">
-                          <div className="font-semibold text-brand-brown-dark">{p.name}</div>
-                          <div className="text-xs text-brand-brown font-mono">{p.sku}</div>
-                          <div className="sm:hidden mt-1 flex items-center gap-2 text-xs text-brand-brown">
+                          <div className="font-semibold text-brand-ink">{p.name}</div>
+                          <div className="text-xs text-brand-graphite font-mono">{p.sku}</div>
+                          <div className="sm:hidden mt-1 flex items-center gap-2 text-xs text-brand-graphite">
                             Custo {brl(p.costPrice)} <ActiveBadge active={p.isActive} />
                           </div>
                         </td>
                         <td className="hidden sm:table-cell py-3 px-4 whitespace-nowrap">{brl(p.costPrice)}</td>
-                        <td className="py-3 px-3 sm:px-4 font-semibold text-brand-brown-dark whitespace-nowrap">{brl(p.salePrice)}</td>
+                        <td className="py-3 px-3 sm:px-4 font-semibold text-brand-ink whitespace-nowrap">{brl(p.salePrice)}</td>
                         <td className="py-3 px-3 sm:px-4 whitespace-nowrap">
-                          <span className={low ? 'text-brand-brown font-semibold inline-flex items-center gap-1' : ''}>
+                          <span className={low ? 'text-brand-graphite font-semibold inline-flex items-center gap-1' : ''}>
                             {low && <AlertTriangle className="w-3.5 h-3.5" />}
                             {p.stockQuantity} un.
                           </span>
-                          <div className="text-xs text-brand-brown-light">mín. {p.minStock}</div>
+                          <div className="text-xs text-brand-steel">mín. {p.minStock}</div>
                         </td>
                         <td className="hidden sm:table-cell py-3 px-4"><ActiveBadge active={p.isActive} /></td>
                         <td className="py-3 px-3 sm:px-4">
@@ -284,7 +284,7 @@ function ActiveBadge({ active }: { active: boolean }) {
   return active ? (
     <span className="text-xs px-2 py-0.5 rounded-full border text-emerald-700 bg-emerald-500/10 border-emerald-500/30">Ativo</span>
   ) : (
-    <span className="text-xs px-2 py-0.5 rounded-full border text-brand-brown bg-brand-brown-light/10 border-brand-brown-light/30">Inativo</span>
+    <span className="text-xs px-2 py-0.5 rounded-full border text-brand-graphite bg-brand-steel/10 border-brand-steel/30">Inativo</span>
   );
 }
 
@@ -369,17 +369,17 @@ function ServiceModal({ item, onClose }: { item: ServiceItem | null; onClose: (c
           });
         }}
       >
-        <Field label="Nome *">
+        <Field label="Nome">
           <input required minLength={2} value={form.name} onChange={(e) => set('name', e.target.value)} className={inputCls} />
         </Field>
         <Field label="Descrição">
           <textarea rows={2} value={form.description} onChange={(e) => set('description', e.target.value)} className={inputCls} />
         </Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Preço (R$) *">
+          <Field label="Preço (R$)">
             <input required type="number" min={0} step="0.01" value={form.basePrice} onChange={(e) => set('basePrice', e.target.value)} className={inputCls} />
           </Field>
-          <Field label="Tempo estimado (min) *">
+          <Field label="Tempo estimado (min)">
             <input required type="number" min={1} value={form.estimatedMinutes} onChange={(e) => set('estimatedMinutes', e.target.value)} className={inputCls} />
           </Field>
         </div>
@@ -421,10 +421,10 @@ function ProductModal({ item, onClose }: { item: ProductItem | null; onClose: (c
         }}
       >
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <Field label="Código (SKU) *">
+          <Field label="Código (SKU)">
             <input required value={form.sku} onChange={(e) => set('sku', e.target.value.toUpperCase())} className={`${inputCls} font-mono uppercase`} />
           </Field>
-          <Field label="Nome *" className="col-span-2">
+          <Field label="Nome" className="col-span-2">
             <input required minLength={2} value={form.name} onChange={(e) => set('name', e.target.value)} className={inputCls} />
           </Field>
         </div>
@@ -432,16 +432,16 @@ function ProductModal({ item, onClose }: { item: ProductItem | null; onClose: (c
           <textarea rows={2} value={form.description} onChange={(e) => set('description', e.target.value)} className={inputCls} />
         </Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Preço de custo (R$) *">
+          <Field label="Preço de custo (R$)">
             <input required type="number" min={0} step="0.01" value={form.costPrice} onChange={(e) => set('costPrice', e.target.value)} className={inputCls} />
           </Field>
-          <Field label="Preço de venda (R$) *">
+          <Field label="Preço de venda (R$)">
             <input required type="number" min={0} step="0.01" value={form.salePrice} onChange={(e) => set('salePrice', e.target.value)} className={inputCls} />
           </Field>
-          <Field label="Estoque atual *">
+          <Field label="Estoque atual">
             <input required type="number" min={0} value={form.stockQuantity} onChange={(e) => set('stockQuantity', e.target.value)} className={inputCls} />
           </Field>
-          <Field label="Estoque mínimo *">
+          <Field label="Estoque mínimo">
             <input required type="number" min={0} value={form.minStock} onChange={(e) => set('minStock', e.target.value)} className={inputCls} />
           </Field>
         </div>
@@ -518,9 +518,9 @@ function StockModal({ product, isAdmin, onClose }: { product: ProductItem; isAdm
               className={`min-h-10 rounded-lg text-sm font-semibold border ${
                 direction === d
                   ? d === 'in'
-                    ? 'bg-emerald-500 text-brand-brown-dark border-emerald-500'
+                    ? 'bg-emerald-500 text-brand-ink border-emerald-500'
                     : 'bg-rose-500 text-white border-rose-500'
-                  : 'bg-surface-offwhite text-brand-brown border-line'
+                  : 'bg-surface-offwhite text-brand-graphite border-line'
               }`}
             >
               {d === 'in' ? 'Entrada' : 'Saída'}
@@ -528,21 +528,21 @@ function StockModal({ product, isAdmin, onClose }: { product: ProductItem; isAdm
           ))}
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Quantidade *">
+          <Field label="Quantidade">
             <input type="number" min={1} required value={quantity} onChange={(e) => setQuantity(e.target.value)} className={inputCls} />
           </Field>
-          <div className="text-sm text-brand-brown self-end pb-2">
-            Saldo: <strong className="text-brand-brown-dark">{product.stockQuantity}</strong> →{' '}
+          <div className="text-sm text-brand-graphite self-end pb-2">
+            Saldo: <strong className="text-brand-ink">{product.stockQuantity}</strong> →{' '}
             <strong className={after < 0 ? 'text-rose-700' : 'text-emerald-700'}>{after}</strong>
           </div>
         </div>
-        <Field label="Motivo *">
+        <Field label="Motivo">
           <input required minLength={3} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ex.: compra NF 1234, perda, inventário" className={inputCls} />
         </Field>
         {direction === 'out' && after < 0 && (
           isAdmin ? (
-            <label className="flex items-center gap-2 text-sm text-brand-brown">
-              <input type="checkbox" checked={allowNegative} onChange={(e) => setAllowNegative(e.target.checked)} className="w-4 h-4 accent-brand-brown" />
+            <label className="flex items-center gap-2 text-sm text-brand-graphite">
+              <input type="checkbox" checked={allowNegative} onChange={(e) => setAllowNegative(e.target.checked)} className="w-4 h-4 accent-brand-graphite" />
               Autorizar estoque negativo (Administrador)
             </label>
           ) : (
@@ -554,18 +554,18 @@ function StockModal({ product, isAdmin, onClose }: { product: ProductItem; isAdm
       </form>
 
       <div className="mt-5 border-t border-line-soft pt-4">
-        <h3 className="text-xs font-bold uppercase text-brand-brown mb-2">Últimas movimentações</h3>
+        <h3 className="text-xs font-bold uppercase text-brand-graphite mb-2">Últimas movimentações</h3>
         {!movements ? (
-          <p className="text-xs text-brand-brown-light">Carregando...</p>
+          <p className="text-xs text-brand-steel">Carregando...</p>
         ) : movements.length === 0 ? (
-          <p className="text-xs text-brand-brown-light">Nenhuma movimentação registrada.</p>
+          <p className="text-xs text-brand-steel">Nenhuma movimentação registrada.</p>
         ) : (
           <ul className="space-y-1.5 max-h-56 overflow-y-auto text-xs">
             {movements.map((m) => (
               <li key={m.id} className="flex items-start justify-between gap-3 bg-surface-offwhite border border-line-soft rounded-lg px-3 py-2">
                 <div className="min-w-0">
-                  <div className="text-brand-brown-dark truncate">{m.reason}</div>
-                  <div className="text-brand-brown-light">
+                  <div className="text-brand-ink truncate">{m.reason}</div>
+                  <div className="text-brand-steel">
                     {new Date(m.createdAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
                     {m.userName ? ` · ${m.userName}` : ''}
                   </div>
@@ -575,7 +575,7 @@ function StockModal({ product, isAdmin, onClose }: { product: ProductItem; isAdm
                     {m.quantity > 0 ? '+' : ''}
                     {m.quantity}
                   </div>
-                  <div className="text-brand-brown-light">saldo {m.balance}</div>
+                  <div className="text-brand-steel">saldo {m.balance}</div>
                 </div>
               </li>
             ))}

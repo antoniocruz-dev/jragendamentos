@@ -42,7 +42,7 @@ export function Tabs<K extends string>({
       role="tablist"
       aria-label={label}
       onKeyDown={onKeyDown}
-      className={cn('relative grid bg-surface-white border border-brand-brown-light/30 rounded-xl overflow-hidden', className)}
+      className={cn('relative grid bg-surface-white border border-brand-steel/30 rounded-xl overflow-hidden', className)}
       style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
     >
       {items.map((it, i) => {
@@ -59,8 +59,8 @@ export function Tabs<K extends string>({
             tabIndex={active ? 0 : -1}
             onClick={() => onChange(it.key)}
             className={cn(
-              'min-h-12 inline-flex items-center justify-center gap-2 text-sm font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:bg-brand-brown-light/10',
-              active ? 'text-brand-brown-dark' : 'text-brand-brown-light hover:text-brand-brown',
+              'min-h-12 inline-flex items-center justify-center gap-2 text-sm font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:bg-brand-steel/10',
+              active ? 'text-brand-ink' : 'text-brand-steel hover:text-brand-graphite',
             )}
           >
             {it.icon}
@@ -70,7 +70,7 @@ export function Tabs<K extends string>({
       })}
       <span
         aria-hidden
-        className="absolute bottom-0 left-0 h-1 rounded-full bg-neon-primary shadow-[0_0_10px_rgba(57,255,20,0.6)] transition-transform duration-300 ease-out"
+        className="absolute bottom-0 left-0 h-1 rounded-full bg-neon-primary shadow-[0_0_10px_rgba(63,224,31,0.6)] transition-transform duration-300 ease-out"
         style={{ width: `${100 / items.length}%`, transform: `translateX(${index * 100}%)` }}
       />
     </div>

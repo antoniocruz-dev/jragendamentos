@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import type { AppModule } from '@/services/permissions';
 import { useAuth, clearSession, isClientUser } from '@/services/auth';
+import { BrandMark, BrandName } from '@/components/ui/Brand';
 import { isOwnLayoutPath, isPublicPath } from '@/components/AuthGate';
 
 type NavItem = { name: string; short: string; href: string; icon: typeof Wrench; module: AppModule };
@@ -87,15 +88,11 @@ export default function Navbar() {
 
   return (
     <>
-      <header className="bg-brand-brown-dark text-white shadow-md sticky top-0 z-50 pt-[env(safe-area-inset-top)]">
+      <header className="brand-header text-white shadow-md sticky top-0 z-50 pt-[env(safe-area-inset-top)]">
         <div className="max-w-7xl mx-auto px-4 lg:px-6 flex items-center justify-between gap-3 h-14 lg:h-16">
           <Link href={isClientUser(user) ? '/cliente' : '/'} className="flex items-center gap-2.5 min-w-0">
-            <div className="bg-neon-primary text-brand-brown-dark p-1.5 lg:p-2 rounded-xl shrink-0 shadow-[0_0_14px_rgba(57,255,20,0.45)]">
-              <Wrench className="w-5 h-5" />
-            </div>
-            <span className="font-extrabold text-base lg:text-lg text-white tracking-tight truncate">
-              JR <span className="text-neon-primary">Garage Center</span>
-            </span>
+            <BrandMark size={40} className="w-9 h-9 lg:w-10 lg:h-10" />
+            <BrandName className="text-base lg:text-lg" />
           </Link>
 
           {/* Notebook/desktop: menu horizontal */}
@@ -110,7 +107,7 @@ export default function Navbar() {
                   title={item.name}
                   aria-current={isActive ? 'page' : undefined}
                   className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-                    isActive ? 'bg-neon-primary text-brand-brown-dark' : 'text-white/85 hover:text-white hover:bg-white/10'
+                    isActive ? 'bg-neon-primary text-brand-ink' : 'text-white/85 hover:text-white hover:bg-white/10'
                   }`}
                 >
                   <Icon className="w-4 h-4 shrink-0" />
@@ -147,7 +144,7 @@ export default function Navbar() {
         <nav
           data-bottom-nav
           aria-label="Atalhos"
-          className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-surface-white border-t border-brand-brown-light/30 shadow-[0_-4px_16px_rgba(78,52,46,0.08)] pb-[env(safe-area-inset-bottom)]"
+          className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-surface-white border-t border-brand-steel/30 shadow-[0_-4px_16px_rgba(11,14,12,0.10)] pb-[env(safe-area-inset-bottom)]"
         >
           <div className="grid grid-cols-5 max-w-lg mx-auto h-16">
             {bottomItems.map((item) => {
@@ -159,7 +156,7 @@ export default function Navbar() {
                   href={item.href}
                   aria-current={isActive ? 'page' : undefined}
                   className={`relative flex flex-col items-center justify-center gap-1 min-w-0 px-1 text-[11px] font-semibold ${
-                    isActive ? 'text-brand-brown-dark' : 'text-brand-brown-light active:text-brand-brown-dark'
+                    isActive ? 'text-brand-ink' : 'text-brand-steel active:text-brand-ink'
                   }`}
                 >
                   <span
@@ -177,7 +174,7 @@ export default function Navbar() {
             ))}
             <button
               onClick={() => setIsOpen(true)}
-              className="flex flex-col items-center justify-center gap-1 text-[11px] font-semibold text-brand-brown-light active:text-brand-brown-dark"
+              className="flex flex-col items-center justify-center gap-1 text-[11px] font-semibold text-brand-steel active:text-brand-ink"
               aria-label="Abrir menu completo"
             >
               <Menu className="w-5 h-5" />
@@ -190,9 +187,9 @@ export default function Navbar() {
       {/* Gaveta com todos os módulos */}
       {isOpen && (
         <div className="lg:hidden fixed inset-0 z-[70]" role="dialog" aria-modal="true" aria-label="Menu">
-          <button className="absolute inset-0 bg-brand-brown-dark/50 backdrop-blur-[2px]" aria-label="Fechar menu" onClick={() => setIsOpen(false)} />
+          <button className="absolute inset-0 bg-brand-ink/50 backdrop-blur-[2px]" aria-label="Fechar menu" onClick={() => setIsOpen(false)} />
           <aside className="absolute right-0 top-0 h-full w-[82%] max-w-xs bg-surface-white shadow-2xl flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
-            <div className="flex items-center justify-between px-4 h-14 bg-brand-brown-dark text-white">
+            <div className="flex items-center justify-between px-4 h-14 brand-header text-white">
               <div className="min-w-0">
                 <div className="text-sm font-bold truncate">{user?.name}</div>
                 <div className="text-xs text-neon-soft truncate">
@@ -215,7 +212,7 @@ export default function Navbar() {
                     onClick={() => setIsOpen(false)}
                     aria-current={isActive ? 'page' : undefined}
                     className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium ${
-                      isActive ? 'bg-neon-primary text-brand-brown-dark font-bold' : 'text-brand-brown hover:bg-surface-muted hover:text-brand-brown-dark'
+                      isActive ? 'bg-neon-primary text-brand-ink font-bold' : 'text-brand-graphite hover:bg-surface-muted hover:text-brand-ink'
                     }`}
                   >
                     <Icon className="w-5 h-5 shrink-0" />

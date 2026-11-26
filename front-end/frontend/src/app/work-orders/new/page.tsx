@@ -215,22 +215,22 @@ export default function NewWorkOrderPage() {
   }
 
   return (
-    <div className="min-h-full bg-surface-offwhite text-brand-brown-dark px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+    <div className="min-h-full bg-surface-offwhite text-brand-ink px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
       {/* Cabeçalho */}
       <div className="max-w-5xl mx-auto mb-5 sm:mb-8">
         <button
           onClick={() => router.push('/')}
-          className="inline-flex items-center gap-2 text-sm text-brand-brown hover:text-brand-brown-dark mb-4 transition-colors"
+          className="inline-flex items-center gap-2 text-sm text-brand-graphite hover:text-brand-ink mb-4 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Voltar para o Painel Geral
         </button>
 
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-brand-brown-dark flex items-center gap-2.5">
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-brand-ink flex items-center gap-2.5">
           <Wrench className="w-6 h-6 sm:w-7 sm:h-7 text-neon-deep shrink-0" />
           Abertura de Ordem de Serviço (Balcão)
         </h1>
-        <p className="text-brand-brown mt-1">
+        <p className="text-brand-graphite mt-1">
           Identifique o carro pela placa, registre a queixa e monte o orçamento.
         </p>
       </div>
@@ -240,26 +240,26 @@ export default function NewWorkOrderPage() {
         <div className="lg:col-span-2 space-y-5 sm:space-y-6">
           {/* Etapa 1: Busca do Carro */}
           <div className="bg-surface-muted/80 border border-line/60 rounded-2xl p-4 sm:p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-brand-brown-dark flex items-center gap-2 mb-4">
+            <h2 className="text-lg font-semibold text-brand-ink flex items-center gap-2 mb-4">
               <Car className="w-5 h-5 text-neon-deep" />
               1. Identificação do Veículo
             </h2>
 
             <form onSubmit={handleSearchPlate} className="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-4">
               <div className="relative flex-1">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-brand-brown" />
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-brand-graphite" />
                 <input
                   type="text"
                   placeholder="Ex: BRA2E19 ou MER8I90"
                   value={plateInput}
                   onChange={(e) => setPlateInput(e.target.value.toUpperCase())}
-                  className="w-full bg-surface-white border border-line rounded-lg pl-9 pr-4 py-2.5 font-mono text-sm tracking-wider uppercase text-brand-brown-dark placeholder-brand-brown-light focus:outline-none focus:border-neon-deep"
+                  className="w-full bg-surface-white border border-line rounded-lg pl-9 pr-4 py-2.5 font-mono text-sm tracking-wider uppercase text-brand-ink placeholder-brand-steel focus:outline-none focus:border-neon-deep"
                 />
               </div>
               <button
                 type="submit"
                 disabled={searchingPlate || !plateInput}
-                className="bg-neon-primary hover:bg-neon-deep disabled:opacity-50 text-brand-brown-dark font-bold px-5 py-2.5 rounded-lg text-sm transition-all"
+                className="bg-neon-primary hover:bg-neon-deep disabled:opacity-50 text-brand-ink font-bold px-5 py-2.5 rounded-lg text-sm transition-all"
               >
                 {searchingPlate ? 'Buscando...' : 'Consultar Placa'}
               </button>
@@ -275,18 +275,18 @@ export default function NewWorkOrderPage() {
             {vehicle && (
               <div className="mt-4 p-4 rounded-lg bg-surface-white/90 border border-emerald-500/30 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="text-xs text-brand-brown block">Veículo Confirmado</span>
-                  <div className="font-bold text-brand-brown-dark text-base">
+                  <span className="text-xs text-brand-graphite block">Veículo Confirmado</span>
+                  <div className="font-bold text-brand-ink text-base">
                     {vehicle.brand} {vehicle.model} ({vehicle.year})
                   </div>
-                  <div className="text-xs text-brand-brown font-mono mt-0.5">
+                  <div className="text-xs text-brand-graphite font-mono mt-0.5">
                     Placa: {vehicle.licensePlate} • {vehicle.currentKm ? `${vehicle.currentKm} km` : 'Km não informada'}
                   </div>
                 </div>
                 <div>
-                  <span className="text-xs text-brand-brown block">Proprietário</span>
-                  <div className="font-bold text-brand-brown-dark text-base">{vehicle.client.name}</div>
-                  <div className="text-xs text-brand-brown">
+                  <span className="text-xs text-brand-graphite block">Proprietário</span>
+                  <div className="font-bold text-brand-ink text-base">{vehicle.client.name}</div>
+                  <div className="text-xs text-brand-graphite">
                     Tel: {vehicle.client.phone} • Doc: {vehicle.client.document || 'não informado'}
                   </div>
                 </div>
@@ -296,7 +296,7 @@ export default function NewWorkOrderPage() {
 
           {/* Etapa 2: Queixa do Cliente */}
           <div className="bg-surface-muted/80 border border-line/60 rounded-2xl p-4 sm:p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-brand-brown-dark flex items-center gap-2 mb-4">
+            <h2 className="text-lg font-semibold text-brand-ink flex items-center gap-2 mb-4">
               <FileText className="w-5 h-5 text-neon-deep" />
               2. Queixa / Relato do Cliente
             </h2>
@@ -305,7 +305,7 @@ export default function NewWorkOrderPage() {
               placeholder="Descreva o que o cliente relatou (ex: barulho ao frear, luz da injeção acesa, revisão preventiva...)"
               value={reportedIssue}
               onChange={(e) => setReportedIssue(e.target.value)}
-              className="w-full bg-surface-white border border-line rounded-lg p-3 text-sm text-brand-brown-dark placeholder-brand-brown-light focus:outline-none focus:border-neon-deep"
+              className="w-full bg-surface-white border border-line rounded-lg p-3 text-sm text-brand-ink placeholder-brand-steel focus:outline-none focus:border-neon-deep"
             />
             {canAssign && (
               <div className="mt-4">
@@ -325,7 +325,7 @@ export default function NewWorkOrderPage() {
           {/* Etapa 3: Itens da OS */}
           <div className="bg-surface-muted/80 border border-line/60 rounded-2xl p-4 sm:p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-brand-brown-dark flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-brand-ink flex items-center gap-2">
                 <Package className="w-5 h-5 text-neon-deep" />
                 3. Serviços e Peças do Orçamento
               </h2>
@@ -334,7 +334,7 @@ export default function NewWorkOrderPage() {
             {/* Adicionador Rápido */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
               <div>
-                <label className="text-xs text-brand-brown block mb-1">Adicionar Serviço:</label>
+                <label className="text-xs text-brand-graphite block mb-1">Adicionar Serviço:</label>
                 <select
                   onChange={(e) => {
                     const srv = availableServices.find((s) => s.id === e.target.value);
@@ -342,7 +342,7 @@ export default function NewWorkOrderPage() {
                     e.target.value = '';
                   }}
                   defaultValue=""
-                  className="w-full bg-surface-white border border-line rounded-lg px-3 py-2 text-sm text-brand-brown-dark focus:outline-none focus:border-neon-deep"
+                  className="w-full bg-surface-white border border-line rounded-lg px-3 py-2 text-sm text-brand-ink focus:outline-none focus:border-neon-deep"
                 >
                   <option value="" disabled>Selecione um serviço...</option>
                   {availableServices.map((s) => (
@@ -354,7 +354,7 @@ export default function NewWorkOrderPage() {
               </div>
 
               <div>
-                <label className="text-xs text-brand-brown block mb-1">Adicionar Peça / Produto:</label>
+                <label className="text-xs text-brand-graphite block mb-1">Adicionar Peça / Produto:</label>
                 <select
                   onChange={(e) => {
                     const prod = availableProducts.find((p) => p.id === e.target.value);
@@ -362,7 +362,7 @@ export default function NewWorkOrderPage() {
                     e.target.value = '';
                   }}
                   defaultValue=""
-                  className="w-full bg-surface-white border border-line rounded-lg px-3 py-2 text-sm text-brand-brown-dark focus:outline-none focus:border-neon-deep"
+                  className="w-full bg-surface-white border border-line rounded-lg px-3 py-2 text-sm text-brand-ink focus:outline-none focus:border-neon-deep"
                 >
                   <option value="" disabled>Selecione uma peça...</option>
                   {availableProducts.map((p) => (
@@ -376,7 +376,7 @@ export default function NewWorkOrderPage() {
 
             {/* Lista de Itens Adicionados */}
             {items.length === 0 ? (
-              <div className="p-8 text-center text-brand-brown-light border border-dashed border-line rounded-lg text-sm">
+              <div className="p-8 text-center text-brand-steel border border-dashed border-line rounded-lg text-sm">
                 Nenhum serviço ou peça inserido. Selecione nos campos acima.
               </div>
             ) : (
@@ -390,26 +390,26 @@ export default function NewWorkOrderPage() {
                         }`}>
                           {it.itemType === 'SERVICE' ? 'Serviço' : 'Peça'}
                         </span>
-                        <span className="font-medium text-brand-brown-dark">{it.name}</span>
+                        <span className="font-medium text-brand-ink">{it.name}</span>
                       </div>
-                      <div className="text-xs text-brand-brown mt-0.5">
+                      <div className="text-xs text-brand-graphite mt-0.5">
                         R$ {it.unitPrice.toFixed(2)} un.
                       </div>
                     </div>
 
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-1.5 bg-surface-muted border border-line rounded-md px-2 py-1">
-                        <span className="text-xs text-brand-brown">Qtd:</span>
+                        <span className="text-xs text-brand-graphite">Qtd:</span>
                         <input
                           type="number"
                           min={1}
                           value={it.quantity}
                           onChange={(e) => handleUpdateQuantity(idx, parseInt(e.target.value) || 1)}
-                          className="w-12 bg-transparent text-center text-brand-brown-dark text-sm focus:outline-none"
+                          className="w-12 bg-transparent text-center text-brand-ink text-sm focus:outline-none"
                         />
                       </div>
 
-                      <div className="w-24 text-right font-semibold text-brand-brown-dark">
+                      <div className="w-24 text-right font-semibold text-brand-ink">
                         R$ {(it.unitPrice * it.quantity).toFixed(2)}
                       </div>
 
@@ -432,28 +432,28 @@ export default function NewWorkOrderPage() {
         {/* Coluna 3: Resumo Financeiro & Ação */}
         <div className="space-y-6">
           <div className="bg-surface-muted/80 border border-line/60 rounded-2xl p-4 sm:p-6 shadow-sm lg:sticky lg:top-20">
-            <h2 className="text-lg font-semibold text-brand-brown-dark flex items-center gap-2 mb-4">
+            <h2 className="text-lg font-semibold text-brand-ink flex items-center gap-2 mb-4">
               <DollarSign className="w-5 h-5 text-emerald-700" />
               Resumo do Orçamento
             </h2>
 
             <div className="space-y-3 text-sm border-b border-line pb-4 mb-4">
-              <div className="flex justify-between text-brand-brown">
+              <div className="flex justify-between text-brand-graphite">
                 <span>Total em Serviços:</span>
-                <span className="font-medium text-brand-brown-dark">R$ {totalServices.toFixed(2)}</span>
+                <span className="font-medium text-brand-ink">R$ {totalServices.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-brand-brown">
+              <div className="flex justify-between text-brand-graphite">
                 <span>Total em Peças/Materiais:</span>
-                <span className="font-medium text-brand-brown-dark">R$ {totalProducts.toFixed(2)}</span>
+                <span className="font-medium text-brand-ink">R$ {totalProducts.toFixed(2)}</span>
               </div>
-              <label className="flex items-center justify-between gap-3 text-brand-brown">
+              <label className="flex items-center justify-between gap-3 text-brand-graphite">
                 <span>Desconto (R$):</span>
                 <input
                   inputMode="decimal"
                   value={discountInput}
                   onChange={(e) => setDiscountInput(e.target.value.replace(/[^0-9.,]/g, ''))}
                   placeholder="0,00"
-                  className="w-28 text-right bg-surface-white border border-line rounded-lg px-2 py-1.5 text-brand-brown-dark focus:outline-none focus:border-neon-deep"
+                  className="w-28 text-right bg-surface-white border border-line rounded-lg px-2 py-1.5 text-brand-ink focus:outline-none focus:border-neon-deep"
                 />
               </label>
               {discount > grossTotal && <p className="text-xs text-rose-700">O desconto passa do valor total.</p>}
@@ -468,7 +468,7 @@ export default function NewWorkOrderPage() {
                   key={key}
                   type="button"
                   onClick={() => setInitialStatus(key)}
-                  className={`py-2 rounded-md ${initialStatus === key ? 'bg-neon-primary text-brand-brown-dark' : 'text-brand-brown'}`}
+                  className={`py-2 rounded-md ${initialStatus === key ? 'bg-neon-primary text-brand-ink' : 'text-brand-graphite'}`}
                 >
                   {label}
                 </button>
@@ -476,7 +476,7 @@ export default function NewWorkOrderPage() {
             </div>
 
             <div className="flex justify-between items-baseline mb-6">
-              <span className="text-base font-bold text-brand-brown-dark">Valor Total da OS:</span>
+              <span className="text-base font-bold text-brand-ink">Valor Total da OS:</span>
               <span className="text-2xl font-extrabold text-emerald-700">
                 R$ {Math.max(0, finalTotal).toFixed(2)}
               </span>
@@ -493,7 +493,7 @@ export default function NewWorkOrderPage() {
               type="button"
               onClick={handleSubmitOrder}
               disabled={submitting || !vehicle || items.length === 0}
-              className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-brand-brown-dark font-extrabold py-3.5 px-4 rounded-xl text-base flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20"
+              className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-brand-ink font-extrabold py-3.5 px-4 rounded-xl text-base flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20"
             >
               {submitting ? (
                 'Gerando Ordem de Serviço...'
@@ -505,7 +505,7 @@ export default function NewWorkOrderPage() {
               )}
             </button>
 
-            <p className="text-[11px] text-brand-brown-light text-center mt-3">
+            <p className="text-[11px] text-brand-steel text-center mt-3">
               {initialStatus === 'DRAFT'
                 ? 'O rascunho fica só com a equipe; envie ao cliente quando estiver pronto.'
                 : 'O orçamento fica aguardando aprovação. As peças só saem do estoque quando a OS é aprovada.'}

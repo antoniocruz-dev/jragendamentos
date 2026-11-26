@@ -23,7 +23,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#4e342e',
+  themeColor: '#0a0d0b',
 };
 
 export default function RootLayout({
@@ -34,14 +34,16 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body
-        className="bg-surface-offwhite text-brand-brown-dark flex flex-col min-h-screen antialiased">
+        className="bg-surface-offwhite text-brand-ink flex flex-col min-h-screen antialiased">
         {/* Navbar/Footer usam usePathname(): com cacheComponents, em rotas com parâmetro dinâmico
             (ex.: /os/[id]) o pathname só existe em runtime e exige um Suspense, senão o build falha.
             Em rotas estáticas o pathname é resolvido no prerender e o fallback nem aparece. */}
         <Suspense fallback={null}>
           <Navbar />
         </Suspense>
-        <ConnectionBanner />
+        <Suspense fallback={null}>
+          <ConnectionBanner />
+        </Suspense>
         <main className="flex-1 min-w-0">
           {/* AuthGate usa usePathname(): mesmo motivo do Suspense acima */}
           <Suspense fallback={null}>

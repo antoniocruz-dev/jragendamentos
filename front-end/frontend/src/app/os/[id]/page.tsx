@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, use } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { BrandMark, BrandName } from '@/components/ui/Brand';
 import {
   Wrench,
   Car,
@@ -325,11 +326,11 @@ export default function WorkOrderDetailPage() {
       case 'APPROVED':
         return 'bg-indigo-500/10 text-indigo-700 border-indigo-500/30';
       case 'QUOTE':
-        return 'bg-neon-primary/10 text-brand-brown border-neon-deep/30';
+        return 'bg-neon-primary/10 text-brand-graphite border-neon-deep/30';
       case 'CANCELLED':
         return 'bg-rose-500/10 text-rose-700 border-rose-500/30';
       default:
-        return 'bg-surface-strong/30 text-brand-brown border-brand-brown-light';
+        return 'bg-surface-strong/30 text-brand-graphite border-brand-steel';
     }
   };
 
@@ -350,23 +351,23 @@ export default function WorkOrderDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-white text-brand-brown-dark flex flex-col items-center justify-center p-6">
+      <div className="min-h-screen bg-surface-white text-brand-ink flex flex-col items-center justify-center p-6">
         <Loader2 className="w-10 h-10 text-neon-deep animate-spin mb-4" />
-        <p className="text-brand-brown text-sm">Carregando detalhes da Ordem de Serviço...</p>
+        <p className="text-brand-graphite text-sm">Carregando detalhes da Ordem de Serviço...</p>
       </div>
     );
   }
 
   if (error || !order) {
     return (
-      <div className="min-h-screen bg-surface-white text-brand-brown-dark p-6 md:p-10 flex flex-col items-center justify-center">
+      <div className="min-h-screen bg-surface-white text-brand-ink p-6 md:p-10 flex flex-col items-center justify-center">
         <div className="bg-surface-muted/80 border border-line rounded-xl p-8 max-w-md text-center">
           <AlertCircle className="w-12 h-12 text-red-700 mx-auto mb-3" />
-          <h2 className="text-xl font-bold text-brand-brown-dark mb-2">Ordem de Serviço não encontrada</h2>
-          <p className="text-brand-brown text-sm mb-6">{error || 'O ID informado não existe no sistema.'}</p>
+          <h2 className="text-xl font-bold text-brand-ink mb-2">Ordem de Serviço não encontrada</h2>
+          <p className="text-brand-graphite text-sm mb-6">{error || 'O ID informado não existe no sistema.'}</p>
           <button
             onClick={() => router.push('/')}
-            className="px-5 py-2.5 bg-neon-primary hover:bg-neon-deep text-brand-brown-dark font-bold rounded-lg text-sm"
+            className="px-5 py-2.5 bg-neon-primary hover:bg-neon-deep text-brand-ink font-bold rounded-lg text-sm"
           >
             Voltar para o Painel
           </button>
@@ -376,13 +377,20 @@ export default function WorkOrderDetailPage() {
   }
 
   return (
-    <div className="min-h-full bg-surface-offwhite text-brand-brown-dark px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+    <>
+      <header className="brand-header text-white sticky top-0 z-30 pt-[env(safe-area-inset-top)]">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-2.5">
+          <BrandMark size={36} className="w-9 h-9" />
+          <BrandName className="text-base sm:text-lg" />
+        </div>
+      </header>
+    <div className="min-h-full bg-surface-offwhite text-brand-ink px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
       {/* Barra de Navegação e Cabeçalho */}
       <div className="max-w-5xl mx-auto mb-5 sm:mb-8">
         {isStaff && (
           <button
             onClick={() => router.push('/')}
-            className="inline-flex items-center gap-2 text-sm text-brand-brown hover:text-brand-brown-dark mb-4 transition-colors"
+            className="inline-flex items-center gap-2 text-sm text-brand-graphite hover:text-brand-ink mb-4 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Voltar ao Painel Geral
@@ -392,7 +400,7 @@ export default function WorkOrderDetailPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-line-soft pb-6">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-brand-brown-dark font-mono">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-brand-ink font-mono">
                 OS #{order.code}
               </h1>
               <span
@@ -403,14 +411,14 @@ export default function WorkOrderDetailPage() {
                 {getStatusLabel(order.status)}
               </span>
             </div>
-            <p className="text-brand-brown mt-1 text-xs">
+            <p className="text-brand-graphite mt-1 text-xs">
               Aberta em {new Date(order.createdAt).toLocaleDateString('pt-BR')} às{' '}
               {new Date(order.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
             </p>
           </div>
 
           <div className="text-right">
-            <span className="text-xs text-brand-brown block">Valor Final</span>
+            <span className="text-xs text-brand-graphite block">Valor Final</span>
             <span className="text-3xl font-extrabold text-emerald-700 font-mono">
               R$ {Number(order.finalAmount).toFixed(2)}
             </span>
@@ -449,29 +457,29 @@ export default function WorkOrderDetailPage() {
           {/* Card: Veículo & Cliente */}
           <div className="bg-surface-muted/80 border border-line/60 rounded-2xl p-4 sm:p-6 shadow-sm grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
-              <div className="flex items-center gap-2 text-brand-brown mb-2 text-xs font-semibold uppercase tracking-wider">
+              <div className="flex items-center gap-2 text-brand-graphite mb-2 text-xs font-semibold uppercase tracking-wider">
                 <Car className="w-4 h-4 text-sky-700" />
                 Veículo
               </div>
-              <div className="text-lg font-bold text-brand-brown-dark">
+              <div className="text-lg font-bold text-brand-ink">
                 {order.vehicle.brand} {order.vehicle.model}
               </div>
-              <div className="text-sm text-brand-brown font-mono font-semibold mt-1">
+              <div className="text-sm text-brand-graphite font-mono font-semibold mt-1">
                 Placa: {order.vehicle.licensePlate} • Ano: {order.vehicle.year}
               </div>
               {order.vehicle.currentKm !== undefined && (
-                <div className="text-xs text-brand-brown mt-0.5">Km Atual: {order.vehicle.currentKm} km</div>
+                <div className="text-xs text-brand-graphite mt-0.5">Km Atual: {order.vehicle.currentKm} km</div>
               )}
             </div>
 
             <div>
-              <div className="flex items-center gap-2 text-brand-brown mb-2 text-xs font-semibold uppercase tracking-wider">
+              <div className="flex items-center gap-2 text-brand-graphite mb-2 text-xs font-semibold uppercase tracking-wider">
                 <User className="w-4 h-4 text-emerald-700" />
                 Cliente
               </div>
-              <div className="text-lg font-bold text-brand-brown-dark">{order.client.name}</div>
-              <div className="text-sm text-brand-brown mt-1">Tel: {order.client.phone}</div>
-              <div className="text-xs text-brand-brown mt-0.5">CPF/CNPJ: {order.client.document || 'não informado'}</div>
+              <div className="text-lg font-bold text-brand-ink">{order.client.name}</div>
+              <div className="text-sm text-brand-graphite mt-1">Tel: {order.client.phone}</div>
+              <div className="text-xs text-brand-graphite mt-0.5">CPF/CNPJ: {order.client.document || 'não informado'}</div>
             </div>
           </div>
 
@@ -479,13 +487,13 @@ export default function WorkOrderDetailPage() {
           {isStaff && (
             <div className="bg-surface-white border border-line-soft rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3 min-w-0">
-                <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full ${order.operator ? 'bg-brand-brown text-neon-primary' : 'bg-orange-500/10 text-orange-700'}`}>
+                <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full ${order.operator ? 'bg-brand-graphite text-neon-primary' : 'bg-orange-500/10 text-orange-700'}`}>
                   <Wrench className="h-5 w-5" aria-hidden />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-brand-brown">Mecânico responsável</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-brand-graphite">Mecânico responsável</p>
                   {order.operator ? (
-                    <p className="truncate text-lg font-bold text-brand-brown-dark">{order.operator.name}</p>
+                    <p className="truncate text-lg font-bold text-brand-ink">{order.operator.name}</p>
                   ) : (
                     <span className="mt-1 inline-flex rounded-full border border-orange-500/30 bg-orange-500/10 px-2.5 py-0.5 text-xs font-bold text-orange-700">
                       Sem mecânico atribuído
@@ -499,8 +507,8 @@ export default function WorkOrderDetailPage() {
                   onClick={() => setAssignOpen(true)}
                   className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition-all active:scale-95 ${
                     order.operator
-                      ? 'border border-brand-brown bg-surface-white text-brand-brown hover:bg-brand-brown hover:text-white'
-                      : 'bg-neon-primary text-brand-brown-dark hover:bg-neon-soft hover:shadow-[0_0_16px_rgba(57,255,20,0.45)]'
+                      ? 'border border-brand-graphite bg-surface-white text-brand-graphite hover:bg-brand-graphite hover:text-white'
+                      : 'bg-neon-primary text-brand-ink hover:bg-neon-soft hover:shadow-[0_0_16px_rgba(63,224,31,0.45)]'
                   }`}
                 >
                   <User className="h-4 w-4" aria-hidden />
@@ -515,11 +523,11 @@ export default function WorkOrderDetailPage() {
             <div className="bg-surface-muted/80 border border-line/60 rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
               {order.reportedIssue && (
                 <div>
-                  <div className="flex items-center gap-2 text-xs font-semibold uppercase text-brand-brown mb-1">
-                    <FileText className="w-4 h-4 text-brand-brown" />
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase text-brand-graphite mb-1">
+                    <FileText className="w-4 h-4 text-brand-graphite" />
                     Relato do Cliente
                   </div>
-                  <p className="text-sm text-brand-brown-dark bg-surface-white/60 p-3 rounded-lg border border-line-soft">
+                  <p className="text-sm text-brand-ink bg-surface-white/60 p-3 rounded-lg border border-line-soft">
                     {order.reportedIssue}
                   </p>
                 </div>
@@ -527,11 +535,11 @@ export default function WorkOrderDetailPage() {
 
               {order.technicalNotes && (
                 <div>
-                  <div className="flex items-center gap-2 text-xs font-semibold uppercase text-brand-brown mb-1">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase text-brand-graphite mb-1">
                     <Wrench className="w-4 h-4 text-sky-700" />
                     Diagnóstico / Notas Técnicas
                   </div>
-                  <p className="text-sm text-brand-brown-dark bg-surface-white/60 p-3 rounded-lg border border-line-soft whitespace-pre-line">
+                  <p className="text-sm text-brand-ink bg-surface-white/60 p-3 rounded-lg border border-line-soft whitespace-pre-line">
                     {order.technicalNotes}
                   </p>
                 </div>
@@ -542,20 +550,20 @@ export default function WorkOrderDetailPage() {
           {/* Card: Observações registradas (cliente, mecânico e reaberturas) */}
           {isStaff && observations.length > 0 && (
             <div className="bg-surface-muted/80 border border-line/60 rounded-2xl p-4 sm:p-6 shadow-sm">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase text-brand-brown mb-3">
-                <FileText className="w-4 h-4 text-brand-brown" />
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase text-brand-graphite mb-3">
+                <FileText className="w-4 h-4 text-brand-graphite" />
                 Observações
               </div>
               <ul className="space-y-2">
                 {observations.map((o) => (
                   <li key={o.id} className="text-sm bg-surface-white/60 p-3 rounded-lg border border-line-soft">
-                    <div className="flex flex-wrap justify-between gap-2 text-xs text-brand-brown">
-                      <span className="font-semibold text-brand-brown">
+                    <div className="flex flex-wrap justify-between gap-2 text-xs text-brand-graphite">
+                      <span className="font-semibold text-brand-graphite">
                         {o.authorName} · {o.type === 'ORCAMENTO_CLIENTE' ? 'Cliente' : o.type === 'REABERTURA' ? 'Reabertura' : o.type === 'ATRIBUICAO_MECANICO' ? 'Atribuição de mecânico' : 'Mecânico'}
                       </span>
                       <span>{new Date(o.createdAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
                     </div>
-                    <p className="mt-1 text-brand-brown-dark whitespace-pre-wrap break-words">{o.message}</p>
+                    <p className="mt-1 text-brand-ink whitespace-pre-wrap break-words">{o.message}</p>
                   </li>
                 ))}
               </ul>
@@ -565,18 +573,18 @@ export default function WorkOrderDetailPage() {
           {/* Card: Tabela de Itens e Peças */}
           <div className="bg-surface-muted/80 border border-line/60 rounded-xl overflow-hidden shadow-sm">
             <div className="p-5 border-b border-line/80 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-brand-brown-dark flex items-center gap-2">
+              <h2 className="text-base font-semibold text-brand-ink flex items-center gap-2">
                 <Package className="w-5 h-5 text-neon-deep" />
                 Itens e Serviços Aplicados
               </h2>
-              <span className="text-xs text-brand-brown font-mono">
+              <span className="text-xs text-brand-graphite font-mono">
                 {order.items.length} {order.items.length === 1 ? 'item' : 'itens'}
               </span>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-brand-brown">
-                <thead className="bg-surface-white/60 text-xs uppercase text-brand-brown border-b border-line">
+              <table className="w-full text-left text-sm text-brand-graphite">
+                <thead className="bg-surface-white/60 text-xs uppercase text-brand-graphite border-b border-line">
                   <tr>
                     <th className="py-3 px-4">Tipo</th>
                     <th className="py-3 px-4">Descrição</th>
@@ -599,10 +607,10 @@ export default function WorkOrderDetailPage() {
                           {it.itemType === 'SERVICE' ? 'Serviço' : 'Peça'}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 font-medium text-brand-brown-dark">
+                      <td className="py-3.5 px-4 font-medium text-brand-ink">
                         {it.service?.name || it.product?.name || 'Item'}
                         {it.product?.sku && (
-                          <span className="block text-[11px] font-mono text-brand-brown">
+                          <span className="block text-[11px] font-mono text-brand-graphite">
                             SKU: {it.product.sku}
                           </span>
                         )}
@@ -611,7 +619,7 @@ export default function WorkOrderDetailPage() {
                       <td className="py-3.5 px-4 text-right font-mono">
                         R$ {Number(it.unitPrice).toFixed(2)}
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono font-semibold text-brand-brown-dark">
+                      <td className="py-3.5 px-4 text-right font-mono font-semibold text-brand-ink">
                         R$ {Number(it.totalPrice).toFixed(2)}
                       </td>
                     </tr>
@@ -626,17 +634,17 @@ export default function WorkOrderDetailPage() {
         <div className="space-y-6">
           {/* Card de Resumo de Valores */}
           <div className="bg-surface-muted/80 border border-line/60 rounded-2xl p-4 sm:p-6 shadow-sm">
-            <h3 className="text-sm font-semibold text-brand-brown uppercase tracking-wider mb-4 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-brand-graphite uppercase tracking-wider mb-4 flex items-center gap-2">
               <DollarSign className="w-4 h-4 text-emerald-700" />
               Resumo Financeiro
             </h3>
 
             <div className="space-y-3 text-sm border-b border-line pb-4 mb-4">
-              <div className="flex justify-between text-brand-brown">
+              <div className="flex justify-between text-brand-graphite">
                 <span>Serviços:</span>
                 <span className="font-mono font-medium">R$ {Number(order.totalServices).toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-brand-brown">
+              <div className="flex justify-between text-brand-graphite">
                 <span>Peças e Materiais:</span>
                 <span className="font-mono font-medium">R$ {Number(order.totalProducts).toFixed(2)}</span>
               </div>
@@ -649,7 +657,7 @@ export default function WorkOrderDetailPage() {
             </div>
 
             <div className="flex justify-between items-baseline mb-6">
-              <span className="text-base font-bold text-brand-brown-dark">Total:</span>
+              <span className="text-base font-bold text-brand-ink">Total:</span>
               <span className="text-2xl font-extrabold text-emerald-700 font-mono">
                 R$ {Number(order.finalAmount).toFixed(2)}
               </span>
@@ -662,7 +670,7 @@ export default function WorkOrderDetailPage() {
                 <button
                   onClick={() => handleUpdateStatus('QUOTE')}
                   disabled={actionLoading}
-                  className="w-full bg-neon-primary hover:bg-neon-soft disabled:opacity-50 text-brand-brown-dark font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2"
+                  className="w-full bg-neon-primary hover:bg-neon-soft disabled:opacity-50 text-brand-ink font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   Enviar orçamento ao cliente
@@ -674,14 +682,14 @@ export default function WorkOrderDetailPage() {
                 <button
                   onClick={handleStaffApprove}
                   disabled={actionLoading}
-                  className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-brand-brown-dark font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2 transition-all shadow-md"
+                  className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-brand-ink font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2 transition-all shadow-md"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   Aprovar OS (equipe)
                 </button>
               )}
               {isStaff && !canApprove && order.status === 'QUOTE' && (
-                <p className="text-xs text-brand-brown-light text-center">
+                <p className="text-xs text-brand-steel text-center">
                   Aguardando aprovação do cliente ou do Administrador, Gerente Geral ou Auxiliar Administrativo.
                 </p>
               )}
@@ -692,7 +700,7 @@ export default function WorkOrderDetailPage() {
                   <button
                     onClick={() => handleCustomerDecision('APPROVE')}
                     disabled={actionLoading}
-                    className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-brand-brown-dark font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2 transition-all shadow-md"
+                    className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-brand-ink font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2 transition-all shadow-md"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     Aprovar Orçamento
@@ -721,7 +729,7 @@ export default function WorkOrderDetailPage() {
                 <button
                   onClick={() => handleUpdateStatus('IN_PROGRESS')}
                   disabled={actionLoading}
-                  className="w-full bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-brand-brown-dark font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2 transition-all shadow-md"
+                  className="w-full bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-brand-ink font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2 transition-all shadow-md"
                 >
                   <Play className="w-4 h-4" />
                   Iniciar Execução na Oficina
@@ -734,7 +742,7 @@ export default function WorkOrderDetailPage() {
                   <button
                     onClick={() => handleUpdateStatus('TESTING')}
                     disabled={actionLoading}
-                    className="w-full bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-brand-brown-dark font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2 transition-all shadow-md"
+                    className="w-full bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-brand-ink font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2 transition-all shadow-md"
                   >
                     <Play className="w-4 h-4" />
                     Enviar para Teste
@@ -742,7 +750,7 @@ export default function WorkOrderDetailPage() {
                   <button
                     onClick={() => handleUpdateStatus('COMPLETED')}
                     disabled={actionLoading}
-                    className="w-full bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-brand-brown-dark font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2 transition-all shadow-md"
+                    className="w-full bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-brand-ink font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2 transition-all shadow-md"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     Concluir Serviço Mecânico
@@ -750,7 +758,7 @@ export default function WorkOrderDetailPage() {
                   <button
                     onClick={() => handleUpdateStatus('WAITING_PARTS')}
                     disabled={actionLoading}
-                    className="w-full bg-surface-strong hover:bg-brand-brown-light text-purple-700 font-medium py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all"
+                    className="w-full bg-surface-strong hover:bg-brand-steel text-purple-700 font-medium py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all"
                   >
                     <Pause className="w-4 h-4" />
                     Aguardando Peças de Fornecedor
@@ -764,7 +772,7 @@ export default function WorkOrderDetailPage() {
                   <button
                     onClick={() => handleUpdateStatus('COMPLETED')}
                     disabled={actionLoading}
-                    className="w-full bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-brand-brown-dark font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2 transition-all shadow-md"
+                    className="w-full bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-brand-ink font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2 transition-all shadow-md"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     Teste aprovado: Concluir
@@ -772,7 +780,7 @@ export default function WorkOrderDetailPage() {
                   <button
                     onClick={() => handleUpdateStatus('IN_PROGRESS')}
                     disabled={actionLoading}
-                    className="w-full bg-surface-strong hover:bg-brand-brown-light text-sky-700 font-medium py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all"
+                    className="w-full bg-surface-strong hover:bg-brand-steel text-sky-700 font-medium py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all"
                   >
                     <Pause className="w-4 h-4" />
                     Teste reprovado: voltar à execução
@@ -785,7 +793,7 @@ export default function WorkOrderDetailPage() {
                 <button
                   onClick={handleReopen}
                   disabled={actionLoading}
-                  className="w-full bg-surface-white hover:bg-surface-muted text-brand-brown border border-neon-deep/30 font-medium py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                  className="w-full bg-surface-white hover:bg-surface-muted text-brand-graphite border border-neon-deep/30 font-medium py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all disabled:opacity-50"
                 >
                   <Play className="w-4 h-4" />
                   Reabrir OS{order.reopenCount ? ` (já reaberta ${order.reopenCount}x)` : ''}
@@ -797,7 +805,7 @@ export default function WorkOrderDetailPage() {
                 <button
                   onClick={() => handleUpdateStatus('IN_PROGRESS')}
                   disabled={actionLoading}
-                  className="w-full bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-brand-brown-dark font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2 transition-all shadow-md"
+                  className="w-full bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-brand-ink font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2 transition-all shadow-md"
                 >
                   <Play className="w-4 h-4" />
                   Peças Recebidas (Retomar Execução)
@@ -808,7 +816,7 @@ export default function WorkOrderDetailPage() {
               {canBill && order.status === 'COMPLETED' && (
                 <button
                   onClick={() => setBillingOpen(true)}
-                  className="w-full bg-neon-primary hover:bg-neon-soft text-brand-brown-dark font-extrabold py-3.5 px-4 rounded-xl text-sm flex items-center justify-center gap-2 transition-all"
+                  className="w-full bg-neon-primary hover:bg-neon-soft text-brand-ink font-extrabold py-3.5 px-4 rounded-xl text-sm flex items-center justify-center gap-2 transition-all"
                 >
                   <Wallet className="w-5 h-5" />
                   Registrar pagamento
@@ -820,7 +828,7 @@ export default function WorkOrderDetailPage() {
                 <button
                   onClick={handleGeneratePix}
                   disabled={generatingPix}
-                  className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-brand-brown-dark font-extrabold py-3.5 px-4 rounded-xl text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20"
+                  className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-brand-ink font-extrabold py-3.5 px-4 rounded-xl text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20"
                 >
                   {generatingPix ? (
                     <>
@@ -865,7 +873,7 @@ export default function WorkOrderDetailPage() {
                 <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-center">
                   <ShieldCheck className="w-8 h-8 text-emerald-700 mx-auto mb-2" />
                   <div className="font-bold text-emerald-700 text-sm">Ordem de Serviço Liquidada</div>
-                  <div className="text-xs text-brand-brown mt-1">
+                  <div className="text-xs text-brand-graphite mt-1">
                     Pagamento confirmado e registrado no fluxo de caixa da oficina.
                   </div>
                 </div>
@@ -890,19 +898,19 @@ export default function WorkOrderDetailPage() {
                   />
                 </div>
               ) : (
-                <div className="w-48 h-48 bg-surface-strong/50 rounded-xl flex items-center justify-center mx-auto text-xs text-brand-brown">
+                <div className="w-48 h-48 bg-surface-strong/50 rounded-xl flex items-center justify-center mx-auto text-xs text-brand-graphite">
                   QR Code indisponível
                 </div>
               )}
 
-              <p className="text-xs text-brand-brown">
+              <p className="text-xs text-brand-graphite">
                 Aponte a câmera do aplicativo do banco para pagar instantaneamente.
               </p>
 
               {pixData.qrCode && (
                 <button
                   onClick={handleCopyPix}
-                  className="w-full bg-surface-white hover:bg-surface-offwhite text-brand-brown-dark border border-line text-xs py-2.5 px-3 rounded-lg flex items-center justify-center gap-2 transition-all font-mono"
+                  className="w-full bg-surface-white hover:bg-surface-offwhite text-brand-ink border border-line text-xs py-2.5 px-3 rounded-lg flex items-center justify-center gap-2 transition-all font-mono"
                 >
                   {copied ? (
                     <>
@@ -911,7 +919,7 @@ export default function WorkOrderDetailPage() {
                     </>
                   ) : (
                     <>
-                      <Copy className="w-4 h-4 text-brand-brown" />
+                      <Copy className="w-4 h-4 text-brand-graphite" />
                       Copiar Código Pix (Copia e Cola)
                     </>
                   )}
@@ -923,7 +931,7 @@ export default function WorkOrderDetailPage() {
                   href={pixData.ticketUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs text-brand-brown hover:text-brand-brown hover:underline pt-1"
+                  className="inline-flex items-center gap-1.5 text-xs text-brand-graphite hover:text-brand-graphite hover:underline pt-1"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
                   Abrir comprovante do Mercado Pago
@@ -933,7 +941,7 @@ export default function WorkOrderDetailPage() {
               <div className="pt-2 border-t border-line/60">
                 <button
                   onClick={loadOrderDetails}
-                  className="text-xs text-brand-brown hover:text-brand-brown-dark transition-colors"
+                  className="text-xs text-brand-graphite hover:text-brand-ink transition-colors"
                 >
                   🔄 Já pagou? Atualizar status agora
                 </button>
@@ -968,6 +976,7 @@ export default function WorkOrderDetailPage() {
         />
       )}
     </div>
+    </>
   );
 }
 
@@ -1026,8 +1035,8 @@ function BillingModal({ order, onClose, onBilled }: { order: WorkOrderDetail; on
     <Modal title={`Registrar pagamento · OS #${order.code}`} onClose={onClose}>
       <form onSubmit={submit} className="space-y-3">
         <div className="grid grid-cols-2 gap-3 text-sm bg-surface-offwhite border border-line-soft rounded-lg p-3">
-          <span className="text-brand-brown">Peças <b className="block text-brand-brown-dark">{brl(Number(order.totalProducts))}</b></span>
-          <span className="text-brand-brown">Mão de obra <b className="block text-brand-brown-dark">{brl(Number(order.totalServices))}</b></span>
+          <span className="text-brand-graphite">Peças <b className="block text-brand-ink">{brl(Number(order.totalProducts))}</b></span>
+          <span className="text-brand-graphite">Mão de obra <b className="block text-brand-ink">{brl(Number(order.totalServices))}</b></span>
         </div>
         <Field label={order.operator ? 'Mecânico responsável (base da comissão) * · já atribuído na OS' : 'Mecânico responsável (base da comissão) *'}>
           <select required value={form.operatorId} onChange={(e) => set('operatorId', e.target.value)} className={inputCls}>
@@ -1036,8 +1045,8 @@ function BillingModal({ order, onClose, onBilled }: { order: WorkOrderDetail; on
           </select>
         </Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Forma de pagamento *">
-            <select value={form.paymentMethod} onChange={(e) => set('paymentMethod', e.target.value)} className={inputCls}>
+          <Field label="Forma de pagamento">
+            <select required value={form.paymentMethod} onChange={(e) => set('paymentMethod', e.target.value)} className={inputCls}>
               {PAYMENT_OPTIONS.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
             </select>
           </Field>
@@ -1048,7 +1057,7 @@ function BillingModal({ order, onClose, onBilled }: { order: WorkOrderDetail; on
               </select>
             </Field>
           ) : <div />}
-          <Field label="Data e hora do pagamento *">
+          <Field label="Data e hora do pagamento">
             <input type="datetime-local" required value={form.paidAt} onChange={(e) => set('paidAt', e.target.value)} className={`${inputCls} [color-scheme:light]`} />
           </Field>
           <Field label="Desconto (R$)">
@@ -1059,7 +1068,7 @@ function BillingModal({ order, onClose, onBilled }: { order: WorkOrderDetail; on
           <input value={form.notes} onChange={(e) => set('notes', e.target.value)} className={inputCls} />
         </Field>
         <div className="flex justify-between items-center text-sm border-t border-line-soft pt-3">
-          <span className="text-brand-brown">Total a receber</span>
+          <span className="text-brand-graphite">Total a receber</span>
           <b className="text-xl text-emerald-700">{brl(total)}</b>
         </div>
         <FormError message={error} />

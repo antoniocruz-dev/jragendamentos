@@ -6,3 +6,4 @@ export { Input, PasswordInput, TextArea, Field, fieldCls, maskWhatsapp, isValidW
 export { Modal } from './Modal';
 export { StatusProgress } from './StatusProgress';
 export { LightSkeleton, LightError, EmptyState, InlineError } from './Feedback';
+export { BrandMark, BrandName } from './Brand';

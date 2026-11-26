@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useSyncExternalStore } from 'react';
+import { usePathname } from 'next/navigation';
 import { API_BASE_URL } from '@/services/api-base';
 import { AlertTriangle, CheckCircle2, Info, RefreshCw, WifiOff, X, XCircle } from 'lucide-react';
 
@@ -70,7 +71,7 @@ export function Toaster() {
           >
             <Icon className="w-5 h-5 shrink-0 mt-px" />
             <span className="flex-1 min-w-0 break-words">{t.text}</span>
-            <button onClick={() => dismissToast(t.id)} className="shrink-0 text-brand-brown hover:text-brand-brown-dark" aria-label="Fechar aviso">
+            <button onClick={() => dismissToast(t.id)} className="shrink-0 text-brand-graphite hover:text-brand-ink" aria-label="Fechar aviso">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -121,6 +122,9 @@ async function probeHealth(base: string) {
 export function ConnectionBanner() {
   const apiBase = API_BASE_URL;
   const online = useApiOnline();
+  const pathname = usePathname();
+  // Login e página pública da O.S. não têm barra superior: o aviso fica colado no topo
+  const noHeader = pathname === '/login' || pathname.startsWith('/os/');
 
   useEffect(() => {
     const goOffline = () => setApiOnline(false);
@@ -143,14 +147,14 @@ export function ConnectionBanner() {
   return (
     <div
       role="alert"
-      className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] lg:top-16 z-40 bg-neon-primary/15 border-b border-neon-deep/40 text-brand-brown-dark text-xs sm:text-sm"
+      className={`sticky z-40 bg-gold-muted border-b border-gold text-brand-ink text-xs sm:text-sm ${noHeader ? 'top-0' : 'top-[calc(3.5rem+env(safe-area-inset-top))] lg:top-16'}`}
     >
       <div className="max-w-7xl mx-auto px-4 py-2 flex items-center gap-2">
-        <WifiOff className="w-4 h-4 shrink-0 text-brand-brown" />
+        <WifiOff className="w-4 h-4 shrink-0 text-gold-deep" />
         <span className="flex-1 min-w-0">Sem conexão com o servidor. Seus dados na tela continuam aqui; tentando reconectar…</span>
         <button
           onClick={() => probeHealth(apiBase)}
-          className="shrink-0 inline-flex items-center gap-1 font-semibold text-brand-brown hover:text-brand-brown-dark"
+          className="shrink-0 inline-flex items-center gap-1 min-h-9 px-2 font-bold text-gold-deep hover:text-brand-ink"
         >
           <RefreshCw className="w-3.5 h-3.5" />
           Tentar agora
@@ -196,10 +200,10 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry: () 
   return (
     <div className="bg-surface-white border border-rose-500/30 rounded-2xl p-6 sm:p-8 text-center space-y-3">
       <AlertTriangle className="w-8 h-8 text-rose-700 mx-auto" />
-      <p className="text-sm text-brand-brown">{message}</p>
+      <p className="text-sm text-brand-graphite">{message}</p>
       <button
         onClick={onRetry}
-        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface-muted hover:bg-surface-strong text-sm font-semibold text-brand-brown-dark"
+        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface-muted hover:bg-surface-strong text-sm font-semibold text-brand-ink"
       >
         <RefreshCw className="w-4 h-4" />
         Tentar novamente

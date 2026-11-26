@@ -3,7 +3,8 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LogOut, Wrench } from 'lucide-react';
+import { LogOut } from 'lucide-react';
+import { BrandMark } from '@/components/ui/Brand';
 import { clearSession, useAuth } from '@/services/auth';
 import { cn } from '@/lib/cn';
 
@@ -36,14 +37,12 @@ export function AreaShell({ title, nav, children, wide = false }: { title: strin
   const firstName = user?.name?.split(' ')[0] ?? '';
 
   return (
-    <div data-area className="min-h-dvh bg-surface-offwhite text-brand-brown-dark">
-      <header className="sticky top-0 z-40 bg-brand-brown-dark text-white shadow-md pt-[env(safe-area-inset-top)]">
+    <div data-area className="min-h-dvh bg-surface-offwhite text-brand-ink">
+      <header className="sticky top-0 z-40 brand-header text-white shadow-md pt-[env(safe-area-inset-top)]">
         <div className={cn('mx-auto flex items-center gap-3 px-4 h-14', wide ? 'max-w-5xl' : 'max-w-3xl')}>
-          <div className="w-9 h-9 rounded-xl bg-neon-primary text-brand-brown-dark flex items-center justify-center shrink-0" aria-hidden>
-            <Wrench className="w-5 h-5" />
-          </div>
+          <BrandMark size={36} className="w-9 h-9" />
           <div className="min-w-0 flex-1 leading-tight">
-            <p className="text-[11px] uppercase tracking-widest text-neon-soft font-bold">{title}</p>
+            <p className="text-[11px] uppercase tracking-widest text-gold-soft font-bold">{title}</p>
             <p className="text-sm font-semibold truncate">{firstName ? `Olá, ${firstName}` : 'JR Garage Center'}</p>
           </div>
           <nav aria-label="Menu" className="hidden md:flex items-center gap-1">
@@ -56,7 +55,7 @@ export function AreaShell({ title, nav, children, wide = false }: { title: strin
                   aria-current={active ? 'page' : undefined}
                   className={cn(
                     'min-h-11 px-3 inline-flex items-center gap-2 rounded-xl text-sm font-semibold transition-colors',
-                    active ? 'bg-neon-primary text-brand-brown-dark' : 'text-white/85 hover:bg-white/10',
+                    active ? 'bg-neon-primary text-brand-ink' : 'text-white/85 hover:bg-white/10',
                   )}
                 >
                   <item.icon className="w-4 h-4" />
@@ -77,7 +76,7 @@ export function AreaShell({ title, nav, children, wide = false }: { title: strin
       <nav
         data-bottom-nav
         aria-label="Navegação principal"
-        className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-surface-white border-t border-brand-brown-light/30 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(78,52,46,0.08)]"
+        className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-surface-white border-t border-brand-steel/30 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(11,14,12,0.10)]"
       >
         <ul className="grid" style={{ gridTemplateColumns: `repeat(${nav.length + 1}, minmax(0, 1fr))` }}>
           {nav.map((item) => {
@@ -89,7 +88,7 @@ export function AreaShell({ title, nav, children, wide = false }: { title: strin
                   aria-current={active ? 'page' : undefined}
                   className={cn(
                     'relative flex flex-col items-center justify-center gap-0.5 min-h-16 text-[11px] font-semibold transition-colors',
-                    active ? 'text-brand-brown-dark' : 'text-brand-brown-light',
+                    active ? 'text-brand-ink' : 'text-brand-steel',
                   )}
                 >
                   <span
@@ -108,7 +107,7 @@ export function AreaShell({ title, nav, children, wide = false }: { title: strin
           <li>
             <button
               onClick={logout}
-              className="w-full flex flex-col items-center justify-center gap-0.5 min-h-16 text-[11px] font-semibold text-brand-brown-light"
+              className="w-full flex flex-col items-center justify-center gap-0.5 min-h-16 text-[11px] font-semibold text-brand-steel"
             >
               <LogOut className="w-6 h-6" />
               Sair
@@ -125,8 +124,8 @@ export function AreaTitle({ title, subtitle, action }: { title: string; subtitle
   return (
     <div className="flex flex-wrap items-end justify-between gap-3 mb-5">
       <div className="min-w-0">
-        <h1 className="text-2xl font-extrabold text-brand-brown-dark">{title}</h1>
-        {subtitle && <p className="text-sm text-brand-brown-light mt-0.5">{subtitle}</p>}
+        <h1 className="text-2xl font-black italic tracking-tight text-brand-ink">{title}</h1>
+        {subtitle && <p className="text-sm text-brand-steel mt-0.5">{subtitle}</p>}
       </div>
       {action}
     </div>

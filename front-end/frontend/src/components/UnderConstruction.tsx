@@ -21,18 +21,18 @@ export default function UnderConstruction({
           <Construction className="w-8 h-8 text-neon-deep animate-pulse" />
         </div>
 
-        <h1 className="text-xl font-bold text-brand-brown-dark mb-2">{title}</h1>
+        <h1 className="text-xl font-bold text-brand-ink mb-2">{title}</h1>
 
         {/* Mensagem Adaptativa: Desktop vs Mobile */}
         <div className="my-4">
-          <p className="hidden md:block text-brand-brown text-sm">
+          <p className="hidden md:block text-brand-graphite text-sm">
             Esta página ainda está em desenvolvimento.
           </p>
-          <p className="block md:hidden text-brand-brown text-base font-semibold">
+          <p className="block md:hidden text-brand-graphite text-base font-semibold">
             Página em construção 🔧
           </p>
           
-          <p className="text-xs text-brand-brown-light mt-2">
+          <p className="text-xs text-brand-steel mt-2">
             {description}
           </p>
         </div>
@@ -40,7 +40,7 @@ export default function UnderConstruction({
         <div className="pt-6 border-t border-line-soft">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-xs font-semibold bg-surface-muted hover:bg-surface-strong text-brand-brown-dark px-4 py-2.5 rounded-xl transition-colors"
+            className="inline-flex items-center gap-2 text-xs font-semibold bg-surface-muted hover:bg-surface-strong text-brand-ink px-4 py-2.5 rounded-xl transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Voltar ao Dashboard Principal

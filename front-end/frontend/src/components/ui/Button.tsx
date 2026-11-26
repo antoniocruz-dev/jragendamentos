@@ -10,16 +10,16 @@ type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 /** Efeitos do Design System (ui_effects). Toque mínimo de 44x44px. */
 const VARIANTS: Record<Variant, string> = {
   primary:
-    'bg-neon-primary text-brand-brown-dark font-bold transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-neon-soft hover:shadow-[0_0_16px_rgba(57,255,20,0.45)] active:scale-95',
+    'bg-neon-primary text-brand-ink font-bold transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-neon-soft hover:shadow-[0_0_16px_rgba(62,224,31,0.5)] active:scale-95',
   secondary:
-    'bg-surface-white border border-brand-brown text-brand-brown font-semibold transition-all duration-200 hover:bg-brand-brown hover:text-white active:scale-95',
-  ghost: 'text-brand-brown font-semibold transition-colors duration-200 hover:bg-brand-brown-light/10 active:scale-95',
+    'bg-surface-white border border-brand-graphite text-brand-graphite font-semibold transition-all duration-200 hover:bg-brand-graphite hover:text-white active:scale-95',
+  ghost: 'text-brand-graphite font-semibold transition-colors duration-200 hover:bg-brand-steel/10 active:scale-95',
   danger:
     'bg-surface-white border border-red-700 text-red-700 font-semibold transition-all duration-200 hover:bg-red-700 hover:text-white active:scale-95',
 };
 
 const BASE =
-  'inline-flex items-center justify-center gap-2 min-h-11 min-w-11 px-4 rounded-xl text-sm select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-brown focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none';
+  'inline-flex items-center justify-center gap-2 min-h-11 min-w-11 px-4 rounded-xl text-sm select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-deep focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;

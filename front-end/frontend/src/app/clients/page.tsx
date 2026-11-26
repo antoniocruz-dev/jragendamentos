@@ -60,8 +60,8 @@ interface Client {
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  DRAFT: { label: 'Rascunho', color: 'text-brand-brown bg-brand-brown-light/10 border-brand-brown-light/30' },
-  QUOTE: { label: 'Orçamento', color: 'text-brand-brown bg-neon-primary/10 border-neon-deep/30' },
+  DRAFT: { label: 'Rascunho', color: 'text-brand-graphite bg-brand-steel/10 border-brand-steel/30' },
+  QUOTE: { label: 'Orçamento', color: 'text-brand-graphite bg-neon-primary/10 border-neon-deep/30' },
   APPROVED: { label: 'Aprovado', color: 'text-sky-700 bg-sky-500/10 border-sky-500/30' },
   IN_PROGRESS: { label: 'Em Execução', color: 'text-purple-700 bg-purple-500/10 border-purple-500/30' },
   WAITING_PARTS: { label: 'Aguardando Peças', color: 'text-orange-700 bg-orange-500/10 border-orange-500/30' },
@@ -188,7 +188,7 @@ export default function ClientsPage() {
       />
 
         {!isManager && (
-          <p className="text-xs text-brand-brown-light">Exclusões só podem ser feitas pelo Administrador ou Gerente Geral.</p>
+          <p className="text-xs text-brand-steel">Exclusões só podem ser feitas pelo Administrador ou Gerente Geral.</p>
         )}
 
         {loading && !data ? (
@@ -196,15 +196,15 @@ export default function ClientsPage() {
         ) : error && !data ? (
           <ErrorState message={error} onRetry={loadClients} />
         ) : filtered.length === 0 ? (
-          <div className="p-12 text-center text-brand-brown">Nenhum cliente encontrado.</div>
+          <div className="p-12 text-center text-brand-graphite">Nenhum cliente encontrado.</div>
         ) : (
           <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
             {filtered.map((client) => (
               <article key={client.id} className="bg-surface-white border border-line-soft rounded-2xl p-4 sm:p-5 space-y-4 min-w-0">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h2 className="text-base sm:text-lg font-bold text-brand-brown-dark truncate">{client.name}</h2>
-                    <div className="mt-1 space-y-0.5 text-xs text-brand-brown">
+                    <h2 className="text-base sm:text-lg font-bold text-brand-ink truncate">{client.name}</h2>
+                    <div className="mt-1 space-y-0.5 text-xs text-brand-graphite">
                       <div className="flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" />{formatDocument(client.document)}</div>
                       <div className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" />{formatPhone(client.phone)}</div>
                       {client.email && <div className="flex items-center gap-1.5 min-w-0"><Mail className="w-3.5 h-3.5 shrink-0" /><span className="truncate">{client.email}</span></div>}
@@ -231,14 +231,14 @@ export default function ClientsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  {client.vehicles.length === 0 && <p className="text-xs text-brand-brown-light">Nenhum veículo cadastrado.</p>}
+                  {client.vehicles.length === 0 && <p className="text-xs text-brand-steel">Nenhum veículo cadastrado.</p>}
                   {client.vehicles.map((v) => (
                     <div key={v.id} className="flex flex-wrap items-center justify-between gap-2 bg-surface-offwhite/60 border border-line-soft rounded-lg px-3 py-2">
                       <div className="flex items-center gap-3 min-w-0">
                         <Car className="w-4 h-4 text-sky-700 shrink-0" />
                         <div className="min-w-0">
-                          <div className="font-mono font-bold text-brand-brown text-sm">{v.licensePlate}</div>
-                          <div className="text-xs text-brand-brown truncate">
+                          <div className="font-mono font-bold text-brand-graphite text-sm">{v.licensePlate}</div>
+                          <div className="text-xs text-brand-graphite truncate">
                             {v.brand} {v.model} · {v.year}
                             {v.currentKm ? <span className="inline-flex items-center gap-1 ml-2"><Gauge className="w-3 h-3" />{v.currentKm.toLocaleString('pt-BR')} km</span> : null}
                           </div>
@@ -255,7 +255,7 @@ export default function ClientsPage() {
                   ))}
                   <button
                     onClick={() => setModal({ kind: 'vehicle', client, vehicle: null })}
-                    className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-brand-brown hover:text-brand-brown border border-dashed border-line rounded-lg py-2"
+                    className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-brand-graphite hover:text-brand-graphite border border-dashed border-line rounded-lg py-2"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     Adicionar veículo
@@ -329,14 +329,14 @@ function PortalAccessModal({ client, canRevoke, onClose }: { client: Client; can
   return (
     <Modal title={`Painel do cliente · ${client.name}`} onClose={() => onClose(false)}>
       <div className="space-y-4">
-        <p className="text-sm text-brand-brown">
-          O cliente entra pela aba <strong className="text-brand-brown-dark">Cliente</strong> da tela de login, sem senha, informando o nome completo,
+        <p className="text-sm text-brand-graphite">
+          O cliente entra pela aba <strong className="text-brand-ink">Cliente</strong> da tela de login, sem senha, informando o nome completo,
           o e-mail{client.email ? ` (${client.email})` : ''} e o contato deste cadastro ({client.phone}).
         </p>
         {!info && !error ? (
-          <p className="text-sm text-brand-brown-light">Carregando...</p>
+          <p className="text-sm text-brand-steel">Carregando...</p>
         ) : info ? (
-          <p className="text-sm font-semibold text-brand-brown-dark">
+          <p className="text-sm font-semibold text-brand-ink">
             {!info.hasEntered ? 'O cliente ainda não entrou no painel.' : info.isActive ? 'Entrada liberada.' : 'Entrada bloqueada.'}
           </p>
         ) : null}
@@ -352,7 +352,7 @@ function PortalAccessModal({ client, canRevoke, onClose }: { client: Client; can
               type="button"
               onClick={reactivate}
               disabled={saving}
-              className="min-h-11 px-4 rounded-xl bg-neon-primary hover:bg-neon-soft text-brand-brown-dark text-sm font-bold disabled:opacity-50"
+              className="min-h-11 px-4 rounded-xl bg-neon-primary hover:bg-neon-soft text-brand-ink text-sm font-bold disabled:opacity-50"
             >
               Reativar entrada
             </button>
@@ -381,23 +381,23 @@ function HistoryModal({ vehicle, onClose }: { vehicle: Vehicle; onClose: () => v
       {error ? (
         <FormError message={error} />
       ) : !orders ? (
-        <p className="text-sm text-brand-brown">Carregando...</p>
+        <p className="text-sm text-brand-graphite">Carregando...</p>
       ) : orders.length === 0 ? (
-        <p className="text-sm text-brand-brown">Nenhuma OS registrada para este veículo.</p>
+        <p className="text-sm text-brand-graphite">Nenhuma OS registrada para este veículo.</p>
       ) : (
         <ul className="space-y-2">
           {orders.map((wo) => {
-            const s = STATUS_LABELS[wo.status] ?? { label: wo.status, color: 'text-brand-brown border-brand-brown-light' };
+            const s = STATUS_LABELS[wo.status] ?? { label: wo.status, color: 'text-brand-graphite border-brand-steel' };
             return (
               <li key={wo.id}>
                 <Link
                   href={`/os/${wo.id}`}
                   className="grid grid-cols-[auto_1fr_auto] sm:grid-cols-[auto_auto_1fr_auto] items-center gap-x-3 gap-y-1 bg-surface-offwhite border border-line-soft hover:border-neon-deep/50 rounded-lg px-3 py-2"
                 >
-                  <span className="font-mono font-bold text-brand-brown">#{wo.code}</span>
+                  <span className="font-mono font-bold text-brand-graphite">#{wo.code}</span>
                   <span className={`justify-self-start text-xs px-2 py-0.5 rounded-full border ${s.color}`}>{s.label}</span>
-                  <span className="hidden sm:block text-xs text-brand-brown">{new Date(wo.createdAt).toLocaleDateString('pt-BR')}</span>
-                  <span className="text-sm font-semibold text-brand-brown-dark text-right">
+                  <span className="hidden sm:block text-xs text-brand-graphite">{new Date(wo.createdAt).toLocaleDateString('pt-BR')}</span>
+                  <span className="text-sm font-semibold text-brand-ink text-right">
                     R$ {Number(wo.finalAmount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </span>
                 </Link>
@@ -449,16 +449,16 @@ function vehiclePayload(f: VehicleForm, editing: boolean) {
 function VehicleFields({ form, set }: { form: VehicleForm; set: (k: keyof VehicleForm, v: string) => void }) {
   return (
     <div className="grid grid-cols-2 gap-3">
-      <Field label="Placa *">
+      <Field label="Placa">
         <input required value={form.licensePlate} onChange={(e) => set('licensePlate', e.target.value.toUpperCase())} placeholder="ABC1D23" className={`${inputCls} font-mono uppercase`} />
       </Field>
-      <Field label="Ano *">
+      <Field label="Ano">
         <input required type="number" min={1950} max={new Date().getFullYear() + 1} value={form.year} onChange={(e) => set('year', e.target.value)} className={inputCls} />
       </Field>
-      <Field label="Marca *">
+      <Field label="Marca">
         <input required value={form.brand} onChange={(e) => set('brand', e.target.value)} className={inputCls} />
       </Field>
-      <Field label="Modelo *">
+      <Field label="Modelo">
         <input required value={form.model} onChange={(e) => set('model', e.target.value)} className={inputCls} />
       </Field>
       <Field label="Cor">
@@ -528,13 +528,13 @@ function ClientModal({ client, onClose }: { client: Client | null; onClose: (cha
     <Modal title={editing ? 'Editar cliente' : 'Novo cliente'} onClose={() => onClose(false)} wide>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Nome completo *" className="col-span-2">
+          <Field label="Nome completo" className="col-span-2">
             <input required minLength={3} value={form.name} onChange={(e) => set('name', e.target.value)} className={inputCls} />
           </Field>
-          <Field label="CPF/CNPJ *">
+          <Field label="CPF/CNPJ">
             <input required value={form.document} onChange={(e) => set('document', e.target.value)} placeholder="Somente números" className={inputCls} />
           </Field>
-          <Field label="Telefone (com DDD) *">
+          <Field label="Telefone (com DDD)">
             <input required value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="11999998888" className={inputCls} />
           </Field>
           <Field label="E-mail" className="col-span-2">
@@ -553,8 +553,8 @@ function ClientModal({ client, onClose }: { client: Client | null; onClose: (cha
 
         {!editing && (
           <div className="border-t border-line-soft pt-4 space-y-3">
-            <label className="flex items-center gap-2 text-sm text-brand-brown">
-              <input type="checkbox" checked={withVehicle} onChange={(e) => setWithVehicle(e.target.checked)} className="accent-brand-brown" />
+            <label className="flex items-center gap-2 text-sm text-brand-graphite">
+              <input type="checkbox" checked={withVehicle} onChange={(e) => setWithVehicle(e.target.checked)} className="accent-brand-graphite" />
               Cadastrar o primeiro veículo agora
             </label>
             {withVehicle && <VehicleFields form={vehicle} set={(k, v) => setVehicle((f) => ({ ...f, [k]: v }))} />}

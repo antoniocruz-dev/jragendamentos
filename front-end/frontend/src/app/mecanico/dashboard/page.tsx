@@ -76,7 +76,7 @@ export default function MecanicoDashboard() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="font-extrabold">Fechamento do mês</h2>
-            <p className="text-xs text-brand-brown-light">Total das suas O.S concluídas no período</p>
+            <p className="text-xs text-brand-steel">Total das suas O.S concluídas no período</p>
           </div>
           <label className="text-sm font-semibold">
             <span className="sr-only">Mês</span>
@@ -84,7 +84,7 @@ export default function MecanicoDashboard() {
           </label>
         </div>
         {!dash ? (
-          <div className="mt-4 h-16 rounded-xl bg-brand-brown-light/10 animate-pulse" />
+          <div className="mt-4 h-16 rounded-xl bg-brand-steel/10 animate-pulse" />
         ) : (
           <dl className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
             <Total label="Total Peças" value={dash.closing.total_parts} icon={<Package className="w-4 h-4" aria-hidden />} />
@@ -96,14 +96,14 @@ export default function MecanicoDashboard() {
 
       <div className="mt-6 flex items-center justify-between gap-3">
         <h2 className="font-extrabold">Ordens de serviço</h2>
-        <div className="grid grid-cols-2 bg-surface-white border border-brand-brown-light/30 rounded-xl p-1 text-sm font-semibold" role="group" aria-label="Filtro">
+        <div className="grid grid-cols-2 bg-surface-white border border-brand-steel/30 rounded-xl p-1 text-sm font-semibold" role="group" aria-label="Filtro">
           {(['open', 'done'] as const).map((k) => (
             <button
               key={k}
               type="button"
               aria-pressed={filter === k}
               onClick={() => setFilter(k)}
-              className={`min-h-11 px-3 rounded-lg transition-colors ${filter === k ? 'bg-brand-brown text-white' : 'text-brand-brown'}`}
+              className={`min-h-11 px-3 rounded-lg transition-colors ${filter === k ? 'bg-brand-graphite text-white' : 'text-brand-graphite'}`}
             >
               {k === 'open' ? 'Em aberto' : 'Concluídas'}
             </button>
@@ -133,14 +133,14 @@ export default function MecanicoDashboard() {
                         <p className="text-sm font-semibold truncate">
                           {o.vehicle.brand} {o.vehicle.model} {o.vehicle.year} · {o.vehicle.licensePlate}
                         </p>
-                        <p className="text-xs text-brand-brown-light truncate">{o.client.name}</p>
+                        <p className="text-xs text-brand-steel truncate">{o.client.name}</p>
                       </div>
                       <Badge tone={o.mechanicStatus === 'CONCLUIDA' ? 'deep' : o.mechanicStatus === 'EM_EXECUCAO' ? 'neon' : 'muted'}>
                         {o.mechanicStatus ? MECHANIC_LABEL[o.mechanicStatus] : info.label}
                       </Badge>
                     </div>
                     {o.reportedIssue && <p className="mt-2 text-sm line-clamp-2">{o.reportedIssue}</p>}
-                    <p className="mt-2 text-xs text-brand-brown-light">
+                    <p className="mt-2 text-xs text-brand-steel">
                       Aberta em {brDate(o.createdAt)}
                       {o.reopenCount > 0 ? ` · reaberta ${o.reopenCount}x` : ''}
                     </p>
@@ -157,18 +157,18 @@ export default function MecanicoDashboard() {
 
 function Counter({ label, value, icon, highlight }: { label: string; value?: number; icon: React.ReactNode; highlight?: boolean }) {
   return (
-    <Card accent={highlight ? 'neon' : 'brown'} className="p-3 sm:p-4">
-      <div className="flex items-center gap-1.5 text-brand-brown-light">{icon}</div>
+    <Card accent={highlight ? 'neon' : 'graphite'} className="p-3 sm:p-4">
+      <div className="flex items-center gap-1.5 text-brand-steel">{icon}</div>
       <p className="mt-1 text-2xl sm:text-3xl font-extrabold tabular-nums">{value ?? '—'}</p>
-      <p className="text-[11px] sm:text-xs font-semibold text-brand-brown-light leading-tight">{label}</p>
+      <p className="text-[11px] sm:text-xs font-semibold text-brand-steel leading-tight">{label}</p>
     </Card>
   );
 }
 
 function Total({ label, value, icon, strong }: { label: string; value: number; icon?: React.ReactNode; strong?: boolean }) {
   return (
-    <div className={`rounded-xl p-3 ${strong ? 'bg-brand-brown-dark text-white' : 'bg-surface-offwhite'}`}>
-      <dt className={`text-xs font-semibold flex items-center gap-1.5 ${strong ? 'text-neon-soft' : 'text-brand-brown-light'}`}>
+    <div className={`rounded-xl p-3 ${strong ? 'bg-brand-ink text-white' : 'bg-surface-offwhite'}`}>
+      <dt className={`text-xs font-semibold flex items-center gap-1.5 ${strong ? 'text-neon-soft' : 'text-brand-steel'}`}>
         {icon}
         {label}
       </dt>

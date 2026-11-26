@@ -52,12 +52,12 @@ export function AssignMechanicModal({
     <Modal title={`${current ? 'Trocar' : 'Atribuir'} mecânico · OS #${code}`} onClose={onClose} dismissible={!saving}>
       <form onSubmit={submit} className="space-y-4">
         <div className="flex items-center gap-3 rounded-xl border border-line-soft bg-surface-offwhite p-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-brown text-white">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-graphite text-white">
             <UserCog className="h-5 w-5" aria-hidden />
           </span>
           <div className="min-w-0">
-            <p className="text-xs text-brand-brown-light">Mecânico atual</p>
-            <p className="truncate font-bold text-brand-brown-dark">{current?.name ?? 'Sem mecânico'}</p>
+            <p className="text-xs text-brand-steel">Mecânico atual</p>
+            <p className="truncate font-bold text-brand-ink">{current?.name ?? 'Sem mecânico'}</p>
           </div>
         </div>
         <MechanicSelect
@@ -71,7 +71,7 @@ export function AssignMechanicModal({
           hint="A troca fica registrada nas observações da OS."
         />
         {!loading && !loadError && mechanics.filter((m) => m.id !== current?.id).length === 0 && (
-          <p className="text-sm text-brand-brown">Nenhum outro mecânico ativo. Cadastre em Equipe.</p>
+          <p className="text-sm text-brand-graphite">Nenhum outro mecânico ativo. Cadastre em Equipe.</p>
         )}
         {error && <InlineError message={error} />}
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">

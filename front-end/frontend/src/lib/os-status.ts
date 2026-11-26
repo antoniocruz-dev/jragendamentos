@@ -27,10 +27,10 @@ interface StatusInfo {
 export const STATUS_INFO: Record<WorkOrderStatus, StatusInfo> = {
   DRAFT: { label: 'Rascunho', step: 0, accent: 'muted' },
   QUOTE: { label: 'Aguardando aprovação', step: 1, accent: 'neon' },
-  APPROVED: { label: 'Aguardando início', step: 2, accent: 'brown' },
-  IN_PROGRESS: { label: 'Em execução', step: 3, accent: 'brown' },
+  APPROVED: { label: 'Aguardando início', step: 2, accent: 'graphite' },
+  IN_PROGRESS: { label: 'Em execução', step: 3, accent: 'graphite' },
   WAITING_PARTS: { label: 'Aguardando peça', step: 3, accent: 'muted' },
-  TESTING: { label: 'Em teste', step: 4, accent: 'brown' },
+  TESTING: { label: 'Em teste', step: 4, accent: 'graphite' },
   COMPLETED: { label: 'Concluída', step: 5, accent: 'deep' },
   BILLED: { label: 'Concluída e paga', step: 5, accent: 'deep' },
   CANCELLED: { label: 'Cancelada', step: 0, accent: 'danger' },

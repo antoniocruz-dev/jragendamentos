@@ -117,7 +117,7 @@ export default function MecanicoOsPage() {
 
   return (
     <div className="space-y-4">
-      <Link href="/mecanico/dashboard" className="inline-flex items-center gap-1.5 min-h-11 text-sm font-semibold text-brand-brown hover:underline">
+      <Link href="/mecanico/dashboard" className="inline-flex items-center gap-1.5 min-h-11 text-sm font-semibold text-brand-graphite hover:underline">
         <ArrowLeft className="w-4 h-4" aria-hidden />
         Minhas O.S
       </Link>
@@ -132,7 +132,7 @@ export default function MecanicoOsPage() {
                   <Car className="w-4 h-4 shrink-0" aria-hidden />
                   {os.vehicle.brand} {os.vehicle.model} {os.vehicle.year} · {os.vehicle.licensePlate}
                 </p>
-                <p className="text-xs text-brand-brown-light">
+                <p className="text-xs text-brand-steel">
                   {os.client.name}
                   {os.vehicle.color ? ` · ${os.vehicle.color}` : ''} · {os.vehicle.currentKm.toLocaleString('pt-BR')} km
                 </p>
@@ -159,17 +159,17 @@ export default function MecanicoOsPage() {
           <Card>
             <h2 className="font-extrabold mb-3">Serviços e peças</h2>
             {os.items.length === 0 ? (
-              <p className="text-sm text-brand-brown-light">Nenhum item lançado.</p>
+              <p className="text-sm text-brand-steel">Nenhum item lançado.</p>
             ) : (
-              <ul className="divide-y divide-brand-brown-light/15">
+              <ul className="divide-y divide-brand-steel/15">
                 {os.items.map((it) => (
                   <li key={it.id} className="py-2.5 flex items-start gap-3 text-sm">
-                    <span className="mt-0.5 text-brand-brown-light" aria-hidden>
+                    <span className="mt-0.5 text-brand-steel" aria-hidden>
                       {it.itemType === 'SERVICE' ? <Wrench className="w-4 h-4" /> : <Package className="w-4 h-4" />}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block font-semibold break-words">{it.service?.name ?? it.product?.name}</span>
-                      <span className="text-xs text-brand-brown-light">
+                      <span className="text-xs text-brand-steel">
                         {it.itemType === 'SERVICE'
                           ? `Serviço · ~${it.service?.estimatedMinutes ?? 60} min`
                           : `Peça · SKU ${it.product?.sku}`}
@@ -188,16 +188,16 @@ export default function MecanicoOsPage() {
               Histórico de observações
             </h2>
             {os.observations.length === 0 ? (
-              <p className="text-sm text-brand-brown-light">Nenhuma observação ainda.</p>
+              <p className="text-sm text-brand-steel">Nenhuma observação ainda.</p>
             ) : (
               <ol className="space-y-2">
                 {os.observations.map((o) => (
-                  <li key={o.id} className={`rounded-xl p-3 text-sm border-l-4 ${o.type === 'REABERTURA' ? 'border-l-red-600 bg-red-50' : o.type === 'ORCAMENTO_CLIENTE' ? 'border-l-neon-primary bg-neon-muted' : 'border-l-brand-brown bg-surface-offwhite'}`}>
+                  <li key={o.id} className={`rounded-xl p-3 text-sm border-l-4 ${o.type === 'REABERTURA' ? 'border-l-red-600 bg-red-50' : o.type === 'ORCAMENTO_CLIENTE' ? 'border-l-neon-primary bg-neon-muted' : 'border-l-brand-graphite bg-surface-offwhite'}`}>
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                       <span className="font-bold">
                         {o.authorName} · {TYPE_LABEL[o.type]}
                       </span>
-                      <span className="text-brand-brown-light">{brDate(o.createdAt, true)}</span>
+                      <span className="text-brand-steel">{brDate(o.createdAt, true)}</span>
                     </div>
                     <p className="mt-1 whitespace-pre-wrap break-words">{o.message}</p>
                   </li>
@@ -224,7 +224,7 @@ export default function MecanicoOsPage() {
               ))}
             </div>
           ) : !concluded ? (
-            <p className="text-sm text-brand-brown-light">
+            <p className="text-sm text-brand-steel">
               {os.status === 'QUOTE' ? 'Aguardando a aprovação do orçamento pelo cliente.' : 'Nenhuma ação disponível neste status.'}
             </p>
           ) : null}
@@ -240,7 +240,7 @@ export default function MecanicoOsPage() {
                 Esta O.S já foi reaberta uma vez. Apenas Administrador ou Gerente Geral podem reabrir novamente.
               </p>
             ))}
-          {os.status === 'BILLED' && <p className="mt-2 text-sm text-brand-brown-light">O.S concluída e faturada.</p>}
+          {os.status === 'BILLED' && <p className="mt-2 text-sm text-brand-steel">O.S concluída e faturada.</p>}
           <InlineError message={actionError} />
         </Card>
       </div>
@@ -286,10 +286,10 @@ function ReopenModal({ id, code, onClose }: { id: string; code: number; onClose:
   return (
     <Modal title={`Reabrir O.S #${code}`} onClose={() => onClose()}>
       <form onSubmit={submit} className="space-y-4">
-        <p className="text-sm text-brand-brown-light">
+        <p className="text-sm text-brand-steel">
           A O.S volta para <strong>Em execução</strong>. O mecânico pode reabrir uma única vez; depois, só Administrador ou Gerente Geral.
         </p>
-        <TextArea label="Justificativa *" required maxLength={1000} value={justification} onChange={(e) => setJustification(e.target.value)} error={error} autoFocus />
+        <TextArea label="Justificativa" required maxLength={1000} value={justification} onChange={(e) => setJustification(e.target.value)} error={error} autoFocus />
         <div className="grid gap-2 sm:grid-cols-2">
           <Button variant="secondary" onClick={() => onClose()}>
             Cancelar

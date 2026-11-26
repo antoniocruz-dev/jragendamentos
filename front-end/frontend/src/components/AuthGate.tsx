@@ -82,7 +82,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     return (
       <div
         {...(light ? { 'data-area': '' } : {})}
-        className={`min-h-[60vh] flex flex-col items-center justify-center gap-3 ${light ? 'text-brand-brown-light' : 'text-brand-brown'}`}
+        className={`min-h-[60vh] flex flex-col items-center justify-center gap-3 ${light ? 'text-brand-steel' : 'text-brand-graphite'}`}
       >
         <Wrench className="w-8 h-8 text-neon-deep animate-spin" />
         <span>Verificando acesso...</span>
@@ -96,12 +96,12 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       <div className="min-h-[60vh] flex items-center justify-center p-4">
         <div className="max-w-sm text-center bg-surface-white border border-line-soft rounded-2xl p-8 space-y-3">
           <ShieldOff className="w-10 h-10 text-rose-700 mx-auto" />
-          <h1 className="text-lg font-bold text-brand-brown-dark">Sem acesso a este módulo</h1>
-          <p className="text-sm text-brand-brown">
+          <h1 className="text-lg font-bold text-brand-ink">Sem acesso a este módulo</h1>
+          <p className="text-sm text-brand-graphite">
             Seu perfil não tem permissão para esta tela. Fale com o Administrador ou o Gerente Geral.
           </p>
           {home && (
-            <Link href={home} className="inline-block text-sm font-semibold text-brand-brown hover:text-brand-brown">
+            <Link href={home} className="inline-block text-sm font-semibold text-brand-graphite hover:text-brand-graphite">
               Ir para a minha tela inicial
             </Link>
           )}

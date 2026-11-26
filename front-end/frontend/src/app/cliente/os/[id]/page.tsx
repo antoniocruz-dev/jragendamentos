@@ -102,7 +102,7 @@ export default function ClienteOsPage() {
 
   return (
     <div className="space-y-4">
-      <Link href="/cliente" className="inline-flex items-center gap-1.5 min-h-11 text-sm font-semibold text-brand-brown hover:underline">
+      <Link href="/cliente" className="inline-flex items-center gap-1.5 min-h-11 text-sm font-semibold text-brand-graphite hover:underline">
         <ArrowLeft className="w-4 h-4" aria-hidden />
         Minhas O.S
       </Link>
@@ -111,7 +111,7 @@ export default function ClienteOsPage() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="font-mono text-2xl font-extrabold">O.S #{os.code}</h1>
-            <p className="text-sm text-brand-brown-light flex items-center gap-1.5">
+            <p className="text-sm text-brand-steel flex items-center gap-1.5">
               <Car className="w-4 h-4" aria-hidden />
               {os.vehicle.brand} {os.vehicle.model} {os.vehicle.year} · {os.vehicle.licensePlate}
             </p>
@@ -132,25 +132,25 @@ export default function ClienteOsPage() {
             <span className="font-semibold">Relato:</span> {os.reportedIssue}
           </p>
         )}
-        <p className="mt-2 text-xs text-brand-brown-light">Aberta em {brDate(os.createdAt)}</p>
+        <p className="mt-2 text-xs text-brand-steel">Aberta em {brDate(os.createdAt)}</p>
       </Card>
 
       <Card>
         <h2 className="font-extrabold mb-3">Itens do orçamento</h2>
         <ItemGroup title="Serviços" icon={<Wrench className="w-4 h-4" aria-hidden />} items={services} />
         <ItemGroup title="Peças e materiais" icon={<Package className="w-4 h-4" aria-hidden />} items={products} />
-        <dl className="mt-4 pt-3 border-t border-brand-brown-light/20 space-y-1.5 text-sm">
+        <dl className="mt-4 pt-3 border-t border-brand-steel/20 space-y-1.5 text-sm">
           <div className="flex justify-between">
-            <dt className="text-brand-brown-light">Serviços</dt>
+            <dt className="text-brand-steel">Serviços</dt>
             <dd>{brl(os.totalServices)}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-brand-brown-light">Peças</dt>
+            <dt className="text-brand-steel">Peças</dt>
             <dd>{brl(os.totalProducts)}</dd>
           </div>
           {Number(os.discount) > 0 && (
             <div className="flex justify-between">
-              <dt className="text-brand-brown-light">Desconto</dt>
+              <dt className="text-brand-steel">Desconto</dt>
               <dd>− {brl(os.discount)}</dd>
             </div>
           )}
@@ -164,7 +164,7 @@ export default function ClienteOsPage() {
       {pending && (
         <Card accent="neon">
           <h2 className="font-extrabold">Sua decisão</h2>
-          <p className="text-sm text-brand-brown-light mb-3">
+          <p className="text-sm text-brand-steel mb-3">
             As peças só são separadas e o serviço só começa depois da sua aprovação.
           </p>
           <TextArea
@@ -219,7 +219,7 @@ export default function ClienteOsPage() {
             {os.observations.map((o) => (
               <li key={o.id} className="bg-surface-offwhite rounded-xl p-3 text-sm">
                 <p className="whitespace-pre-wrap break-words">{o.message}</p>
-                <p className="mt-1 text-xs text-brand-brown-light">{brDate(o.createdAt, true)}</p>
+                <p className="mt-1 text-xs text-brand-steel">{brDate(o.createdAt, true)}</p>
               </li>
             ))}
           </ul>
@@ -233,16 +233,16 @@ function ItemGroup({ title, icon, items }: { title: string; icon: React.ReactNod
   if (items.length === 0) return null;
   return (
     <div className="mb-3">
-      <h3 className="text-xs font-bold uppercase tracking-wide text-brand-brown-light flex items-center gap-1.5 mb-1.5">
+      <h3 className="text-xs font-bold uppercase tracking-wide text-brand-steel flex items-center gap-1.5 mb-1.5">
         {icon}
         {title}
       </h3>
-      <ul className="divide-y divide-brand-brown-light/15">
+      <ul className="divide-y divide-brand-steel/15">
         {items.map((it) => (
           <li key={it.id} className="py-2 flex items-start justify-between gap-3 text-sm">
             <span className="min-w-0">
               <span className="block font-semibold break-words">{it.service?.name ?? it.product?.name ?? 'Item'}</span>
-              <span className="text-xs text-brand-brown-light">
+              <span className="text-xs text-brand-steel">
                 {it.quantity} × {brl(it.unitPrice)}
               </span>
             </span>

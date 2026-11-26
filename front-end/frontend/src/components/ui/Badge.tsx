@@ -1,13 +1,13 @@
 import React from 'react';
 import { cn } from '@/lib/cn';
 
-type Tone = 'neon' | 'brown' | 'muted' | 'deep' | 'danger';
+type Tone = 'neon' | 'graphite' | 'muted' | 'deep' | 'danger';
 
 const TONES: Record<Tone, string> = {
-  neon: 'bg-neon-primary text-brand-brown-dark',
-  deep: 'bg-neon-muted text-brand-brown-dark border border-neon-deep/40',
-  brown: 'bg-brand-brown text-white',
-  muted: 'bg-surface-offwhite text-brand-brown border border-brand-brown-light/40',
+  neon: 'bg-neon-primary text-brand-ink',
+  deep: 'bg-neon-muted text-brand-ink border border-neon-deep/40',
+  graphite: 'bg-brand-graphite text-white',
+  muted: 'bg-surface-offwhite text-brand-graphite border border-brand-steel/40',
   danger: 'bg-red-50 text-red-800 border border-red-200',
 };
 
@@ -22,7 +22,7 @@ export function Badge({ tone = 'muted', pulse, className, children }: { tone?: T
         className,
       )}
     >
-      {pulse && <span className="w-1.5 h-1.5 rounded-full bg-brand-brown-dark" aria-hidden />}
+      {pulse && <span className="w-1.5 h-1.5 rounded-full bg-brand-ink" aria-hidden />}
       {children}
     </span>
   );

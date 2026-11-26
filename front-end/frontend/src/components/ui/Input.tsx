@@ -5,7 +5,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
 export const fieldCls =
-  'w-full min-h-12 bg-surface-white border border-brand-brown-light/50 rounded-xl px-3.5 text-base sm:text-sm text-brand-brown-dark placeholder:text-brand-brown-light/70 transition-colors focus:outline-none focus:border-brand-brown focus:ring-2 focus:ring-neon-primary/60 aria-[invalid=true]:border-red-600';
+  'w-full min-h-12 bg-surface-white border border-line rounded-xl px-3.5 text-base sm:text-sm text-brand-ink placeholder:text-brand-steel/70 transition-colors hover:border-brand-steel/60 focus:outline-none focus:border-neon-deep focus:ring-2 focus:ring-neon-primary/50 disabled:opacity-60 disabled:bg-surface-muted disabled:cursor-not-allowed aria-[invalid=true]:border-red-600 aria-[invalid=true]:focus:ring-red-200';
 
 /** Campo com rótulo, ajuda e erro ligados por aria (o erro é anunciado por leitor de tela). */
 export function Field({
@@ -14,8 +14,10 @@ export function Field({
   error,
   children,
   htmlFor,
+  required,
 }: {
   label: string;
+  required?: boolean;
   hint?: string;
   error?: string | null;
   htmlFor: string;
@@ -23,16 +25,23 @@ export function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <label htmlFor={htmlFor} className="block text-sm font-semibold text-brand-brown-dark">
+      <label htmlFor={htmlFor} className="block text-sm font-semibold text-brand-ink">
         {label}
+        {required && (
+          <span className="text-red-700 font-bold" aria-hidden>
+            {' '}
+            *
+          </span>
+        )}
       </label>
       {children}
       {error ? (
-        <p id={`${htmlFor}-error`} role="alert" className="text-xs font-medium text-red-700">
+        <p id={`${htmlFor}-error`} role="alert" className="text-xs font-semibold text-red-700 flex items-start gap-1">
+          <span aria-hidden>⚠</span>
           {error}
         </p>
       ) : hint ? (
-        <p id={`${htmlFor}-hint`} className="text-xs text-brand-brown-light">
+        <p id={`${htmlFor}-hint`} className="text-xs text-brand-steel">
           {hint}
         </p>
       ) : null}
@@ -50,7 +59,7 @@ export function Input({ label, hint, error, id, className, ...rest }: InputProps
   const auto = useId();
   const fid = id ?? auto;
   return (
-    <Field label={label} hint={hint} error={error} htmlFor={fid}>
+    <Field label={label} hint={hint} error={error} htmlFor={fid} required={rest.required}>
       <input
         id={fid}
         aria-invalid={!!error || undefined}
@@ -68,7 +77,7 @@ export function PasswordInput({ label, hint, error, id, className, ...rest }: In
   const fid = id ?? auto;
   const [visible, setVisible] = useState(false);
   return (
-    <Field label={label} hint={hint} error={error} htmlFor={fid}>
+    <Field label={label} hint={hint} error={error} htmlFor={fid} required={rest.required}>
       <div className="relative">
         <input
           id={fid}
@@ -83,7 +92,7 @@ export function PasswordInput({ label, hint, error, id, className, ...rest }: In
           onClick={() => setVisible((v) => !v)}
           aria-label={visible ? 'Ocultar senha' : 'Mostrar senha'}
           aria-pressed={visible}
-          className="absolute right-0.5 top-1/2 -translate-y-1/2 w-11 h-11 inline-flex items-center justify-center rounded-lg text-brand-brown-light hover:text-brand-brown focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-brown"
+          className="absolute right-0.5 top-1/2 -translate-y-1/2 w-11 h-11 inline-flex items-center justify-center rounded-lg text-brand-steel hover:text-brand-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-deep"
         >
           {visible ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
         </button>
@@ -103,7 +112,7 @@ export function TextArea({
   const auto = useId();
   const fid = id ?? auto;
   return (
-    <Field label={label} hint={hint} error={error} htmlFor={fid}>
+    <Field label={label} hint={hint} error={error} htmlFor={fid} required={rest.required}>
       <textarea
         id={fid}
         aria-invalid={!!error || undefined}

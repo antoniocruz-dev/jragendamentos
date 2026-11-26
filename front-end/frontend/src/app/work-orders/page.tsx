@@ -22,9 +22,9 @@ import {
 
 // Dicionário de tradução semântica dos status para PT-BR
 const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string; border: string }> = {
-  ALL: { label: 'Todas', bg: 'bg-surface-muted', text: 'text-brand-brown', border: 'border-line' },
-  DRAFT: { label: 'Rascunho', bg: 'bg-brand-brown-light/10', text: 'text-brand-brown', border: 'border-brand-brown-light/30' },
-  QUOTE: { label: 'Orçamento', bg: 'bg-neon-primary/10', text: 'text-brand-brown', border: 'border-neon-deep/30' },
+  ALL: { label: 'Todas', bg: 'bg-surface-muted', text: 'text-brand-graphite', border: 'border-line' },
+  DRAFT: { label: 'Rascunho', bg: 'bg-brand-steel/10', text: 'text-brand-graphite', border: 'border-brand-steel/30' },
+  QUOTE: { label: 'Orçamento', bg: 'bg-neon-primary/10', text: 'text-brand-graphite', border: 'border-neon-deep/30' },
   APPROVED: { label: 'Aprovado', bg: 'bg-sky-500/10', text: 'text-sky-700', border: 'border-sky-500/30' },
   IN_PROGRESS: { label: 'Em Execução', bg: 'bg-purple-500/10', text: 'text-purple-700', border: 'border-purple-500/30' },
   WAITING_PARTS: { label: 'Aguardando Peças', bg: 'bg-orange-500/10', text: 'text-orange-700', border: 'border-orange-500/30' },
@@ -50,7 +50,7 @@ type WorkOrderPage = Page<WorkOrder> & { counts: Record<string, number> };
 const PAGE_SIZE = 20;
 const money = (v: string | number) => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
 const statusOf = (status: string) =>
-  STATUS_CONFIG[status] || { label: status, bg: 'bg-surface-muted', text: 'text-brand-brown', border: 'border-line' };
+  STATUS_CONFIG[status] || { label: status, bg: 'bg-surface-muted', text: 'text-brand-graphite', border: 'border-line' };
 
 // Disparo de mensagem pronta e link direto no WhatsApp do cliente
 function sendWhatsApp(wo: WorkOrder) {
@@ -117,9 +117,9 @@ function OrderActions({
       <Link
         href={`/os/${wo.id}`}
         title="Visualizar OS detalhada e cobrança Pix"
-        className={`${base} bg-surface-muted hover:bg-surface-strong text-brand-brown-dark border-line`}
+        className={`${base} bg-surface-muted hover:bg-surface-strong text-brand-ink border-line`}
       >
-        <Eye className="w-3.5 h-3.5 text-brand-brown" />
+        <Eye className="w-3.5 h-3.5 text-brand-graphite" />
         Ver OS
       </Link>
     </>
@@ -129,7 +129,7 @@ function OrderActions({
 /** Mecânico responsável no cartão: nome com ícone, ou tag "Sem mecânico". */
 function MechanicTag({ operator }: { operator: WorkOrder['operator'] }) {
   return operator ? (
-    <span className="inline-flex items-center gap-1 text-xs text-brand-brown min-w-0">
+    <span className="inline-flex items-center gap-1 text-xs text-brand-graphite min-w-0">
       <UserCog className="w-3.5 h-3.5 shrink-0 text-neon-deep" aria-hidden />
       <span className="truncate">{operator.name}</span>
     </span>
@@ -273,7 +273,7 @@ export default function WorkOrdersGeneralPage() {
               onClick={() => changeMechanic(mechanicFilter === 'none' ? '' : 'none')}
               aria-pressed={mechanicFilter === 'none'}
               className={`inline-flex items-center gap-1.5 px-3 min-h-11 rounded-xl text-xs font-semibold whitespace-nowrap border transition-colors ${
-                mechanicFilter === 'none' ? 'bg-neon-primary text-brand-brown-dark border-neon-deep' : 'bg-surface-white text-brand-brown border-line/60 hover:bg-surface-muted'
+                mechanicFilter === 'none' ? 'bg-neon-primary text-brand-ink border-neon-deep' : 'bg-surface-white text-brand-graphite border-line/60 hover:bg-surface-muted'
               }`}
             >
               <UserX className="w-4 h-4" aria-hidden />
@@ -291,12 +291,12 @@ export default function WorkOrdersGeneralPage() {
                   onClick={() => changeFilter(statusKey)}
                   aria-pressed={isSelected}
                   className={`inline-flex items-center gap-1.5 px-3 min-h-9 rounded-xl text-xs font-semibold whitespace-nowrap border transition-colors ${
-                    isSelected ? 'bg-neon-primary text-brand-brown-dark border-neon-deep' : 'bg-surface-white text-brand-brown border-line/60 hover:bg-surface-muted'
+                    isSelected ? 'bg-neon-primary text-brand-ink border-neon-deep' : 'bg-surface-white text-brand-graphite border-line/60 hover:bg-surface-muted'
                   }`}
                 >
                   {STATUS_CONFIG[statusKey].label}
                   {data && (
-                    <span className={`tabular-nums rounded-full px-1.5 text-[10px] ${isSelected ? 'bg-surface-offwhite/20' : 'bg-surface-muted text-brand-brown'}`}>
+                    <span className={`tabular-nums rounded-full px-1.5 text-[10px] ${isSelected ? 'bg-surface-offwhite/20' : 'bg-surface-muted text-brand-graphite'}`}>
                       {counts[statusKey] ?? 0}
                     </span>
                   )}
@@ -321,10 +321,10 @@ export default function WorkOrdersGeneralPage() {
             }}
           />
         ) : orders.length === 0 ? (
-          <div className="p-12 text-center text-brand-brown bg-surface-white border border-line-soft rounded-2xl">
-            <ClipboardList className="w-12 h-12 text-brand-brown-light mx-auto mb-3" />
-            <p className="text-base font-semibold text-brand-brown">Nenhuma Ordem de Serviço encontrada</p>
-            <p className="text-xs text-brand-brown-light mt-1">Ajuste os filtros ou crie uma nova OS.</p>
+          <div className="p-12 text-center text-brand-graphite bg-surface-white border border-line-soft rounded-2xl">
+            <ClipboardList className="w-12 h-12 text-brand-steel mx-auto mb-3" />
+            <p className="text-base font-semibold text-brand-graphite">Nenhuma Ordem de Serviço encontrada</p>
+            <p className="text-xs text-brand-steel mt-1">Ajuste os filtros ou crie uma nova OS.</p>
           </div>
         ) : (
           <>
@@ -335,10 +335,10 @@ export default function WorkOrdersGeneralPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-brand-brown">#{wo.code}</span>
-                        <span className="font-bold text-brand-brown-dark uppercase tracking-wide">{wo.vehicle.licensePlate}</span>
+                        <span className="font-mono font-bold text-brand-graphite">#{wo.code}</span>
+                        <span className="font-bold text-brand-ink uppercase tracking-wide">{wo.vehicle.licensePlate}</span>
                       </div>
-                      <div className="text-xs text-brand-brown truncate">
+                      <div className="text-xs text-brand-graphite truncate">
                         {wo.vehicle.brand} {wo.vehicle.model} ({wo.vehicle.year})
                       </div>
                     </div>
@@ -346,11 +346,11 @@ export default function WorkOrdersGeneralPage() {
                   </div>
                   <div className="flex items-end justify-between gap-3">
                     <div className="min-w-0 text-sm">
-                      <div className="font-medium text-brand-brown-dark truncate">{wo.client.name}</div>
-                      <div className="text-xs text-brand-brown">{new Date(wo.createdAt).toLocaleDateString('pt-BR')}</div>
+                      <div className="font-medium text-brand-ink truncate">{wo.client.name}</div>
+                      <div className="text-xs text-brand-graphite">{new Date(wo.createdAt).toLocaleDateString('pt-BR')}</div>
                       <div className="mt-1 flex min-w-0"><MechanicTag operator={wo.operator} /></div>
                     </div>
-                    <div className="font-bold text-brand-brown-dark whitespace-nowrap">{money(wo.finalAmount)}</div>
+                    <div className="font-bold text-brand-ink whitespace-nowrap">{money(wo.finalAmount)}</div>
                   </div>
                   <div className="grid grid-cols-2 gap-2 [&>*:last-child:nth-child(odd)]:col-span-2">
                     <OrderActions wo={wo} busy={actionLoadingId === wo.id} onAdvance={handleAdvanceStatus} />
@@ -362,8 +362,8 @@ export default function WorkOrdersGeneralPage() {
             {/* Tablet/desktop: tabela */}
             <div className="hidden md:block bg-surface-white border border-line-soft rounded-2xl overflow-hidden">
               <div className="scroll-x">
-                <table className="w-full text-left text-sm text-brand-brown">
-                  <thead className="bg-surface-offwhite/80 text-xs uppercase font-bold text-brand-brown border-b border-line-soft">
+                <table className="w-full text-left text-sm text-brand-graphite">
+                  <thead className="bg-surface-offwhite/80 text-xs uppercase font-bold text-brand-graphite border-b border-line-soft">
                     <tr>
                       <th className="py-3.5 px-4">OS #</th>
                       <th className="py-3.5 px-4">Veículo / Placa</th>
@@ -377,16 +377,16 @@ export default function WorkOrdersGeneralPage() {
                   <tbody className="divide-y divide-line-soft/80">
                     {orders.map((wo) => (
                       <tr key={wo.id} className="hover:bg-surface-muted/40 transition-colors">
-                        <td className="py-3.5 px-4 font-mono font-bold text-brand-brown">#{wo.code}</td>
+                        <td className="py-3.5 px-4 font-mono font-bold text-brand-graphite">#{wo.code}</td>
                         <td className="py-3.5 px-4">
-                          <div className="font-bold text-brand-brown-dark uppercase tracking-wide">{wo.vehicle.licensePlate}</div>
-                          <div className="text-xs text-brand-brown">
+                          <div className="font-bold text-brand-ink uppercase tracking-wide">{wo.vehicle.licensePlate}</div>
+                          <div className="text-xs text-brand-graphite">
                             {wo.vehicle.brand} {wo.vehicle.model} ({wo.vehicle.year})
                           </div>
                         </td>
                         <td className="py-3.5 px-4">
-                          <div className="font-medium text-brand-brown-dark">{wo.client.name}</div>
-                          <div className="text-xs text-brand-brown">{wo.client.phone}</div>
+                          <div className="font-medium text-brand-ink">{wo.client.name}</div>
+                          <div className="text-xs text-brand-graphite">{wo.client.phone}</div>
                         </td>
                         <td className="py-3.5 px-4 max-w-40">
                           <MechanicTag operator={wo.operator} />
@@ -394,7 +394,7 @@ export default function WorkOrdersGeneralPage() {
                         <td className="py-3.5 px-4">
                           <StatusBadge status={wo.status} />
                         </td>
-                        <td className="py-3.5 px-4 font-bold text-brand-brown-dark whitespace-nowrap text-right">{money(wo.finalAmount)}</td>
+                        <td className="py-3.5 px-4 font-bold text-brand-ink whitespace-nowrap text-right">{money(wo.finalAmount)}</td>
                         <td className="py-3.5 px-4">
                           <div className="flex items-center justify-end gap-2 flex-wrap">
                             <OrderActions wo={wo} busy={actionLoadingId === wo.id} onAdvance={handleAdvanceStatus} />

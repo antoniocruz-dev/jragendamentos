@@ -10,7 +10,7 @@ export function StatusProgress({ status, showLabels = false }: { status: WorkOrd
   return (
     <div>
       <div
-        className="h-2 w-full rounded-full bg-brand-brown-light/15 overflow-hidden"
+        className="h-2 w-full rounded-full bg-brand-steel/15 overflow-hidden"
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={PROGRESS_STEPS.length}
@@ -28,7 +28,7 @@ export function StatusProgress({ status, showLabels = false }: { status: WorkOrd
       {showLabels && !cancelled && (
         <ol className="mt-2 grid grid-cols-5 gap-1 text-[10px] sm:text-xs text-center">
           {PROGRESS_STEPS.map((s, i) => (
-            <li key={s} className={cn(i < info.step ? 'text-brand-brown-dark font-semibold' : 'text-brand-brown-light')}>
+            <li key={s} className={cn(i < info.step ? 'text-brand-ink font-semibold' : 'text-brand-steel')}>
               {s}
             </li>
           ))}
