@@ -428,6 +428,8 @@ model CashTransaction {
   paidBy        ExpensePayer?     @map("paid_by")
   beneficiaryId String?           @map("beneficiary_id") @db.Uuid
   installments  Int?
+  /// Contas a pagar: vencimento da despesa (status PENDING até a baixa; paidAt fica nulo até lá)
+  dueDate       DateTime?         @map("due_date")
 
   workOrder   WorkOrder? @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
   beneficiary User?      @relation("ExpenseBeneficiary", fields: [beneficiaryId], references: [id], onDelete: SetNull)
@@ -438,6 +440,7 @@ model CashTransaction {
   @@index([type])
   @@index([status])
   @@index([paidAt])
+  @@index([dueDate])
   @@index([createdAt])
   @@map("cash_transactions")
 }

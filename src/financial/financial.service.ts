@@ -14,7 +14,7 @@ import {
   type Dec,
   type GroupBy,
 } from './financial-calc.js';
-import { CreateExpenseDto, ResolveRefundDto, UpdateExpenseDto, UpdateSettingsDto } from './dto/financial.dto.js';
+import { CreateExpenseDto, PayExpenseDto, ResolveRefundDto, UpdateExpenseDto, UpdateSettingsDto } from './dto/financial.dto.js';
 
 /**
  * OS que contam como receita: faturadas, e as faturadas que foram canceladas enquanto o estorno
@@ -163,7 +163,8 @@ export class FinancialService {
         },
       }),
       this.prisma.cashTransaction.findMany({
-        where: { type: TransactionType.EXPENSE, status: { not: TransactionStatus.CANCELLED }, paidAt: { gte: from, lte: to } },
+        // Só despesas pagas: conta a pagar (PENDING) entra no resultado na data da baixa
+        where: { type: TransactionType.EXPENSE, status: TransactionStatus.PAID, paidAt: { gte: from, lte: to } },
         include: { beneficiary: { select: { id: true, name: true } } },
         orderBy: { paidAt: 'asc' },
       }),
@@ -562,11 +563,16 @@ export class FinancialService {
 
   async createExpense(dto: CreateExpenseDto) {
     await this.validateBeneficiary(dto.category, dto.beneficiaryId);
+    const pending = dto.status === 'PENDING';
+    if (pending && !dto.dueDate) throw new BadRequestException('Informe o vencimento da conta a pagar.');
+    if (!pending && !dto.paidAt) throw new BadRequestException('Informe a data da despesa.');
     return this.prisma.cashTransaction.create({
       data: {
         type: TransactionType.EXPENSE,
-        status: TransactionStatus.PAID,
-        paidAt: new Date(dto.paidAt),
+        // Conta a pagar fica PENDING e sem paidAt: só entra no relatório depois da baixa
+        status: pending ? TransactionStatus.PENDING : TransactionStatus.PAID,
+        paidAt: pending ? null : new Date(dto.paidAt!),
+        dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
         description: dto.description.trim(),
         category: dto.category,
         amount: D(dto.amount),
@@ -584,11 +590,15 @@ export class FinancialService {
     const category = dto.category ?? current.category;
     const beneficiaryId = dto.beneficiaryId !== undefined ? dto.beneficiaryId : current.beneficiaryId;
     await this.validateBeneficiary(category, beneficiaryId);
+    // A situação (paga / a pagar) só muda pela baixa (PATCH /expenses/:id/pay)
+    const isPending = current.status === TransactionStatus.PENDING;
+    if (isPending && dto.dueDate === null) throw new BadRequestException('A conta a pagar precisa de vencimento.');
 
     return this.prisma.cashTransaction.update({
       where: { id },
       data: {
-        ...(dto.paidAt ? { paidAt: new Date(dto.paidAt) } : {}),
+        ...(dto.paidAt && !isPending ? { paidAt: new Date(dto.paidAt) } : {}),
+        ...(dto.dueDate !== undefined ? { dueDate: dto.dueDate ? new Date(dto.dueDate) : null } : {}),
         ...(dto.description !== undefined ? { description: dto.description.trim() } : {}),
         ...(dto.category ? { category: dto.category } : {}),
         ...(dto.amount !== undefined ? { amount: D(dto.amount) } : {}),
@@ -605,6 +615,61 @@ export class FinancialService {
     if (!current || current.type !== TransactionType.EXPENSE) throw new NotFoundException('Despesa não encontrada.');
     await this.prisma.cashTransaction.delete({ where: { id } });
     return { deleted: true };
+  }
+
+  /**
+   * Baixa de uma conta a pagar. O updateMany condicionado ao status PENDING é atômico:
+   * duas baixas simultâneas da mesma conta não pagam duas vezes (a segunda recebe 409).
+   */
+  async payExpense(id: string, dto: PayExpenseDto) {
+    const current = await this.prisma.cashTransaction.findUnique({ where: { id }, select: { type: true, status: true } });
+    if (!current || current.type !== TransactionType.EXPENSE) throw new NotFoundException('Despesa não encontrada.');
+    const { count } = await this.prisma.cashTransaction.updateMany({
+      where: { id, status: TransactionStatus.PENDING },
+      data: {
+        status: TransactionStatus.PAID,
+        paidAt: dto.paidAt ? new Date(dto.paidAt) : new Date(),
+        ...(dto.paymentMethod ? { paymentMethod: dto.paymentMethod } : {}),
+        ...(dto.paidBy ? { paidBy: dto.paidBy } : {}),
+      },
+    });
+    if (count === 0) throw new ConflictException('Esta conta já foi paga.');
+    return this.prisma.cashTransaction.findUniqueOrThrow({ where: { id } });
+  }
+
+  /**
+   * Contas a pagar para o alerta do Dashboard: despesas PENDING que vencem até o fim do mês
+   * corrente (inclui as vencidas) e mecânicos com saldo de comissão em aberto.
+   */
+  async payables() {
+    const [y, m] = localDay(new Date()).split('-').map(Number);
+    // 1º dia do mês seguinte, 00:00 em Parauapebas (UTC−3, sem horário de verão)
+    const nextMonth = new Date(Date.UTC(y, m, 1, 3));
+    const [rows, balances] = await Promise.all([
+      this.prisma.cashTransaction.findMany({
+        where: { type: TransactionType.EXPENSE, status: TransactionStatus.PENDING, dueDate: { lt: nextMonth } },
+        orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+        include: { beneficiary: { select: { id: true, name: true } } },
+      }),
+      this.mechanicBalances(),
+    ]);
+    return {
+      today: localDay(new Date()),
+      expenses: rows.map((e) => ({
+        id: e.id,
+        description: e.description ?? '',
+        category: e.category,
+        categoryLabel: EXPENSE_CATEGORIES[e.category] ?? e.category,
+        amount: money(D(e.amount)),
+        dueDate: e.dueDate ? localDay(e.dueDate) : null,
+        paymentMethod: e.paymentMethod,
+        paidBy: e.paidBy ?? 'CAIXA',
+        beneficiaryId: e.beneficiaryId,
+        beneficiary: e.beneficiary?.name ?? null,
+        notes: e.notes,
+      })),
+      commissions: balances.filter((b) => b.balance > 0).sort((a, b) => b.balance - a.balance),
+    };
   }
 
   // ==========================================

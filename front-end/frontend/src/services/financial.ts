@@ -74,6 +74,9 @@ export interface MechanicRow {
 
 export interface ExpenseRow {
   id: string;
+  /** Contas a pagar: PENDING com vencimento (dueDate); despesas pagas: PAID */
+  status?: 'PAID' | 'PENDING';
+  dueDate?: string | null;
   date: string | null;
   paidAt: string | null;
   description: string;
@@ -189,3 +192,34 @@ export interface CommissionStatement {
   total: number;
   balance: { mechanicId: string; name: string; commission: number; paid: number; balance: number };
 }
+
+/** Item de conta a pagar (GET /financial/payables). */
+export interface PayableExpense {
+  id: string;
+  description: string;
+  category: string;
+  categoryLabel: string;
+  amount: number;
+  dueDate: string | null;
+  paymentMethod: string;
+  paidBy: 'CAIXA' | 'SOCIO';
+  beneficiaryId: string | null;
+  beneficiary: string | null;
+  notes: string | null;
+}
+
+export interface Payables {
+  /** Hoje na oficina (AAAA-MM-DD, America/Belem) */
+  today: string;
+  expenses: PayableExpense[];
+  commissions: { mechanicId: string; name: string; commission: number; paid: number; balance: number }[];
+}
+
+/** Converte a conta a pagar no formato de linha usado pelo modal de despesa. */
+export const payableToRow = (p: PayableExpense): ExpenseRow => ({
+  ...p,
+  status: 'PENDING',
+  date: null,
+  paidAt: null,
+  payment: '',
+});

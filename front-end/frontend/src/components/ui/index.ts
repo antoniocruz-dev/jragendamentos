@@ -7,3 +7,4 @@ export { Modal } from './Modal';
 export { StatusProgress } from './StatusProgress';
 export { LightSkeleton, LightError, EmptyState, InlineError } from './Feedback';
 export { BrandMark, BrandName } from './Brand';
+export { Fireworks } from './Fireworks';
