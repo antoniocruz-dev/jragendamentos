@@ -145,9 +145,9 @@ export default function WorkOrderDetailPage() {
       const data = await fetchApi<WorkOrderDetail>(`/work-orders/${osId}`);
       setOrder(data);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Erro ao carregar OS:', err);
-      setError(err?.message || 'Falha ao buscar os dados da Ordem de Serviço.');
+      setError(errMsg(err) || 'Falha ao buscar os dados da Ordem de Serviço.');
     } finally {
       setLoading(false);
     }
@@ -169,10 +169,10 @@ export default function WorkOrderDetailPage() {
       });
 
       await loadOrderDetails();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setActionMessage({
         type: 'error',
-        text: err?.message || 'Erro ao atualizar status da Ordem de Serviço.',
+        text: errMsg(err) || 'Erro ao atualizar status da Ordem de Serviço.',
       });
     } finally {
       setActionLoading(false);
@@ -274,7 +274,7 @@ export default function WorkOrderDetailPage() {
     } catch (err) {
       setActionMessage({
         type: 'error',
-        text: err instanceof Error ? err.message : 'Erro ao registrar a decisão sobre o orçamento.',
+        text: err instanceof Error ? errMsg(err) : 'Erro ao registrar a decisão sobre o orçamento.',
       });
     } finally {
       setActionLoading(false);
@@ -293,10 +293,10 @@ export default function WorkOrderDetailPage() {
       });
 
       setPixData(res.pix);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setActionMessage({
         type: 'error',
-        text: err?.message || 'Erro ao gerar Pix no Mercado Pago.',
+        text: errMsg(err) || 'Erro ao gerar Pix no Mercado Pago.',
       });
     } finally {
       setGeneratingPix(false);

@@ -1,0 +1,31 @@
+# Business Rules & Domain Knowledge
+
+Rules the code must never violate. The "Known gaps" section lists where the current code
+still diverges from them; do not "fix" those silently, they are tracked as separate work.
+
+## Work order (O.S.) flow
+
+- Status flow: DRAFT → QUOTE → APPROVED → IN_PROGRESS ⇄ WAITING_PARTS / TESTING → COMPLETED → BILLED. BILLED and CANCELLED are final.
+  Valid transitions: `allowedTransitions` in `src/work-orders/work-orders.service.ts`.
+- **Only the client approves a quote, through the client portal.** Staff never approve on the client's behalf.
+- Stock is deducted only at approval. Missing parts send the O.S. to WAITING_PARTS.
+- Cancelling requires a reason. Cancelling a BILLED O.S. is Administrator-only with explicit confirmation; cash and stock are NOT reverted automatically (a manual refund pendency is created for audit).
+
+## Financial and fiscal
+
+- **Discount applies only to products (parts).** It never reduces labor, ISS base, or mechanic commission.
+- Per billed O.S.: parts sale = parts total − discount; labor = services total; total billed = parts sale + labor; gross profit = billed − parts cost.
+- ISS = labor × ISS rate (parts are outside the ISS base, they fall under ICMS). Commission = labor × the responsible mechanic's rate.
+- **O.S. result = gross profit − ISS − commission.**
+- Values must be exact: `Prisma.Decimal` only, rounded to cents (half up) per O.S. and only then summed. Values are frozen at billing; later edits to rates or costs never rewrite billed O.S.s.
+- The system does NOT issue fiscal documents (no NFS-e/NF-e); it only calculates taxes for control.
+- Tax regime (SIMPLES_NACIONAL, LUCRO_PRESUMIDO, LUCRO_REAL, MEI) is set in the fiscal settings and must follow current Brazilian legislation. Never hardcode a rate or invent one: ISS is municipal (shop is in Parauapebas, PA; LC 116/2003 allows 2%-5%), Simples Nacional collects ISS inside the DAS, MEI pays a fixed amount. Rates are configurable and must be confirmed with the shop's accountant.
+
+## Payments
+
+- Payment is via Mercado Pago PIX (migrating to Nubank) or recorded manually. Receiving payment moves the O.S. to BILLED and posts the cash entry in one transaction.
+
+## Known gaps between rules and code (pending fixes)
+
+1. Staff profiles (Administrador, Gerente Geral, Auxiliar Administrativo) can still approve quotes: `PATCH /work-orders/:id/approve` and the status update path (`src/work-orders/work-orders.service.ts`, `APPROVER_PROFILES`). Should be client-only via the portal.
+2. The discount is applied to the whole O.S. and split between parts and labor (`computeOrder` in `src/financial/financial-calc.ts`, also the create/update validation in the work-orders service). Should apply to parts only.

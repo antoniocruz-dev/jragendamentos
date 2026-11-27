@@ -19,6 +19,7 @@ import {
 import { fetchApi } from '@/services/api';
 import { isPrivilegedUser, useAuth } from '@/services/auth';
 import { MechanicSelect, useMechanics } from '@/components/mechanic/MechanicSelect';
+import { errorMessage as errMsg } from '@/components/crud';
 
 interface VehicleFound {
   id: string;
@@ -103,8 +104,8 @@ export default function NewWorkOrderPage() {
       const cleanPlate = plateInput.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
       const data = await fetchApi<VehicleFound>(`/clients/vehicles/by-plate/${cleanPlate}`);
       setVehicle(data);
-    } catch (err: any) {
-      setSearchError(err.message || 'Veículo não encontrado para a placa informada.');
+    } catch (err: unknown) {
+      setSearchError(errMsg(err) || 'Veículo não encontrado para a placa informada.');
     } finally {
       setSearchingPlate(false);
     }
@@ -207,8 +208,8 @@ export default function NewWorkOrderPage() {
 
       // Redireciona para o detalhe da OS ou volta para a home
       router.push(`/os/${created.id}`);
-    } catch (err: any) {
-      setSubmitError(err.message || 'Erro ao abrir a Ordem de Serviço.');
+    } catch (err: unknown) {
+      setSubmitError(errMsg(err) || 'Erro ao abrir a Ordem de Serviço.');
     } finally {
       setSubmitting(false);
     }
