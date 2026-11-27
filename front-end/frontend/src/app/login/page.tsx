@@ -139,7 +139,82 @@ export default function LoginPage() {
 // CLIENTE: nome completo, e-mail e contato (sem senha)
 // ==========================================
 
+/** Marca no aparelho que o cliente já entrou uma vez: a tela abre direto em "Já tenho cadastro". */
+const CLIENT_KNOWN_KEY = 'jr_client_known';
+
+function clientIsKnown() {
+  try {
+    return window.localStorage.getItem(CLIENT_KNOWN_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function rememberClient() {
+  try {
+    window.localStorage.setItem(CLIENT_KNOWN_KEY, '1');
+  } catch {
+    /* navegador sem localStorage: só perde a sugestão da aba */
+  }
+}
+
+type ClientMode = 'PRIMEIRO' | 'RETORNO';
+
+/**
+ * Cliente: "Primeiro acesso" (nome, e-mail e contato; cria o cadastro, sem senha nem confirmação
+ * de e-mail) ou "Já tenho cadastro" (e-mail + 4 últimos dígitos do telefone cadastrado).
+ */
 function ClientEntryForm() {
+  // O formulário só aparece depois de consultar a API (já no navegador), como initialTab()
+  const [mode, setMode] = useState<ClientMode>(() => (typeof window !== 'undefined' && clientIsKnown() ? 'RETORNO' : 'PRIMEIRO'));
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-lg font-extrabold">Agendamento</h2>
+        <p className="text-sm text-brand-steel">Agende serviços e acompanhe suas O.S. Não precisa de senha.</p>
+      </div>
+      <div role="radiogroup" aria-label="Tipo de acesso" className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-surface-muted">
+        {(
+          [
+            ['PRIMEIRO', 'Primeiro acesso'],
+            ['RETORNO', 'Já tenho cadastro'],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            role="radio"
+            aria-checked={mode === value}
+            onClick={() => setMode(value)}
+            className={`min-h-10 rounded-lg text-sm font-semibold transition-colors ${
+              mode === value ? 'bg-surface-white text-brand-ink shadow-sm' : 'text-brand-steel hover:text-brand-ink'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {mode === 'PRIMEIRO' ? <ClientFirstAccessForm /> : <ClientReturnForm />}
+    </div>
+  );
+}
+
+async function enterClientArea(path: string, body: object) {
+  const session = await fetchApi<AuthSession>(path, {
+    method: 'POST',
+    skipAuthRedirect: true,
+    successToast: false,
+    errorToast: false,
+    token: '',
+    body: JSON.stringify(body),
+  });
+  saveSession(session);
+  rememberClient();
+  window.location.assign(nextPath(session.user));
+}
+
+function ClientFirstAccessForm() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -159,16 +234,7 @@ function ClientEntryForm() {
     if (Object.keys(errs).length) return focusFirstInvalid(form);
     setSubmitting(true);
     try {
-      const session = await fetchApi<AuthSession>('/auth/client-entry', {
-        method: 'POST',
-        skipAuthRedirect: true,
-        successToast: false,
-        errorToast: false,
-        token: '',
-        body: JSON.stringify({ name: name.trim(), email: email.trim(), phone: phone.replace(/\D/g, '') }),
-      });
-      saveSession(session);
-      window.location.assign(nextPath(session.user));
+      await enterClientArea('/auth/client-entry', { name: name.trim(), email: email.trim(), phone: phone.replace(/\D/g, '') });
     } catch (err) {
       setError(errorMessage(err));
       setSubmitting(false);
@@ -177,10 +243,6 @@ function ClientEntryForm() {
 
   return (
     <form onSubmit={submit} className="space-y-4" noValidate>
-      <div>
-        <h2 className="text-lg font-extrabold">Agendamento</h2>
-        <p className="text-sm text-brand-steel">Informe seus dados para agendar serviços e acompanhar suas O.S. Não precisa de senha.</p>
-      </div>
       <Input label="Nome completo" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} error={errors.name} required />
       <Input label="E-mail" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} error={errors.email} required />
       <Input
@@ -197,9 +259,57 @@ function ClientEntryForm() {
       />
       <InlineError message={error} />
       <Button type="submit" block loading={submitting} icon={<CalendarCheck className="w-4 h-4" aria-hidden />} className="min-h-12">
+        Criar meu acesso
+      </Button>
+      <p className="text-xs text-center text-brand-steel">Já é cliente da oficina? Use o mesmo e-mail e telefone informados no atendimento.</p>
+    </form>
+  );
+}
+
+function ClientReturnForm() {
+  const [email, setEmail] = useState('');
+  const [last4, setLast4] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    setError(null);
+    const errs: Record<string, string> = {};
+    if (!isValidEmail(email)) errs.email = 'Informe um e-mail válido.';
+    if (!/^\d{4}$/.test(last4)) errs.last4 = 'Informe os 4 últimos dígitos do telefone cadastrado.';
+    setErrors(errs);
+    if (Object.keys(errs).length) return focusFirstInvalid(form);
+    setSubmitting(true);
+    try {
+      await enterClientArea('/auth/client-login', { email: email.trim(), phoneLast4: last4 });
+    } catch (err) {
+      setError(errorMessage(err));
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-4" noValidate>
+      <Input label="E-mail" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} error={errors.email} required />
+      <Input
+        label="4 últimos dígitos do telefone"
+        hint="Do telefone ou WhatsApp que você informou no cadastro"
+        inputMode="numeric"
+        autoComplete="off"
+        placeholder="0000"
+        maxLength={4}
+        value={last4}
+        onChange={(e) => setLast4(e.target.value.replace(/\D/g, '').slice(0, 4))}
+        error={errors.last4}
+        required
+      />
+      <InlineError message={error} />
+      <Button type="submit" block loading={submitting} icon={<LogIn className="w-4 h-4" aria-hidden />} className="min-h-12">
         Acessar meu painel
       </Button>
-      <p className="text-xs text-center text-brand-steel">Já é cliente? Use o mesmo e-mail e telefone informados na oficina.</p>
     </form>
   );
 }
