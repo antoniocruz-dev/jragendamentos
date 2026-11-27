@@ -18,9 +18,9 @@ export default function Footer() {
         
         {/* Identificação do Sistema */}
         <div className="flex items-center gap-2">
-          <span className="font-semibold text-brand-graphite">JR Agendamentos</span>
-          <span>•</span>
-          <span>Sistema Integrado de Gestão para Oficinas Mecânicas</span>
+          <span className="font-semibold text-brand-graphite">JR Garage Center</span>
+          <span>|</span>
+          <span>Todos os direitos reservados.</span>
         </div>
 
         {/* Assinatura Wolf */}
@@ -28,9 +28,14 @@ export default function Footer() {
           <Code2 className="w-4 h-4 text-neon-deep" />
           <span>
             Desenvolvido por{' '}
-            <strong className="text-brand-ink font-bold tracking-wide">
-              Wolf - Arquitetura e Desenvolvimento de Softwares
-            </strong>
+            <a
+              href="https://www.wolfsoftwares.com.br"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-brand-ink font-bold tracking-wide underline-offset-2 hover:underline hover:text-neon-deep"
+            >
+              Wolf Softwares
+            </a>
           </span>
           <ShieldCheck className="w-4 h-4 text-emerald-700" />
         </div>
