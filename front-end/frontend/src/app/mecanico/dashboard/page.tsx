@@ -1,16 +1,15 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { CheckCircle2, ClipboardList, Hourglass, Package, Wrench } from 'lucide-react';
+import { CheckCircle2, ClipboardList, Hourglass, Wrench } from 'lucide-react';
 import { fetchApi } from '@/services/api';
 import { AreaTitle } from '@/components/layout/AreaShell';
 import { Badge, Card, CardLink, EmptyState, LightError, LightSkeleton, fieldCls } from '@/components/ui';
-import { MECHANIC_LABEL, STATUS_INFO, brDate, brl, type MechanicStatus, type WorkOrderStatus } from '@/lib/os-status';
+import { MECHANIC_LABEL, STATUS_INFO, brDate, type MechanicStatus, type WorkOrderStatus } from '@/lib/os-status';
 
 interface Dashboard {
   month: string;
   counters: { queue: number; running: number; done: number };
-  closing: { total_parts: number; total_services: number; grand_total: number };
 }
 interface OsRow {
   id: string;
@@ -76,7 +75,7 @@ export default function MecanicoDashboard() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="font-extrabold">Fechamento do mês</h2>
-            <p className="text-xs text-brand-steel">Total das suas O.S concluídas no período</p>
+            <p className="text-xs text-brand-steel">Quantidade de O.S que você concluiu no período</p>
           </div>
           <label className="text-sm font-semibold">
             <span className="sr-only">Mês</span>
@@ -86,11 +85,11 @@ export default function MecanicoDashboard() {
         {!dash ? (
           <div className="mt-4 h-16 rounded-xl bg-brand-steel/10 animate-pulse" />
         ) : (
-          <dl className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-            <Total label="Total Peças" value={dash.closing.total_parts} icon={<Package className="w-4 h-4" aria-hidden />} />
-            <Total label="Total Serviços" value={dash.closing.total_services} icon={<Wrench className="w-4 h-4" aria-hidden />} />
-            <Total label="Total Geral" value={dash.closing.grand_total} strong />
-          </dl>
+          <p className="mt-4 flex items-center gap-2 text-sm">
+            <CheckCircle2 className="w-5 h-5 text-neon-deep" aria-hidden />
+            <span className="font-mono text-2xl font-extrabold">{dash.counters.done}</span>
+            <span className="text-brand-steel">{dash.counters.done === 1 ? 'O.S concluída' : 'O.S concluídas'}</span>
+          </p>
         )}
       </Card>
 
@@ -162,17 +161,5 @@ function Counter({ label, value, icon, highlight }: { label: string; value?: num
       <p className="mt-1 text-2xl sm:text-3xl font-extrabold tabular-nums">{value ?? '—'}</p>
       <p className="text-[11px] sm:text-xs font-semibold text-brand-steel leading-tight">{label}</p>
     </Card>
-  );
-}
-
-function Total({ label, value, icon, strong }: { label: string; value: number; icon?: React.ReactNode; strong?: boolean }) {
-  return (
-    <div className={`rounded-xl p-3 ${strong ? 'bg-brand-ink text-white' : 'bg-surface-offwhite'}`}>
-      <dt className={`text-xs font-semibold flex items-center gap-1.5 ${strong ? 'text-neon-soft' : 'text-brand-steel'}`}>
-        {icon}
-        {label}
-      </dt>
-      <dd className="text-xl font-extrabold tabular-nums">{brl(value)}</dd>
-    </div>
   );
 }
