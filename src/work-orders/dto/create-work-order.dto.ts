@@ -28,6 +28,11 @@ export class CreateWorkOrderItemDto {
   @IsInt()
   @Min(1)
   quantity: number;
+
+  /** Mecânico que executa este serviço (só SERVICE). Vazio: o responsável da OS. */
+  @IsOptional()
+  @IsUUID('all', { message: 'Mecânico do serviço inválido.' })
+  mechanicId?: string;
 }
 
 export class CreateWorkOrderDto {

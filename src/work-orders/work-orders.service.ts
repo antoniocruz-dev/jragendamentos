@@ -64,12 +64,20 @@ export class WorkOrdersService {
   /** Quem está criando ou alterando a OS (para as travas de perfil do mecânico responsável). */
   async create(dto: CreateWorkOrderDto, actor?: { id: string; name: string; role: string; profile: StaffProfile | null }) {
     const { clientId, vehicleId, reportedIssue, technicalNotes, items } = dto;
-    const operatorId = dto.operatorId || undefined;
-    // Só Administrador e Gerente Geral escolhem o mecânico na abertura
-    if (dto.operatorId !== undefined && dto.operatorId !== null && (!actor || !isPrivileged(actor))) {
-      throw new ForbiddenException('Só Administrador e Gerente Geral podem atribuir o mecânico responsável.');
+    const itemMechanics = [...new Set(items.map((i) => i.mechanicId).filter((id): id is string => !!id))];
+    // Só Administrador e Gerente Geral escolhem mecânicos na abertura (responsável e de cada serviço)
+    const assigning = (dto.operatorId !== undefined && dto.operatorId !== null) || itemMechanics.length > 0;
+    if (assigning && (!actor || !isPrivileged(actor))) {
+      throw new ForbiddenException('Só Administrador e Gerente Geral podem atribuir mecânicos à OS.');
     }
-    if (operatorId) await this.assertActiveMechanic(this.prisma, operatorId);
+    if (items.some((i) => i.mechanicId && i.itemType !== WorkOrderItemType.SERVICE)) {
+      throw new BadRequestException('Só serviços recebem mecânico; peças não.');
+    }
+    // Sem responsável escolhido, o mecânico do 1º serviço assume a OS (Área do Mecânico e faturamento)
+    const operatorId = dto.operatorId || items.find((i) => i.itemType === WorkOrderItemType.SERVICE && i.mechanicId)?.mechanicId || undefined;
+    for (const id of new Set([...(operatorId ? [operatorId] : []), ...itemMechanics])) {
+      await this.assertActiveMechanic(this.prisma, id);
+    }
     const initialStatus = dto.status === 'DRAFT' ? WorkOrderStatus.DRAFT : WorkOrderStatus.QUOTE;
 
     // 1. Validar integridade Cliente x Veículo
@@ -98,6 +106,7 @@ export class WorkOrdersService {
         itemType: WorkOrderItemType;
         serviceId?: string;
         productId?: string;
+        mechanicId?: string;
         quantity: number;
         unitPrice: Prisma.Decimal;
         totalPrice: Prisma.Decimal;
@@ -124,6 +133,8 @@ export class WorkOrdersService {
           itemsToCreate.push({
             itemType: WorkOrderItemType.SERVICE,
             serviceId: service.id,
+            // Escolha explícita fica gravada (trocar o responsável depois não mexe neste serviço)
+            mechanicId: item.mechanicId || undefined,
             quantity: item.quantity,
             unitPrice: service.basePrice,
             totalPrice: itemTotal,
@@ -195,6 +206,7 @@ export class WorkOrdersService {
             include: {
               service: { select: { id: true, name: true } },
               product: { select: { id: true, sku: true, name: true } },
+              mechanic: { select: { id: true, name: true } },
             },
           },
         },
@@ -246,6 +258,7 @@ export class WorkOrdersService {
             totalPrice: true,
             service: { select: { id: true, name: true, description: true } },
             product: { select: { id: true, name: true, sku: true } },
+            mechanic: { select: { id: true, name: true } },
           },
         },
         transactions: {
@@ -279,10 +292,13 @@ export class WorkOrdersService {
     const searchWhere: Prisma.WorkOrderWhereInput = or.length ? { OR: or } : {};
     // Filtro por mecânico: id do mecânico ou "none" (sem mecânico). Combina com a busca e o status.
     const op = filters.operatorId?.trim();
-    if (op === 'none') searchWhere.operatorId = null;
-    else if (op) {
+    if (op === 'none') {
+      searchWhere.operatorId = null;
+      searchWhere.items = { none: { mechanicId: { not: null } } };
+    } else if (op) {
       if (!/^[0-9a-f-]{36}$/i.test(op)) throw new BadRequestException('Mecânico inválido no filtro.');
-      searchWhere.operatorId = op;
+      // Responsável da OS ou mecânico de algum serviço
+      searchWhere.AND = [{ OR: [{ operatorId: op }, { items: { some: { mechanicId: op } } }] }];
     }
 
     const status = filters.status && filters.status in WorkOrderStatus ? (filters.status as WorkOrderStatus) : undefined;

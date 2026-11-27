@@ -31,7 +31,8 @@ interface MechanicOs {
   finishedAt: string | null;
   client: { name: string };
   vehicle: { licensePlate: string; brand: string; model: string; year: number; color: string | null; currentKm: number };
-  items: { id: string; itemType: 'SERVICE' | 'PRODUCT'; quantity: number; service: { name: string; estimatedMinutes: number } | null; product: { name: string; sku: string } | null }[];
+  operator?: { id: string; name: string } | null;
+  items: { id: string; itemType: 'SERVICE' | 'PRODUCT'; quantity: number; service: { name: string; estimatedMinutes: number } | null; mechanic?: { id: string; name: string } | null; product: { name: string; sku: string } | null }[];
   observations: Observation[];
 }
 
@@ -171,7 +172,9 @@ export default function MecanicoOsPage() {
                       <span className="block font-semibold break-words">{it.service?.name ?? it.product?.name}</span>
                       <span className="text-xs text-brand-steel">
                         {it.itemType === 'SERVICE'
-                          ? `Serviço · ~${it.service?.estimatedMinutes ?? 60} min`
+                          ? `Serviço · ~${it.service?.estimatedMinutes ?? 60} min${
+                              (it.mechanic ?? os.operator) ? ` · ${(it.mechanic ?? os.operator)!.name}` : ''
+                            }`
                           : `Peça · SKU ${it.product?.sku}`}
                       </span>
                     </span>

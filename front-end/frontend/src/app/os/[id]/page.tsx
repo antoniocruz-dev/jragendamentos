@@ -71,6 +71,8 @@ interface WorkOrderDetail {
     totalPrice: string;
     service?: { id: string; name: string };
     product?: { id: string; name: string; sku: string };
+    /** Mecânico do serviço (vazio: o responsável da OS) */
+    mechanic?: { id: string; name: string } | null;
   }>;
   transactions?: Array<{
     id: string;
@@ -609,6 +611,11 @@ export default function WorkOrderDetailPage() {
                       </td>
                       <td className="py-3.5 px-4 font-medium text-brand-ink">
                         {it.service?.name || it.product?.name || 'Item'}
+                        {it.itemType === 'SERVICE' && (it.mechanic ?? order.operator) && (
+                          <span className="block text-xs font-normal text-brand-graphite">
+                            Mecânico: {(it.mechanic ?? order.operator)!.name}
+                          </span>
+                        )}
                         {it.product?.sku && (
                           <span className="block text-[11px] font-mono text-brand-graphite">
                             SKU: {it.product.sku}

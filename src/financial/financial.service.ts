@@ -94,6 +94,14 @@ function totalsOut(t: Totals) {
   >;
 }
 
+/** OS em que o mecânico participa: responsável da OS ou mecânico de algum serviço. */
+export function involvesMechanic(mechanicId: string): Prisma.WorkOrderWhereInput {
+  return { OR: [{ operatorId: mechanicId }, { items: { some: { mechanicId } } }] };
+}
+
+/** Campos dos itens que o cálculo da OS (computeOrder) precisa, incluindo o mecânico de cada serviço. */
+const CALC_ITEM_SELECT = { itemType: true, quantity: true, unitCost: true, totalPrice: true, mechanicId: true } as const;
+
 @Injectable()
 export class FinancialService {
   constructor(private readonly prisma: PrismaService) {}
@@ -127,7 +135,13 @@ export class FinancialService {
       AND: [REVENUE_ORDERS],
       billedAt: { gte: from, lte: to },
     };
-    if (filters.mechanicId) where.operatorId = filters.mechanicId === 'none' ? null : filters.mechanicId;
+    // Mecânico: OS em que ele é o responsável ou executa algum serviço
+    if (filters.mechanicId === 'none') {
+      where.operatorId = null;
+      where.items = { none: { mechanicId: { not: null } } };
+    } else if (filters.mechanicId) {
+      (where.AND as Prisma.WorkOrderWhereInput[]).push(involvesMechanic(filters.mechanicId));
+    }
     if (filters.paymentMethod) where.paymentMethod = filters.paymentMethod as Prisma.EnumPaymentMethodNullableFilter['equals'];
     if (filters.q?.trim()) {
       const q = filters.q.trim();
@@ -151,11 +165,9 @@ export class FinancialService {
           operator: { select: { id: true, name: true } },
           items: {
             select: {
-              itemType: true,
-              quantity: true,
-              unitCost: true,
+              ...CALC_ITEM_SELECT,
               unitPrice: true,
-              totalPrice: true,
+              mechanic: { select: { id: true, name: true } },
               service: { select: { name: true } },
               product: { select: { name: true, sku: true } },
             },
@@ -184,7 +196,7 @@ export class FinancialService {
         totalProducts: o.totalProducts,
         discount: o.discount,
         issRate: o.issRate,
-        hasMechanic: !!o.operatorId,
+        operatorId: o.operatorId,
         items: o.items,
       });
       addTo(summary, f);
@@ -194,24 +206,48 @@ export class FinancialService {
       if (!periods.has(p.key)) periods.set(p.key, { ...p, totals: emptyTotals(), expenses: ZERO });
       addTo(periods.get(p.key)!.totals, f);
 
-      const services = o.items.filter((i) => i.itemType === 'SERVICE').map((i) => i.service?.name).filter(Boolean).join(', ');
-      const mKey = o.operator?.id ?? 'none';
-      if (!mechanics.has(mKey)) {
-        mechanics.set(mKey, { id: o.operator?.id ?? null, name: o.operator?.name ?? 'Sem mecânico', rates: new Set(), totals: emptyTotals(), paid: ZERO, orders: [] });
+      const serviceItems = o.items.filter((i) => i.itemType === 'SERVICE');
+      const services = serviceItems.map((i) => i.service?.name).filter(Boolean).join(', ');
+      const names = new Map<string, string>();
+      if (o.operator) names.set(o.operator.id, o.operator.name);
+      for (const i of serviceItems) if (i.mechanic) names.set(i.mechanic.id, i.mechanic.name);
+
+      // Produção por mecânico: cada um com a mão de obra e a comissão dos serviços dele
+      const shares: { id: string | null; labor: Dec; commission: Dec }[] = f.byMechanic.map((s) => ({
+        id: s.mechanicId,
+        labor: s.labor,
+        commission: s.commission,
+      }));
+      const unassigned = f.labor.sub(shares.reduce((acc, s) => acc.add(s.labor), ZERO));
+      if (unassigned.gt(0)) shares.push({ id: null, labor: unassigned, commission: ZERO });
+      for (const s of shares) {
+        if (filters.mechanicId && filters.mechanicId !== (s.id ?? 'none')) continue;
+        const mKey = s.id ?? 'none';
+        if (!mechanics.has(mKey)) {
+          mechanics.set(mKey, { id: s.id, name: s.id ? (names.get(s.id) ?? 'Mecânico') : 'Sem mecânico', rates: new Set(), totals: emptyTotals(), paid: ZERO, orders: [] });
+        }
+        const m = mechanics.get(mKey)!;
+        m.totals.orders += 1;
+        m.totals.labor = m.totals.labor.add(s.labor);
+        m.totals.commission = m.totals.commission.add(s.commission);
+        const rate = s.id ? f.commissionRate : ZERO;
+        m.rates.add(rate.toFixed(2));
+        m.orders.push({
+          id: o.id,
+          code: o.code,
+          date: localDay(billedAt),
+          vehicle: `${o.vehicle.model} ${o.vehicle.year} / ${o.vehicle.licensePlate}`,
+          services: serviceItems
+            .filter((i) => (i.mechanicId || o.operatorId || null) === s.id)
+            .map((i) => i.service?.name)
+            .filter(Boolean)
+            .join(', '),
+          labor: money(s.labor),
+          commissionRate: Number(rate),
+          commission: money(s.commission),
+        });
       }
-      const m = mechanics.get(mKey)!;
-      addTo(m.totals, f);
-      m.rates.add(f.commissionRate.toFixed(2));
-      m.orders.push({
-        id: o.id,
-        code: o.code,
-        date: localDay(billedAt),
-        vehicle: `${o.vehicle.model} ${o.vehicle.year} / ${o.vehicle.licensePlate}`,
-        services,
-        labor: money(f.labor),
-        commissionRate: Number(f.commissionRate),
-        commission: money(f.commission),
-      });
+      const mechanicNames = [...new Set(f.byMechanic.map((s) => names.get(s.mechanicId) ?? 'Mecânico'))];
 
       return {
         id: o.id,
@@ -222,7 +258,7 @@ export class FinancialService {
         vehicle: `${o.vehicle.brand} ${o.vehicle.model} ${o.vehicle.year}`,
         plate: o.vehicle.licensePlate,
         services,
-        mechanic: o.operator?.name ?? 'Sem mecânico',
+        mechanic: mechanicNames.length ? mechanicNames.join(', ') : 'Sem mecânico',
         mechanicId: o.operator?.id ?? null,
         paymentMethod: o.paymentMethod,
         payment: paymentLabel(o.paymentMethod, o.installments),
@@ -356,14 +392,21 @@ export class FinancialService {
   async mechanicBalances(mechanicId?: string) {
     const [orders, payments] = await Promise.all([
       this.prisma.workOrder.findMany({
-        where: { AND: [REVENUE_ORDERS], operatorId: mechanicId ?? { not: null } },
+        where: {
+          AND: [
+            REVENUE_ORDERS,
+            mechanicId
+              ? involvesMechanic(mechanicId)
+              : { OR: [{ operatorId: { not: null } }, { items: { some: { mechanicId: { not: null } } } }] },
+          ],
+        },
         select: {
           operatorId: true,
           totalServices: true,
           totalProducts: true,
           discount: true,
           issRate: true,
-          items: { select: { itemType: true, quantity: true, unitCost: true } },
+          items: { select: CALC_ITEM_SELECT },
         },
       }),
       this.prisma.cashTransaction.groupBy({
@@ -384,8 +427,11 @@ export class FinancialService {
       return map.get(id)!;
     };
     for (const o of orders) {
-      const f = computeOrder({ ...o, hasMechanic: true });
-      entry(o.operatorId!).commission = entry(o.operatorId!).commission.add(f.commission);
+      // Cada mecânico soma a comissão dos serviços dele (50% de cada serviço)
+      for (const s of computeOrder(o).byMechanic) {
+        if (mechanicId && s.mechanicId !== mechanicId) continue;
+        entry(s.mechanicId).commission = entry(s.mechanicId).commission.add(s.commission);
+      }
     }
     for (const p of payments) {
       if (p.beneficiaryId) entry(p.beneficiaryId).paid = entry(p.beneficiaryId).paid.add(D(p._sum.amount));
@@ -430,8 +476,7 @@ export class FinancialService {
 
     const orders = await this.prisma.workOrder.findMany({
       where: {
-        AND: [REVENUE_ORDERS],
-        operatorId: mechanic.id,
+        AND: [REVENUE_ORDERS, involvesMechanic(mechanic.id)],
         ...(ids.length ? { id: { in: ids } } : { billedAt: { gte: from, lte: to } }),
       },
       orderBy: { billedAt: 'asc' },
@@ -439,33 +484,39 @@ export class FinancialService {
         id: true,
         code: true,
         billedAt: true,
+        operatorId: true,
         totalServices: true,
         totalProducts: true,
         discount: true,
         issRate: true,
         client: { select: { name: true } },
         vehicle: { select: { licensePlate: true, brand: true, model: true } },
-        items: { select: { itemType: true, quantity: true, unitCost: true } },
+        items: { select: CALC_ITEM_SELECT },
       },
     });
 
     let total = ZERO;
     let laborTotal = ZERO;
-    const rows = orders.map((o) => {
-      const f = computeOrder({ ...o, hasMechanic: true });
-      total = total.add(f.commission);
-      laborTotal = laborTotal.add(f.labor);
-      return {
-        id: o.id,
-        code: o.code,
-        billedAt: o.billedAt?.toISOString() ?? null,
-        date: o.billedAt ? localDay(o.billedAt) : null,
-        client: o.client.name,
-        vehicle: `${o.vehicle.brand} ${o.vehicle.model} · ${o.vehicle.licensePlate}`,
-        labor: money(f.labor),
-        commissionRate: Number(f.commissionRate),
-        commission: money(f.commission),
-      };
+    // Só a parte do mecânico em cada OS (os serviços dele); OS sem serviço dele fica de fora
+    const rows = orders.flatMap((o) => {
+      const f = computeOrder(o);
+      const share = f.byMechanic.find((s) => s.mechanicId === mechanic.id);
+      if (!share) return [];
+      total = total.add(share.commission);
+      laborTotal = laborTotal.add(share.labor);
+      return [
+        {
+          id: o.id,
+          code: o.code,
+          billedAt: o.billedAt?.toISOString() ?? null,
+          date: o.billedAt ? localDay(o.billedAt) : null,
+          client: o.client.name,
+          vehicle: `${o.vehicle.brand} ${o.vehicle.model} · ${o.vehicle.licensePlate}`,
+          labor: money(share.labor),
+          commissionRate: Number(f.commissionRate),
+          commission: money(share.commission),
+        },
+      ];
     });
     const [balance] = await this.mechanicBalances(mechanic.id);
     const settings = await this.getSettings();
@@ -492,7 +543,13 @@ export class FinancialService {
         client: { select: { name: true, phone: true, document: true } },
         vehicle: { select: { licensePlate: true, brand: true, model: true, year: true } },
         operator: { select: { name: true } },
-        items: { include: { service: { select: { name: true } }, product: { select: { name: true, sku: true } } } },
+        items: {
+          include: {
+            service: { select: { name: true } },
+            product: { select: { name: true, sku: true } },
+            mechanic: { select: { name: true } },
+          },
+        },
       },
     });
     if (!o) throw new NotFoundException('Ordem de Serviço não encontrada.');
@@ -504,9 +561,10 @@ export class FinancialService {
       totalProducts: o.totalProducts,
       discount: o.discount,
       issRate: o.issRate ?? settings.issRate,
-      hasMechanic: !!o.operatorId,
+      operatorId: o.operatorId,
       items: o.items,
     });
+    const { byMechanic: _byMechanic, ...totals } = f;
 
     return {
       id: o.id,
@@ -518,12 +576,20 @@ export class FinancialService {
       client: o.client.name,
       vehicle: `${o.vehicle.brand} ${o.vehicle.model} ${o.vehicle.year}`,
       plate: o.vehicle.licensePlate,
-      mechanic: o.operator?.name ?? 'Sem mecânico',
+      mechanic:
+        [...new Set(f.byMechanic.map((s) => o.items.find((i) => i.mechanicId === s.mechanicId)?.mechanic?.name ?? o.operator?.name))]
+          .filter(Boolean)
+          .join(', ') || 'Sem mecânico',
       reportedIssue: o.reportedIssue,
       technicalNotes: o.technicalNotes,
       services: o.items
         .filter((i) => i.itemType === 'SERVICE')
-        .map((i) => ({ description: i.service?.name ?? 'Serviço', quantity: i.quantity, total: money(D(i.totalPrice)) })),
+        .map((i) => ({
+          description: i.service?.name ?? 'Serviço',
+          mechanic: i.mechanic?.name ?? o.operator?.name ?? null,
+          quantity: i.quantity,
+          total: money(D(i.totalPrice)),
+        })),
       parts: o.items
         .filter((i) => i.itemType === 'PRODUCT')
         .map((i) => ({
@@ -534,7 +600,7 @@ export class FinancialService {
           cost: money(D(i.unitCost).mul(i.quantity)),
           sale: money(D(i.totalPrice)),
         })),
-      totals: Object.fromEntries(Object.entries(f).map(([k, v]) => [k, money(v as Dec)])),
+      totals: Object.fromEntries(Object.entries(totals).map(([k, v]) => [k, money(v)])),
       settings,
     };
   }

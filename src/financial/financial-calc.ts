@@ -14,7 +14,8 @@ import { Prisma } from '@prisma/client';
  * - Total faturado            = venda de peças + mão de obra  (= valor final da OS)
  * - Lucro bruto da oficina    = lucro das peças + mão de obra (= total faturado − custo das peças)
  * - ISS                       = mão de obra × alíquota de ISS da OS (peças: ICMS, fora da base do ISS)
- * - Comissão do mecânico      = mão de obra × 50% (fixa para todos: COMMISSION_RATE)
+ * - Comissão do mecânico      = 50% do valor de cada serviço, para o mecânico daquele serviço
+ *                               (serviço sem mecânico próprio: responsável da OS). COMMISSION_RATE.
  * - Resultado da OS           = lucro bruto − ISS − comissão
  *
  * Todos os valores são arredondados a centavos (meio para cima) por OS e só depois somados,
@@ -36,8 +37,60 @@ export interface OrderInput {
   totalProducts: Prisma.Decimal.Value;
   discount: Prisma.Decimal.Value;
   issRate: Prisma.Decimal.Value | null;
-  hasMechanic: boolean;
-  items: { itemType: string; quantity: number; unitCost: Prisma.Decimal.Value }[];
+  /** Mecânico responsável da OS: recebe a comissão dos serviços sem mecânico próprio. */
+  operatorId: string | null;
+  items: {
+    itemType: string;
+    quantity: number;
+    unitCost: Prisma.Decimal.Value;
+    totalPrice?: Prisma.Decimal.Value;
+    mechanicId?: string | null;
+  }[];
+}
+
+/** Parte de um mecânico na OS: mão de obra dos serviços dele e a comissão (50% dela). */
+export interface MechanicShare {
+  mechanicId: string;
+  labor: Dec;
+  commission: Dec;
+}
+
+/**
+ * Mão de obra por mecânico: cada serviço vai para o seu mecânico (ou para o responsável da OS).
+ * Serviço sem mecânico e OS sem responsável: fica sem comissão. No caso legado de desconto maior
+ * que as peças, o excedente (laborDiscount) reduz a parte de cada mecânico na proporção dos seus
+ * serviços; o resto do arredondamento fica com a maior parte, para a soma fechar com a mão de obra.
+ */
+function laborByMechanic(o: OrderInput, grossServices: Dec, labor: Dec): Map<string, Dec> {
+  const gross = new Map<string, Dec>();
+  const services = o.items.filter((i) => i.itemType === 'SERVICE');
+  const hasItemPrices = services.length > 0 && services.every((i) => i.totalPrice !== undefined);
+  if (!hasItemPrices) {
+    // Sem os valores por item: a OS inteira é do responsável (comportamento de antes)
+    if (o.operatorId && grossServices.gt(0)) gross.set(o.operatorId, grossServices);
+  } else {
+    for (const i of services) {
+      const who = i.mechanicId || o.operatorId;
+      if (!who) continue;
+      gross.set(who, (gross.get(who) ?? ZERO).add(D(i.totalPrice)));
+    }
+  }
+  if (labor.eq(grossServices) || grossServices.isZero()) return gross;
+
+  const result = new Map<string, Dec>();
+  let assigned = ZERO;
+  let target = ZERO;
+  let biggest: string | null = null;
+  for (const [id, g] of gross) {
+    const share = round2(g.mul(labor).div(grossServices));
+    result.set(id, share);
+    assigned = assigned.add(share);
+    target = target.add(g);
+    if (!biggest || g.gt(gross.get(biggest)!)) biggest = id;
+  }
+  const expected = round2(target.mul(labor).div(grossServices));
+  if (biggest && !assigned.eq(expected)) result.set(biggest, result.get(biggest)!.add(expected.sub(assigned)));
+  return result;
 }
 
 export interface OrderFinancials {
@@ -57,6 +110,8 @@ export interface OrderFinancials {
   commissionRate: Dec;
   commission: Dec;
   netResult: Dec;
+  /** Mão de obra e comissão de cada mecânico da OS (a soma é a comissão da OS). */
+  byMechanic: MechanicShare[];
 }
 
 export function computeOrder(o: OrderInput): OrderFinancials {
@@ -81,8 +136,14 @@ export function computeOrder(o: OrderInput): OrderFinancials {
 
   const issRate = D(o.issRate);
   const iss = pct(labor, issRate);
-  const commissionRate = o.hasMechanic ? COMMISSION_RATE : ZERO;
-  const commission = pct(labor, commissionRate);
+  // Comissão: 50% do valor de cada serviço para o mecânico daquele serviço (arredondada por mecânico)
+  const byMechanic: MechanicShare[] = [...laborByMechanic(o, grossServices, labor)].map(([mechanicId, l]) => ({
+    mechanicId,
+    labor: l,
+    commission: pct(l, COMMISSION_RATE),
+  }));
+  const commissionRate = byMechanic.length ? COMMISSION_RATE : ZERO;
+  const commission = byMechanic.reduce((acc, m) => acc.add(m.commission), ZERO);
   const netResult = grossProfit.sub(iss).sub(commission);
 
   return {
@@ -102,6 +163,7 @@ export function computeOrder(o: OrderInput): OrderFinancials {
     commissionRate,
     commission,
     netResult,
+    byMechanic,
   };
 }
 

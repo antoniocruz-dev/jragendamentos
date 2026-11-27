@@ -88,7 +88,8 @@ export class MechanicService {
    */
   async dashboard(user: AuthenticatedUser, month?: string) {
     const { start, end, label } = monthRange(month);
-    const own: Prisma.WorkOrderWhereInput = { operatorId: user.id };
+    // OS do mecânico: é o responsável ou executa algum serviço dela
+    const own = mineWhere(user.id);
     const closedInMonth: Prisma.WorkOrderWhereInput = {
       ...own,
       status: { in: [WorkOrderStatus.COMPLETED, WorkOrderStatus.BILLED] },
@@ -107,7 +108,7 @@ export class MechanicService {
 
   async list(user: AuthenticatedUser) {
     const rows = await this.prisma.workOrder.findMany({
-      where: { operatorId: user.id, status: { in: VISIBLE } },
+      where: { ...mineWhere(user.id), status: { in: VISIBLE } },
       orderBy: [{ updatedAt: 'desc' }],
       take: 100,
       select: {
@@ -149,6 +150,7 @@ export class MechanicService {
             itemType: true,
             quantity: true,
             service: { select: { name: true, estimatedMinutes: true } },
+            mechanic: { select: { id: true, name: true } },
             product: { select: { name: true, sku: true } },
           },
         },
@@ -246,9 +248,12 @@ export class MechanicService {
 
   /** Mecânico: só a própria OS (403). Privilegiados: qualquer OS visível. */
   private async assertAccess(user: AuthenticatedUser, id: string) {
-    const wo = await this.prisma.workOrder.findUnique({ where: { id }, select: { operatorId: true, status: true } });
+    const wo = await this.prisma.workOrder.findUnique({
+      where: { id },
+      select: { operatorId: true, status: true, items: { where: { mechanicId: user.id }, select: { id: true }, take: 1 } },
+    });
     if (!wo || !VISIBLE.includes(wo.status)) throw new NotFoundException('Ordem de Serviço não encontrada.');
-    if (!isPrivileged(user) && wo.operatorId !== user.id) {
+    if (!isPrivileged(user) && wo.operatorId !== user.id && wo.items.length === 0) {
       throw new ForbiddenException('Esta OS está atribuída a outro mecânico.');
     }
   }
@@ -272,4 +277,9 @@ function monthRange(month?: string) {
   const nm = m === 12 ? 1 : m + 1;
   const end = new Date(`${ny}-${pad(nm)}-01T00:00:00-03:00`);
   return { start, end, label: `${y}-${pad(m)}` };
+}
+
+/** OS em que o mecânico participa: responsável ou mecânico de algum serviço. */
+function mineWhere(userId: string): Prisma.WorkOrderWhereInput {
+  return { OR: [{ operatorId: userId }, { items: { some: { mechanicId: userId } } }] };
 }
