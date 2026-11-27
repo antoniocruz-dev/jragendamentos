@@ -28,7 +28,8 @@ function nextPath(user: AuthSession['user']) {
   const safe = next && next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/login') ? next : null;
   if (isClientUser(user)) return safe && safe.startsWith('/cliente') ? safe : CLIENT_HOME;
   if (isMechanicUser(user)) return safe && safe.startsWith('/mecanico/') ? safe : MECHANIC_HOME;
-  return safe && !/^\/(cliente|mecanico|portal)(\/|$)/.test(safe) ? safe : '/';
+  // Equipe sempre entra pelo Início (Dashboard); quem não tem esse módulo é levado pelo AuthGate à primeira tela permitida
+  return '/';
 }
 
 /** Leva o foco ao primeiro campo com erro (quem usa teclado ou leitor de tela não precisa procurar). */
