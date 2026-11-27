@@ -14,9 +14,10 @@ export function errorMessage(err: unknown) {
 
 /**
  * Modal de cadastro. Usabilidade:
- * - Esc fecha, a rolagem da página fica travada e o foco vai para o primeiro campo (e volta ao fechar);
- * - se algum campo foi alterado, o clique no fundo é ignorado e o Esc/Fechar pede confirmação
- *   (evita perder o que foi digitado).
+ * - só fecha pelo botão Fechar (X) ou pelas ações do próprio formulário: clique no fundo e Esc
+ *   não fecham, para não perder por engano o que foi digitado;
+ * - se algum campo foi alterado, o Fechar pede confirmação;
+ * - a rolagem da página fica travada e o foco vai para o primeiro campo na abertura (e volta ao fechar).
  */
 export function Modal({
   title,
@@ -32,18 +33,19 @@ export function Modal({
   const panel = useRef<HTMLDivElement>(null);
   const dirty = useRef(false);
   const titleId = useId();
+  // Os pais passam onClose como função inline (nova a cada render). Guardá-la num ref impede que o
+  // efeito de abertura rode de novo a cada tecla digitada, o que devolvia o foco ao primeiro campo.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
-  const requestClose = useCallback(
-    (fromBackdrop = false) => {
-      if (dirty.current) {
-        if (fromBackdrop) return;
-        if (!window.confirm('Há dados preenchidos que ainda não foram salvos. Fechar mesmo assim?')) return;
-      }
-      onClose();
-    },
-    [onClose],
-  );
+  const requestClose = useCallback(() => {
+    if (dirty.current && !window.confirm('Há dados preenchidos que ainda não foram salvos. Fechar mesmo assim?')) return;
+    onCloseRef.current();
+  }, []);
 
+  // Só na montagem: trava a rolagem, foca o primeiro campo e devolve o foco ao desmontar.
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
     const prevOverflow = document.body.style.overflow;
@@ -52,20 +54,14 @@ export function Modal({
       'input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled])',
     );
     (first ?? panel.current)?.focus({ preventScroll: true });
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && requestClose();
-    window.addEventListener('keydown', onKey);
     return () => {
       document.body.style.overflow = prevOverflow;
-      window.removeEventListener('keydown', onKey);
       previous?.focus?.();
     };
-  }, [requestClose]);
+  }, []);
 
   return (
-    <div
-      className="fixed inset-0 z-[80] bg-brand-ink/70 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4"
-      onMouseDown={(e) => e.target === e.currentTarget && requestClose(true)}
-    >
+    <div className="fixed inset-0 z-[80] bg-brand-ink/70 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4">
       <div
         ref={panel}
         role="dialog"

@@ -420,10 +420,9 @@ function NewUserModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[80] bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[80] bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4">
       <form
         onSubmit={handleSubmit}
-        onClick={(e) => e.stopPropagation()}
         className="w-full sm:max-w-lg max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto overscroll-contain bg-surface-white border border-line-soft rounded-t-2xl sm:rounded-2xl shadow-2xl pb-[env(safe-area-inset-bottom)] sm:pb-0"
       >
         <div className="sticky top-0 z-10 bg-surface-white flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-line-soft">
@@ -521,10 +520,9 @@ function EditUserModal({ user, onClose, onSaved }: { user: TeamUser; onClose: ()
   }
 
   return (
-    <div className="fixed inset-0 z-[80] bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[80] bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4">
       <form
         onSubmit={handleSubmit}
-        onClick={(e) => e.stopPropagation()}
         className="w-full sm:max-w-lg max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto overscroll-contain bg-surface-white border border-line-soft rounded-t-2xl sm:rounded-2xl shadow-2xl pb-[env(safe-area-inset-bottom)] sm:pb-0"
       >
         <div className="sticky top-0 z-10 bg-surface-white flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-line-soft">
