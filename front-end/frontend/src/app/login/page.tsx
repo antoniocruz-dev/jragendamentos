@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { CalendarCheck, HardHat, KeyRound, LogIn, ShieldPlus, User } from 'lucide-react';
 import { fetchApi } from '@/services/api';
+import { markPayablesAlert } from '@/lib/payables-alert';
 import { CLIENT_HOME, MECHANIC_HOME, isClientUser, isMechanicUser, saveSession, type AuthSession } from '@/services/auth';
 import { Button, InlineError, Input, Modal, PasswordInput, Tabs, isValidEmail } from '@/components/ui';
 
@@ -347,6 +348,7 @@ function StaffLoginForm({ onFirstAccess }: { onFirstAccess: () => void }) {
         body: JSON.stringify(byCode ? { accessCode: id, password, tab: 'EQUIPE' } : { email: id, password, tab: 'EQUIPE' }),
       });
       saveSession(session);
+      markPayablesAlert(); // alerta de contas a pagar no Dashboard (a cada login)
       window.location.assign(nextPath(session.user));
     } catch (err) {
       setError(errorMessage(err));

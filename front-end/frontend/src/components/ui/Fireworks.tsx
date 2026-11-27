@@ -59,22 +59,27 @@ export function Fireworks({ burstKey, onDone }: { burstKey: number; onDone?: () 
     const DURATION = 2500;
     const start = performance.now();
     let lastBurst = 0;
+    let lastFrame = start;
     let frame = 0;
     const tick = (now: number) => {
       const elapsed = now - start;
+      // Física por tempo (dt em "quadros de 60 Hz"): mesmo efeito em telas de 60/120 Hz ou máquinas lentas
+      const dt = Math.min((now - lastFrame) / 16.67, 4);
+      lastFrame = now;
       // Explosões a cada 220 ms nos primeiros 1,5 s
       if (elapsed < 1500 && now - lastBurst > 220) {
         burst();
         lastBurst = now;
       }
       ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      const drag = Math.pow(0.985, dt);
       for (const p of particles) {
-        p.vy += 0.06; // gravidade
-        p.vx *= 0.985;
-        p.vy *= 0.985;
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life -= 0.009;
+        p.vy += 0.06 * dt; // gravidade
+        p.vx *= drag;
+        p.vy *= drag;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.life -= 0.009 * dt;
         if (p.life <= 0) continue;
         ctx.globalAlpha = Math.max(p.life, 0);
         ctx.fillStyle = p.color;
