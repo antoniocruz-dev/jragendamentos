@@ -48,6 +48,8 @@ export function assertNameFree(
 /**
  * Recusa (409) telefone ou e-mail já usados por outro cliente.
  * Mesma comparação do "Primeiro acesso" do portal (src/auth/auth.service.ts): só dígitos, com ou sem 55.
+ * Campo vazio ou nulo não é checado (a edição de cliente passa nulo no que não mudou).
+ * Não trava nada sozinho: chame dentro da transação que vai gravar, depois das travas de contato.
  */
 export async function assertClientContactFree(
   tx: Prisma.TransactionClient,

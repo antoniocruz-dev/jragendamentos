@@ -48,7 +48,7 @@ src/                     NestJS modules: auth, clients, work-orders, appointment
 src/prisma/              schema.prisma, migrations, seed
 front-end/frontend/src/  app/ (routes), components/, services/ (api, auth), lib/
 openspec/                specs and change proposals
-scripts/                 seed-demo.mjs
+scripts/                 seed-demo.mjs, migrate-if-production.mjs (Vercel build), limpar-banco.mjs (one-off cleanup)
 ```
 
 # Workflow Rules
