@@ -26,6 +26,16 @@ still diverges from them; do not "fix" those silently, they are tracked as separ
 
 - Payment is via Mercado Pago PIX (migrating to Nubank) or recorded manually. Receiving payment moves the O.S. to BILLED and posts the cash entry in one transaction.
 
+## No duplicate records (global)
+
+- The system never accepts a duplicate record; the API answers 409 with a message in Portuguese and the screen shows it (error toast from `fetchApi`). Approved by the owner on 2026-11-27.
+- What counts as a duplicate (checks in `src/common/duplicates.ts` and in each service):
+  - Client: same CPF/CNPJ, same phone (digits only, with or without 55) or same e-mail (case-insensitive). The client portal "Primeiro acesso" links to the existing client instead of creating another.
+  - Vehicle: same license plate. Staff user: same e-mail.
+  - Service / part: same name ignoring accents, case and extra spaces (an inactive one also counts: reactivate it instead). Part: also same SKU.
+  - Appointment: any active appointment overlapping the same time slot.
+- On edit the check only runs when the field changes, so an old duplicate stays editable in its other fields.
+
 ## Known gaps between rules and code (pending fixes)
 
 1. Staff profiles (Administrador, Gerente Geral, Auxiliar Administrativo) can still approve quotes: `PATCH /work-orders/:id/approve` and the status update path (`src/work-orders/work-orders.service.ts`, `APPROVER_PROFILES`). Should be client-only via the portal.

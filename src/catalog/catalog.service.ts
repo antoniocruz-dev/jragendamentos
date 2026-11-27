@@ -1,6 +1,7 @@
-import { StaffProfile } from '@prisma/client';
+import { Prisma, StaffProfile } from '@prisma/client';
 import { ConflictException, Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { assertNameFree, comparableName, lockKey } from '../common/duplicates.js';
 import { CreateProductDto, CreateServiceDto, UpdateProductDto, UpdateServiceDto, StockAdjustmentDto } from './dto/catalog.dto.js';
 
 @Injectable()
@@ -18,12 +19,21 @@ export class CatalogService {
   }
 
   createService(dto: CreateServiceDto) {
-    return this.prisma.service.create({ data: dto });
+    return this.prisma.$transaction(async (tx) => {
+      await this.assertServiceNameFree(tx, dto.name);
+      return tx.service.create({ data: { ...dto, name: dto.name.trim() } });
+    });
   }
 
   async updateService(id: string, dto: UpdateServiceDto) {
-    await this.findService(id);
-    return this.prisma.service.update({ where: { id }, data: dto });
+    const current = await this.findService(id);
+    return this.prisma.$transaction(async (tx) => {
+      // Só checa quando o nome muda: um duplicado antigo continua editável (preço, tempo...)
+      if (dto.name !== undefined && comparableName(dto.name) !== comparableName(current.name)) {
+        await this.assertServiceNameFree(tx, dto.name, id);
+      }
+      return tx.service.update({ where: { id }, data: { ...dto, ...(dto.name !== undefined ? { name: dto.name.trim() } : {}) } });
+    });
   }
 
   async setServiceActive(id: string, isActive: boolean) {
@@ -56,15 +66,28 @@ export class CatalogService {
 
   async createProduct(dto: CreateProductDto) {
     await this.assertSkuFree(dto.sku);
-    return this.prisma.product.create({ data: { ...dto, sku: dto.sku.trim().toUpperCase() } });
+    return this.prisma.$transaction(async (tx) => {
+      await this.assertProductNameFree(tx, dto.name);
+      return tx.product.create({ data: { ...dto, name: dto.name.trim(), sku: dto.sku.trim().toUpperCase() } });
+    });
   }
 
   async updateProduct(id: string, dto: UpdateProductDto) {
-    await this.findProduct(id);
+    const current = await this.findProduct(id);
     if (dto.sku) await this.assertSkuFree(dto.sku, id);
-    return this.prisma.product.update({
-      where: { id },
-      data: { ...dto, ...(dto.sku ? { sku: dto.sku.trim().toUpperCase() } : {}) },
+    return this.prisma.$transaction(async (tx) => {
+      // Só checa quando o nome muda: um duplicado antigo continua editável (preço, estoque mínimo...)
+      if (dto.name !== undefined && comparableName(dto.name) !== comparableName(current.name)) {
+        await this.assertProductNameFree(tx, dto.name, id);
+      }
+      return tx.product.update({
+        where: { id },
+        data: {
+          ...dto,
+          ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
+          ...(dto.sku ? { sku: dto.sku.trim().toUpperCase() } : {}),
+        },
+      });
     });
   }
 
@@ -136,6 +159,19 @@ export class CatalogService {
     const product = await this.prisma.product.findUnique({ where: { id } });
     if (!product) throw new NotFoundException('Peça não encontrada.');
     return product;
+  }
+
+  // O catálogo é pequeno (dezenas de itens): comparar em memória permite ignorar acentos sem extensão no banco
+  private async assertServiceNameFree(tx: Prisma.TransactionClient, name: string, ignoreId?: string) {
+    await lockKey(tx, 'catalog:service-name');
+    const existing = await tx.service.findMany({ select: { id: true, name: true, isActive: true } });
+    assertNameFree(existing, name, ignoreId, 'serviço');
+  }
+
+  private async assertProductNameFree(tx: Prisma.TransactionClient, name: string, ignoreId?: string) {
+    await lockKey(tx, 'catalog:product-name');
+    const existing = await tx.product.findMany({ select: { id: true, name: true, isActive: true } });
+    assertNameFree(existing, name, ignoreId, 'peça');
   }
 
   private async assertSkuFree(sku: string, ignoreId?: string) {

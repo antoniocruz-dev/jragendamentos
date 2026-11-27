@@ -8,6 +8,8 @@ import * as bcrypt from 'bcrypt';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { parsePage, searchTerms, toPage } from '../common/pagination.js';
+import { assertClientContactFree, lockKey } from '../common/duplicates.js';
+import { normalizePhone } from '../common/roles.js';
 import { UpdateClientDto } from './dto/update-client.dto.js';
 import { CreateVehicleDto } from './dto/create-vehicle.dto.js';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto.js';
@@ -28,14 +30,26 @@ export class ClientsService {
     await this.assertDocumentFree(client.document);
     if (vehicle) await this.assertPlateFree(vehicle.licensePlate);
 
-    return this.prisma.client.create({
-      data: {
-        ...client,
-        email: client.email || null,
-        vehicles: vehicle ? { create: vehicle } : undefined,
-      },
-      include: { vehicles: true },
+    return this.prisma.$transaction(async (tx) => {
+      await this.lockContact(tx, client);
+      await assertClientContactFree(tx, client);
+      return tx.client.create({
+        data: {
+          ...client,
+          email: client.email || null,
+          vehicles: vehicle ? { create: vehicle } : undefined,
+        },
+        include: { vehicles: true },
+      });
     });
+  }
+
+  /** Mesmas travas do "Primeiro acesso" do portal: equipe e cliente não criam o mesmo cadastro ao mesmo tempo. */
+  private async lockContact(tx: Prisma.TransactionClient, contact: { phone?: string | null; email?: string | null }) {
+    const phone = normalizePhone(contact.phone);
+    if (phone) await lockKey(tx, 'client-entry:p:' + phone);
+    const email = contact.email?.trim().toLowerCase();
+    if (email) await lockKey(tx, 'client-entry:e:' + email);
   }
 
   /**
@@ -114,12 +128,20 @@ export class ClientsService {
   }
 
   async update(id: string, dto: UpdateClientDto) {
-    await this.findById(id);
+    const current = await this.findById(id);
     if (dto.document) await this.assertDocumentFree(dto.document, id);
 
-    return this.prisma.client.update({
-      where: { id },
-      data: { ...dto, ...(dto.email !== undefined ? { email: dto.email || null } : {}) },
+    return this.prisma.$transaction(async (tx) => {
+      // Só checa o que mudou: um duplicado antigo continua editável nos outros campos
+      const phoneChanged = dto.phone !== undefined && (normalizePhone(dto.phone) ?? dto.phone) !== (normalizePhone(current.phone) ?? current.phone);
+      const emailChanged = dto.email !== undefined && (dto.email ?? '').trim().toLowerCase() !== (current.email ?? '').toLowerCase();
+      const contact = { phone: phoneChanged ? dto.phone : null, email: emailChanged ? dto.email : null };
+      await this.lockContact(tx, contact);
+      await assertClientContactFree(tx, contact, id);
+      return tx.client.update({
+        where: { id },
+        data: { ...dto, ...(dto.email !== undefined ? { email: dto.email || null } : {}) },
+      });
     });
   }
 
