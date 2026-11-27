@@ -571,7 +571,7 @@ function MechanicsTab({ report, staff, meta, onChanged }: { report: FinancialRep
       </div>
       {report.mechanics.length === 0 && <Box>Nenhuma produção ou pagamento de comissão no período.</Box>}
       <p className="text-xs text-brand-steel">
-        Comissão sobre a mão de obra líquida de descontos, com a % de cada mecânico na data do faturamento (ajuste a % em Equipe → Editar).
+        Comissão fixa de 50% sobre a mão de obra (os descontos são só em peças e não reduzem a comissão).
         &quot;Pago no período&quot; soma as despesas da categoria &quot;Pagamento de comissão&quot;.
       </p>
       {report.mechanics.map((m) => (

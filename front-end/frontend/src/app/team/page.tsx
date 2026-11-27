@@ -204,7 +204,6 @@ function UsersTab() {
                   <th className="py-3 px-3 sm:px-5">Nome</th>
                   <th className="hidden md:table-cell py-3 px-3 sm:px-5">Contato</th>
                   <th className="hidden sm:table-cell py-3 px-3 sm:px-5">Perfil</th>
-                  <th className="hidden lg:table-cell py-3 px-3 sm:px-5">Comissão</th>
                   <th className="hidden md:table-cell py-3 px-3 sm:px-5">Situação</th>
                   <th className="py-3 px-3 sm:px-5 text-right">Ações</th>
                 </tr>
@@ -234,10 +233,7 @@ function UsersTab() {
                           </span>
                           {u.firstAccessPending && <span className="font-semibold text-orange-700">Aguardando primeiro acesso</span>}
                         </div>
-                        <div className="lg:hidden text-xs text-brand-steel">
-                          Comissão {Number(u.commissionRate).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%
-                          {!u.isActive && <span className="md:hidden"> · Inativo</span>}
-                        </div>
+                        {!u.isActive && <div className="md:hidden text-xs text-brand-steel">Inativo</div>}
                         <div className="sm:hidden mt-1.5">
                           {locked || isSelf ? (
                             <span className="text-xs text-brand-graphite">{u.profile ? PROFILE_LABELS[u.profile] : '—'}</span>
@@ -282,9 +278,6 @@ function UsersTab() {
                             ))}
                           </select>
                         )}
-                      </td>
-                      <td className="hidden lg:table-cell py-3 px-3 sm:px-5 tabular-nums" title="Comissão sobre a mão de obra das OS faturadas">
-                        {Number(u.commissionRate).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%
                       </td>
                       <td className="hidden md:table-cell py-3 px-3 sm:px-5">
                         <span
@@ -499,7 +492,7 @@ function NewUserModal({
 }
 
 function EditUserModal({ user, onClose, onSaved }: { user: TeamUser; onClose: () => void; onSaved: () => void }) {
-  const [form, setForm] = useState({ name: user.name, email: user.email, phone: user.phone ?? '', commissionRate: String(Number(user.commissionRate)) });
+  const [form, setForm] = useState({ name: user.name, email: user.email, phone: user.phone ?? '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -510,7 +503,7 @@ function EditUserModal({ user, onClose, onSaved }: { user: TeamUser; onClose: ()
       setSaving(true);
       await fetchApi(`/team/users/${user.id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim(), commissionRate: Number(form.commissionRate) }),
+        body: JSON.stringify({ name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim() }),
       });
       onSaved();
     } catch (err) {
@@ -546,11 +539,7 @@ function EditUserModal({ user, onClose, onSaved }: { user: TeamUser; onClose: ()
               <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={`${inputCls} mt-1`} />
             </label>
           </div>
-          <label className="block">
-            <span className="text-xs font-semibold text-brand-graphite">Comissão sobre a mão de obra (%)</span>
-            <input type="number" required min={0} max={100} step="0.01" value={form.commissionRate} onChange={(e) => setForm({ ...form, commissionRate: e.target.value })} className={`${inputCls} mt-1`} />
-            <span className="text-[11px] text-brand-steel">Padrão 50%. Vale para as próximas OS faturadas; as já faturadas mantêm a % da data do faturamento.</span>
-          </label>
+          <p className="text-[11px] text-brand-steel">Comissão: fixa em 50% da mão de obra para todos os mecânicos.</p>
           <p className="text-[11px] text-brand-steel">Perfil, senha e situação são alterados direto na tabela.</p>
           {error && <div className="text-sm text-rose-700 bg-rose-500/10 border border-rose-500/30 rounded-xl p-3">{error}</div>}
         </div>
