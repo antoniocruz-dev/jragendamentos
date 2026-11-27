@@ -20,6 +20,7 @@ import { ManagersOnly } from '../auth/decorators/managers-only.decorator.js';
 import { BillWorkOrderDto, ReverseBillingDto } from '../financial/dto/financial.dto.js';
 import { CancelWorkOrderDto } from './dto/cancel-work-order.dto.js';
 import { AssignOperatorDto } from './dto/assign-operator.dto.js';
+import { AssignItemMechanicDto } from './dto/assign-item-mechanic.dto.js';
 import { CurrentUser, type AuthenticatedUser } from '../auth/decorators/current-user.decorator.js';
 import type { WorkOrderActor } from './work-orders.service.js';
 
@@ -65,6 +66,17 @@ export class WorkOrdersController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.workOrdersService.assignOperator(id, dto.operatorId, user);
+  }
+
+  /** Troca o mecânico de um serviço da OS (Administrador e Gerente Geral; OS não faturada). */
+  @Patch(':id/items/:itemId/mechanic')
+  assignItemMechanic(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Param('itemId', new ParseUUIDPipe()) itemId: string,
+    @Body() dto: AssignItemMechanicDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.workOrdersService.assignItemMechanic(id, itemId, dto.mechanicId ?? null, user);
   }
 
   /** Equipe ativa, para escolher o mecânico responsável ao registrar o pagamento. */

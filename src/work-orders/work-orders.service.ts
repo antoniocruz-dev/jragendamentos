@@ -806,6 +806,69 @@ export class WorkOrdersService {
     });
   }
 
+  /**
+   * Troca o mecânico de um serviço da OS (só Administrador e Gerente Geral; OS não faturada nem
+   * cancelada). `null` devolve o serviço ao responsável da OS. Grava a troca nas observações.
+   */
+  async assignItemMechanic(
+    id: string,
+    itemId: string,
+    mechanicId: string | null,
+    user: { id: string; name: string; role: string; profile: StaffProfile | null },
+  ) {
+    if (!isPrivileged(user)) {
+      throw new ForbiddenException('Só Administrador e Gerente Geral podem trocar o mecânico de um serviço.');
+    }
+    return this.prisma.$transaction(async (tx) => {
+      const item = await tx.workOrderItem.findFirst({
+        where: { id: itemId, workOrderId: id },
+        select: {
+          id: true,
+          itemType: true,
+          mechanicId: true,
+          mechanic: { select: { name: true } },
+          service: { select: { name: true } },
+          workOrder: { select: { status: true, operatorId: true, operator: { select: { name: true } } } },
+        },
+      });
+      if (!item) throw new NotFoundException('Serviço não encontrado nesta OS.');
+      if (item.itemType !== WorkOrderItemType.SERVICE) throw new BadRequestException('Só serviços recebem mecânico; peças não.');
+      const { status } = item.workOrder;
+      if (status === WorkOrderStatus.BILLED) throw new ConflictException('Esta OS já foi faturada: o mecânico não pode mais ser trocado.');
+      if (status === WorkOrderStatus.CANCELLED) throw new ConflictException('Esta OS está cancelada: o mecânico não pode mais ser trocado.');
+      if ((item.mechanicId ?? null) === mechanicId) throw new BadRequestException('Este mecânico já está neste serviço.');
+      const mechanic = mechanicId ? await this.assertActiveMechanic(tx, mechanicId) : null;
+
+      // Condicionada ao mecânico e ao status lidos: duas trocas ao mesmo tempo não se sobrepõem
+      const updated = await tx.workOrderItem.updateMany({
+        where: {
+          id: itemId,
+          mechanicId: item.mechanicId,
+          workOrder: { status: { notIn: [WorkOrderStatus.BILLED, WorkOrderStatus.CANCELLED] } },
+        },
+        data: { mechanicId: mechanic?.id ?? null },
+      });
+      if (updated.count !== 1) throw new ConflictException('A OS mudou enquanto você editava. Atualize a página e tente de novo.');
+
+      const responsible = item.workOrder.operator?.name;
+      const label = (name: string | undefined, own: boolean) =>
+        own ? name! : responsible ? `${responsible} (responsável)` : 'sem mecânico';
+      const previous = label(item.mechanic?.name, !!item.mechanicId);
+      const next = label(mechanic?.name, !!mechanic);
+      await tx.workOrderObservation.create({
+        data: {
+          workOrderId: id,
+          authorId: user.id,
+          authorName: user.name,
+          authorRole: observationRole(user),
+          type: ObservationType.ATRIBUICAO_MECANICO,
+          message: `Serviço "${item.service?.name ?? 'Serviço'}": mecânico alterado de ${previous} para ${next} por ${user.name}.`,
+        },
+      });
+      return { id: itemId, mechanic: mechanic ? { id: mechanic.id, name: mechanic.name } : null };
+    });
+  }
+
   // ==========================================
   // OBSERVAÇÕES
   // ==========================================

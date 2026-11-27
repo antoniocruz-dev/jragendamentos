@@ -31,6 +31,8 @@ import { fetchApi } from '@/services/api';
 import { toast } from '@/components/feedback';
 import { isPrivilegedUser, useAuth } from '@/services/auth';
 import { AssignMechanicModal } from '@/components/mechanic/AssignMechanicModal';
+import { ServiceMechanicSelect } from '@/components/mechanic/ServiceMechanicSelect';
+import { useMechanics } from '@/components/mechanic/MechanicSelect';
 
 interface WorkOrderDetail {
   id: string;
@@ -112,6 +114,9 @@ export default function WorkOrderDetailPage() {
 
   const [order, setOrder] = useState<WorkOrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  // Mecânico de cada serviço: mesmos cargos, até a OS ser faturada ou cancelada
+  const canEditItemMechanic = canAssignMechanic && !!order && order.status !== 'BILLED' && order.status !== 'CANCELLED';
+  const mech = useMechanics(canAssignMechanic);
   const [error, setError] = useState<string | null>(null);
 
   // Estados de Ações
@@ -130,7 +135,9 @@ export default function WorkOrderDetailPage() {
   }, [osId]);
 
   // Observações (cliente, mecânico, reaberturas): só a equipe vê; recarrega quando a OS muda
-  const orderStamp = order ? `${order.status}-${order.reopenCount ?? 0}-${order.operator?.id ?? ''}` : '';
+  const orderStamp = order
+    ? `${order.status}-${order.reopenCount ?? 0}-${order.operator?.id ?? ''}-${order.items.map((i) => i.mechanic?.id ?? '').join('.')}`
+    : '';
   useEffect(() => {
     if (!isStaff || !orderStamp) return;
     const ctrl = new AbortController();
@@ -611,7 +618,22 @@ export default function WorkOrderDetailPage() {
                       </td>
                       <td className="py-3.5 px-4 font-medium text-brand-ink">
                         {it.service?.name || it.product?.name || 'Item'}
-                        {it.itemType === 'SERVICE' && (it.mechanic ?? order.operator) && (
+                        {it.itemType === 'SERVICE' && canEditItemMechanic ? (
+                          <ServiceMechanicSelect
+                            orderId={order.id}
+                            itemId={it.id}
+                            serviceName={it.service?.name ?? 'Serviço'}
+                            value={it.mechanic?.id ?? ''}
+                            responsibleName={order.operator?.name}
+                            mechanics={mech.mechanics}
+                            loading={mech.loading}
+                            onChanged={(mechanic) =>
+                              setOrder((prev) =>
+                                prev ? { ...prev, items: prev.items.map((x) => (x.id === it.id ? { ...x, mechanic } : x)) } : prev,
+                              )
+                            }
+                          />
+                        ) : it.itemType === 'SERVICE' && (it.mechanic ?? order.operator) && (
                           <span className="block text-xs font-normal text-brand-graphite">
                             Mecânico: {(it.mechanic ?? order.operator)!.name}
                           </span>
