@@ -12,6 +12,7 @@ import { FinancialModule } from './financial/financial.module.js';
 import { HealthModule } from './health/health.module.js';
 import { PortalModule } from './portal/portal.module.js';
 import { MechanicModule } from './mechanic/mechanic.module.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { MechanicModule } from './mechanic/mechanic.module.js';
     HealthModule,
     PortalModule,
     MechanicModule,
+    NotificationsModule,
   ],
   controllers: [],
   providers: [],
