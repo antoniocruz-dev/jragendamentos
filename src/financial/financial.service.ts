@@ -184,7 +184,6 @@ export class FinancialService {
         totalProducts: o.totalProducts,
         discount: o.discount,
         issRate: o.issRate,
-        commissionRate: o.commissionRate,
         hasMechanic: !!o.operatorId,
         items: o.items,
       });
@@ -364,7 +363,6 @@ export class FinancialService {
           totalProducts: true,
           discount: true,
           issRate: true,
-          commissionRate: true,
           items: { select: { itemType: true, quantity: true, unitCost: true } },
         },
       }),
@@ -445,7 +443,6 @@ export class FinancialService {
         totalProducts: true,
         discount: true,
         issRate: true,
-        commissionRate: true,
         client: { select: { name: true } },
         vehicle: { select: { licensePlate: true, brand: true, model: true } },
         items: { select: { itemType: true, quantity: true, unitCost: true } },
@@ -501,17 +498,12 @@ export class FinancialService {
     if (!o) throw new NotFoundException('Ordem de Serviço não encontrada.');
 
     const settings = await this.getSettings();
-    // OS ainda não faturada: prévia com a alíquota atual de ISS e a comissão atual do mecânico
-    let commissionRate = o.commissionRate;
-    if (commissionRate === null && o.operatorId) {
-      commissionRate = (await this.prisma.user.findUnique({ where: { id: o.operatorId }, select: { commissionRate: true } }))?.commissionRate ?? null;
-    }
+    // OS ainda não faturada: prévia com a alíquota atual de ISS (a comissão é fixa em 50%)
     const f = computeOrder({
       totalServices: o.totalServices,
       totalProducts: o.totalProducts,
       discount: o.discount,
       issRate: o.issRate ?? settings.issRate,
-      commissionRate,
       hasMechanic: !!o.operatorId,
       items: o.items,
     });

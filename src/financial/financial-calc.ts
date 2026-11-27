@@ -4,16 +4,17 @@ import { Prisma } from '@prisma/client';
  * Regras de cálculo do módulo financeiro (fonte única de verdade).
  *
  * Por OS faturada (status BILLED), com valores congelados no faturamento:
- * - Desconto: rateado entre peças e mão de obra na proporção de cada uma no valor bruto
- *   (desconto incondicional reduz a base do ISS — LC 116/2003, art. 7º).
- * - Venda de peças (líquida)  = total de peças − desconto rateado às peças
+ * - Desconto: só nas peças (regra da oficina). Nunca reduz mão de obra, base do ISS ou comissão.
+ *   A OS não aceita desconto maior que o total de peças; se uma OS antiga tiver, o excedente sai
+ *   da mão de obra só para o total faturado continuar igual ao valor recebido no caixa.
+ * - Venda de peças (líquida)  = total de peças − desconto
  * - Custo das peças           = Σ (custo unitário de saída × quantidade)
  * - Lucro das peças           = venda de peças − custo das peças
- * - Mão de obra (líquida)     = total de serviços − desconto rateado à mão de obra
+ * - Mão de obra              = total de serviços
  * - Total faturado            = venda de peças + mão de obra  (= valor final da OS)
  * - Lucro bruto da oficina    = lucro das peças + mão de obra (= total faturado − custo das peças)
  * - ISS                       = mão de obra × alíquota de ISS da OS (peças: ICMS, fora da base do ISS)
- * - Comissão do mecânico      = mão de obra × % de comissão do mecânico responsável
+ * - Comissão do mecânico      = mão de obra × 50% (fixa para todos: COMMISSION_RATE)
  * - Resultado da OS           = lucro bruto − ISS − comissão
  *
  * Todos os valores são arredondados a centavos (meio para cima) por OS e só depois somados,
@@ -27,12 +28,14 @@ export const round2 = (v: Dec) => v.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF
 export const pct = (base: Dec, rate: Dec) => round2(base.mul(rate).div(100));
 export const money = (v: Dec) => Number(round2(v).toFixed(2));
 
+/** Comissão do mecânico responsável: 50% da mão de obra, fixa (regra da oficina). */
+export const COMMISSION_RATE = new Prisma.Decimal(50);
+
 export interface OrderInput {
   totalServices: Prisma.Decimal.Value;
   totalProducts: Prisma.Decimal.Value;
   discount: Prisma.Decimal.Value;
   issRate: Prisma.Decimal.Value | null;
-  commissionRate: Prisma.Decimal.Value | null;
   hasMechanic: boolean;
   items: { itemType: string; quantity: number; unitCost: Prisma.Decimal.Value }[];
 }
@@ -59,11 +62,11 @@ export interface OrderFinancials {
 export function computeOrder(o: OrderInput): OrderFinancials {
   const grossServices = round2(D(o.totalServices));
   const grossProducts = round2(D(o.totalProducts));
-  const gross = grossServices.add(grossProducts);
   const discount = round2(D(o.discount));
 
-  const laborDiscount = gross.gt(0) ? round2(discount.mul(grossServices).div(gross)) : ZERO;
-  const partsDiscount = discount.sub(laborDiscount);
+  // Desconto só em peças; excedente (apenas em OS antigas) sai da mão de obra para fechar com o caixa
+  const partsDiscount = Prisma.Decimal.min(discount, grossProducts);
+  const laborDiscount = Prisma.Decimal.min(discount.sub(partsDiscount), grossServices);
 
   const partsSale = grossProducts.sub(partsDiscount);
   const partsCost = round2(
@@ -78,7 +81,7 @@ export function computeOrder(o: OrderInput): OrderFinancials {
 
   const issRate = D(o.issRate);
   const iss = pct(labor, issRate);
-  const commissionRate = o.hasMechanic ? D(o.commissionRate) : ZERO;
+  const commissionRate = o.hasMechanic ? COMMISSION_RATE : ZERO;
   const commission = pct(labor, commissionRate);
   const netResult = grossProfit.sub(iss).sub(commission);
 
