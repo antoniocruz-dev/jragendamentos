@@ -983,6 +983,8 @@ export default function WorkOrderDetailPage() {
 /** Registro do pagamento (faturamento manual) de uma OS concluída. */
 function BillingModal({ order, onClose, onBilled }: { order: WorkOrderDetail; onClose: () => void; onBilled: () => void }) {
   const gross = Number(order.totalServices) + Number(order.totalProducts);
+  // Desconto só nas peças (regra da oficina)
+  const partsTotal = Number(order.totalProducts);
   const [staff, setStaff] = useState<StaffOption[]>([]);
   const [form, setForm] = useState(() => {
     const now = new Date();
@@ -1060,8 +1062,8 @@ function BillingModal({ order, onClose, onBilled }: { order: WorkOrderDetail; on
           <Field label="Data e hora do pagamento">
             <input type="datetime-local" required value={form.paidAt} onChange={(e) => set('paidAt', e.target.value)} className={`${inputCls} [color-scheme:light]`} />
           </Field>
-          <Field label="Desconto (R$)">
-            <input type="number" min={0} max={gross} step="0.01" value={form.discount} onChange={(e) => set('discount', e.target.value)} className={inputCls} />
+          <Field label="Desconto em peças (R$)" hint={`Só nas peças: até R$ ${partsTotal.toFixed(2)}`}>
+            <input type="number" min={0} max={partsTotal} step="0.01" value={form.discount} onChange={(e) => set('discount', e.target.value)} className={inputCls} />
           </Field>
         </div>
         <Field label="Observações">

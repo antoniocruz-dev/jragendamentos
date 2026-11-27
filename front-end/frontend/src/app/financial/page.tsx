@@ -26,6 +26,7 @@ import { toast } from '@/components/feedback';
 import { useAuth } from '@/services/auth';
 import { canManageRecords } from '@/services/permissions';
 import { ActionBtn, Field, FormError, Modal, ModalActions, errorMessage, inputCls } from '@/components/crud';
+import { CommissionReceiptModal } from '@/components/financial/CommissionReceiptModal';
 import {
   GROUP_LABELS,
   PAYMENT_OPTIONS,
@@ -38,8 +39,11 @@ import {
   type FinancialSettings,
   type GroupBy,
   type OrderClosing,
+  type Payables,
   type StaffOption,
+  payableToRow,
 } from '@/services/financial';
+import { Fireworks } from '@/components/ui';
 
 // ==========================================
 // Período
@@ -550,13 +554,24 @@ function OrdersTab({ report, isManager, onChanged }: { report: FinancialReport; 
 // ==========================================
 
 function MechanicsTab({ report, staff, meta, onChanged }: { report: FinancialReport; staff: StaffOption[]; meta: FinancialMeta | null; onChanged: () => void }) {
-  const [paying, setPaying] = useState<{ id: string; amount: number; name: string } | null>(null);
+  const [paying, setPaying] = useState<{ id: string; amount: number; name: string; description?: string } | null>(null);
+  const [receipt, setReceipt] = useState<{ mechanicId?: string } | null>(null);
 
-  if (report.mechanics.length === 0) return <Box>Nenhuma produção ou pagamento de comissão no período.</Box>;
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => setReceipt({})}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-neon-primary hover:bg-neon-soft text-brand-ink font-bold text-sm rounded-lg"
+        >
+          <FileText className="w-4 h-4" aria-hidden />
+          Recibo de comissão
+        </button>
+      </div>
+      {report.mechanics.length === 0 && <Box>Nenhuma produção ou pagamento de comissão no período.</Box>}
       <p className="text-xs text-brand-steel">
-        Comissão sobre a mão de obra líquida de descontos, com a % de cada mecânico na data do faturamento (ajuste a % em Equipe → Editar).
+        Comissão fixa de 50% sobre a mão de obra (os descontos são só em peças e não reduzem a comissão).
         &quot;Pago no período&quot; soma as despesas da categoria &quot;Pagamento de comissão&quot;.
       </p>
       {report.mechanics.map((m) => (
@@ -569,6 +584,16 @@ function MechanicsTab({ report, staff, meta, onChanged }: { report: FinancialRep
               <span className="text-brand-graphite">Pago no período <b className="text-brand-ink block">{brl(m.paid)}</b></span>
               <span className="text-brand-graphite">Saldo a pagar <b className={`block ${m.balance > 0 ? 'text-brand-graphite' : m.balance < 0 ? 'text-rose-700' : 'text-emerald-700'}`}>{brl(m.balance)}</b></span>
             </div>
+            {m.id && (
+              <button
+                type="button"
+                onClick={() => setReceipt({ mechanicId: m.id! })}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border border-line text-brand-graphite hover:bg-surface-muted self-start"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                Recibo
+              </button>
+            )}
             {m.id && m.balance > 0 && (
               <button
                 onClick={() => setPaying({ id: m.id!, amount: m.balance, name: m.name })}
@@ -606,10 +631,26 @@ function MechanicsTab({ report, staff, meta, onChanged }: { report: FinancialRep
         <ExpenseModal
           staff={staff}
           meta={meta}
-          initial={{ category: 'COMISSAO_MECANICO', beneficiaryId: paying.id, amount: paying.amount, description: `Pagamento de comissão - ${paying.name}` }}
+          initial={{
+            category: 'COMISSAO_MECANICO',
+            beneficiaryId: paying.id,
+            amount: paying.amount,
+            description: paying.description ?? `Pagamento de comissão - ${paying.name}`,
+          }}
           onClose={(changed) => {
             setPaying(null);
             if (changed) onChanged();
+          }}
+        />
+      )}
+      {receipt && !paying && (
+        <CommissionReceiptModal
+          staff={staff}
+          defaultMechanicId={receipt.mechanicId}
+          onClose={() => setReceipt(null)}
+          onRegisterPayment={(p) => {
+            setReceipt(null);
+            setPaying(p);
           }}
         />
       )}
@@ -624,6 +665,48 @@ function MechanicsTab({ report, staff, meta, onChanged }: { report: FinancialRep
 function ExpensesTab({ report, staff, meta, isManager, onChanged }: { report: FinancialReport; staff: StaffOption[]; meta: FinancialMeta | null; isManager: boolean; onChanged: () => void }) {
   const [editing, setEditing] = useState<ExpenseRow | null | undefined>(undefined);
   const e = report.expenses;
+
+  // Contas a pagar (PENDING): vêm de /financial/payables, não do relatório (só despesas pagas)
+  const expenseParam = useSearchParams().get('expense');
+  const [payables, setPayables] = useState<Payables | null>(null);
+  const [payablesKey, setPayablesKey] = useState(0);
+  const [paying, setPaying] = useState<string | null>(null);
+  const [burst, setBurst] = useState(0);
+  const [openedParam, setOpenedParam] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    fetchApi<Payables>('/financial/payables', { errorToast: false })
+      .then((p) => alive && setPayables(p))
+      .catch(() => alive && setPayables({ today: '', expenses: [], commissions: [] }));
+    return () => {
+      alive = false;
+    };
+  }, [payablesKey]);
+
+  // ?expense=<id> (vindo do alerta do Dashboard): abre a despesa uma vez, quando a lista chega
+  const linked = !openedParam && expenseParam && payables
+    ? (payables.expenses.find((x) => x.id === expenseParam) ?? null)
+    : null;
+  const linkedPaid = !openedParam && expenseParam && !linked ? (e.rows.find((x) => x.id === expenseParam) ?? null) : null;
+  // undefined = modal fechado; null = nova despesa; linha = editar
+  const shown: ExpenseRow | null | undefined =
+    editing !== undefined ? editing : linked ? payableToRow(linked) : (linkedPaid ?? undefined);
+
+  async function pay(id: string) {
+    try {
+      setPaying(id);
+      await fetchApi(`/financial/expenses/${id}/pay`, { method: 'PATCH', body: JSON.stringify({}), successToast: false });
+      toast.success('Conta paga!');
+      setBurst((b) => b + 1);
+      setPayablesKey((k) => k + 1);
+      onChanged();
+    } catch (err) {
+      void err; // o fetchApi já mostra o erro
+    } finally {
+      setPaying(null);
+    }
+  }
 
   async function remove(x: ExpenseRow) {
     if (!confirm(`Excluir a despesa "${x.description}" de ${brl(x.amount)}? Esta ação não pode ser desfeita.`)) return;
@@ -650,6 +733,47 @@ function ExpensesTab({ report, staff, meta, isManager, onChanged }: { report: Fi
           Nova despesa
         </button>
       </div>
+
+      {payables && payables.expenses.length > 0 && (
+        <section className="bg-gold-muted/60 border border-gold/40 rounded-2xl overflow-x-auto">
+          <h3 className="px-4 pt-3 text-sm font-bold text-brand-ink">Contas a pagar (até o fim do mês, incluindo vencidas)</h3>
+          <table className="w-full text-sm">
+            <tbody className="divide-y divide-gold/20 tabular-nums">
+              {payables.expenses.map((x) => {
+                const overdue = !!x.dueDate && x.dueDate < payables.today;
+                return (
+                  <tr key={x.id}>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${overdue ? 'bg-red-100 text-red-800' : 'bg-surface-white text-brand-graphite'}`}>
+                        {overdue ? 'Vencida' : 'A pagar'} · vence {brDate(x.dueDate)}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-brand-ink">{x.description}{x.beneficiary && <span className="text-brand-steel"> • {x.beneficiary}</span>}</td>
+                    <td className="px-3 py-2 text-brand-graphite">{x.categoryLabel}</td>
+                    <td className="px-3 py-2 text-right font-semibold text-brand-ink">{brl(x.amount)}</td>
+                    <td className="px-3 py-2">
+                      <div className="flex gap-1 justify-end">
+                        <button
+                          type="button"
+                          disabled={paying === x.id}
+                          onClick={() => pay(x.id)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-neon-primary text-brand-ink hover:bg-neon-soft disabled:opacity-60"
+                        >
+                          {paying === x.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wallet className="w-3.5 h-3.5" />}
+                          Dar baixa
+                        </button>
+                        <ActionBtn icon={Pencil} label="Editar" onClick={() => setEditing(payableToRow(x))} />
+                        {isManager && <ActionBtn icon={Trash2} label="Excluir" tone="danger" onClick={() => remove(payableToRow(x))} />}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </section>
+      )}
+      <Fireworks burstKey={burst} />
 
       <section className="bg-surface-white border border-line-soft rounded-2xl overflow-x-auto">
         <table className="w-full text-sm">
@@ -689,17 +813,22 @@ function ExpensesTab({ report, staff, meta, isManager, onChanged }: { report: Fi
         </section>
       )}
 
-      {editing !== undefined && (
+      {shown !== undefined ? (
         <ExpenseModal
+          key={shown?.id ?? 'new'}
           staff={staff}
           meta={meta}
-          expense={editing}
+          expense={shown}
           onClose={(changed) => {
             setEditing(undefined);
-            if (changed) onChanged();
+            setOpenedParam(true);
+            if (changed) {
+              setPayablesKey((k) => k + 1);
+              onChanged();
+            }
           }}
         />
-      )}
+      ) : null}
     </div>
   );
 }
@@ -717,7 +846,11 @@ function ExpenseModal({
   meta: FinancialMeta | null;
   onClose: (changed: boolean) => void;
 }) {
+  // Situação só é escolhida no cadastro; depois, a conta a pagar muda pela baixa ("Dar baixa")
+  const editingPending = expense?.status === 'PENDING';
   const [form, setForm] = useState({
+    status: (editingPending ? 'PENDING' : 'PAID') as 'PAID' | 'PENDING',
+    dueDate: expense?.dueDate ?? ymd(new Date()),
     paidAt: expense?.date ?? ymd(new Date()),
     description: expense?.description ?? initial?.description ?? '',
     category: expense?.category ?? initial?.category ?? 'INSUMOS',
@@ -737,11 +870,17 @@ function ExpenseModal({
     try {
       setSaving(true);
       setError(null);
-      const [y, m, d] = form.paidAt.split('-').map(Number);
+      // Meio-dia local: a data não muda de dia ao converter para UTC
+      const noon = (v: string) => {
+        const [y, m, d] = v.split('-').map(Number);
+        return new Date(y, m - 1, d, 12, 0, 0).toISOString();
+      };
+      const pending = form.status === 'PENDING';
       await fetchApi(expense ? `/financial/expenses/${expense.id}` : '/financial/expenses', {
         method: expense ? 'PATCH' : 'POST',
         body: JSON.stringify({
-          paidAt: new Date(y, m - 1, d, 12, 0, 0).toISOString(),
+          ...(expense ? {} : { status: form.status }),
+          ...(pending ? { dueDate: noon(form.dueDate) } : { paidAt: noon(form.paidAt) }),
           description: form.description.trim(),
           category: form.category,
           amount: Number(form.amount),
@@ -760,12 +899,41 @@ function ExpenseModal({
   }
 
   return (
-    <Modal title={expense ? 'Editar despesa' : 'Nova despesa'} onClose={() => onClose(false)}>
+    <Modal title={expense ? (editingPending ? 'Editar conta a pagar' : 'Editar despesa') : 'Nova despesa'} onClose={() => onClose(false)}>
       <form onSubmit={submit} className="space-y-3">
+        {!expense && (
+          <div role="radiogroup" aria-label="Situação" className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-surface-muted">
+            {(
+              [
+                ['PAID', 'Já paga'],
+                ['PENDING', 'A pagar'],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={form.status === value}
+                onClick={() => set('status', value)}
+                className={`min-h-10 rounded-lg text-sm font-semibold transition-colors ${
+                  form.status === value ? 'bg-surface-white text-brand-ink shadow-sm' : 'text-brand-steel hover:text-brand-ink'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Data">
-            <input type="date" required value={form.paidAt} onChange={(e) => set('paidAt', e.target.value)} className={`${inputCls} [color-scheme:light]`} />
-          </Field>
+          {form.status === 'PENDING' ? (
+            <Field label="Vencimento">
+              <input type="date" required value={form.dueDate} onChange={(e) => set('dueDate', e.target.value)} className={`${inputCls} [color-scheme:light]`} />
+            </Field>
+          ) : (
+            <Field label="Data">
+              <input type="date" required value={form.paidAt} onChange={(e) => set('paidAt', e.target.value)} className={`${inputCls} [color-scheme:light]`} />
+            </Field>
+          )}
           <Field label="Valor (R$)">
             <input type="number" required min="0.01" step="0.01" value={form.amount} onChange={(e) => set('amount', e.target.value)} className={inputCls} />
           </Field>

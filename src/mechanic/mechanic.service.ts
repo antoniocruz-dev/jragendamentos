@@ -82,7 +82,10 @@ export class MechanicService {
     private readonly workOrders: WorkOrdersService,
   ) {}
 
-  /** Contadores e fechamento do mês: só os totais de peças e serviços das próprias OS concluídas. */
+  /**
+   * Contadores e fechamento do mês: só QUANTIDADES. Nenhum valor de peça nem de OS fechada
+   * sai para o mecânico (regra do portal; os valores ficam com a gerência e o financeiro).
+   */
   async dashboard(user: AuthenticatedUser, month?: string) {
     const { start, end, label } = monthRange(month);
     const own: Prisma.WorkOrderWhereInput = { operatorId: user.id };
@@ -92,25 +95,14 @@ export class MechanicService {
       finishedAt: { gte: start, lt: end },
     };
 
-    const [queue, running, done, sums] = await this.prisma.$transaction([
+    const [queue, running, done] = await this.prisma.$transaction([
       this.prisma.workOrder.count({ where: { ...own, status: WorkOrderStatus.APPROVED } }),
       this.prisma.workOrder.count({
         where: { ...own, status: { in: [WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.WAITING_PARTS, WorkOrderStatus.TESTING] } },
       }),
       this.prisma.workOrder.count({ where: closedInMonth }),
-      this.prisma.workOrder.aggregate({ where: closedInMonth, _sum: { totalProducts: true, totalServices: true } }),
     ]);
-    const totalParts = Number(sums._sum.totalProducts ?? 0);
-    const totalServices = Number(sums._sum.totalServices ?? 0);
-    return {
-      month: label,
-      counters: { queue, running, done },
-      closing: {
-        total_parts: round2(totalParts),
-        total_services: round2(totalServices),
-        grand_total: round2(totalParts + totalServices),
-      },
-    };
+    return { month: label, counters: { queue, running, done } };
   }
 
   async list(user: AuthenticatedUser) {
@@ -262,7 +254,6 @@ export class MechanicService {
   }
 }
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** Mês AAAA-MM no fuso da oficina (UTC-3). Padrão: mês atual. */
 function monthRange(month?: string) {

@@ -19,6 +19,7 @@ import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { FirstAccessDto } from './dto/first-access.dto.js';
 import { ClientEntryDto } from './dto/client-entry.dto.js';
+import { ClientLoginDto } from './dto/client-login.dto.js';
 import { normalizePhone, normalizeWhatsapp, specRole } from '../common/roles.js';
 
 /** Limite contra força bruta: 5 tentativas FALHAS por IP e por código a cada 15 minutos. */
@@ -274,6 +275,37 @@ export class AuthService {
       throw new UnauthorizedException('Seu acesso está bloqueado. Fale com a oficina.');
     }
     await this.release(failKey);
+    return this.issueSession(user);
+  }
+
+  /**
+   * "Já tenho cadastro": e-mail + 4 últimos dígitos do telefone do cadastro.
+   * Limite de 5 falhas por IP e por e-mail a cada 15 minutos (só 10 mil combinações de dígitos),
+   * e a mesma mensagem para e-mail inexistente ou dígitos errados (não revela quem é cliente).
+   */
+  async clientLogin(dto: ClientLoginDto, ip: string | undefined) {
+    const email = dto.email.trim().toLowerCase();
+    const keys = [`client-login:ip:${(ip || 'desconhecido').slice(0, 90)}`, `client-login:email:${email.slice(0, 100)}`];
+    const counts = await Promise.all(keys.map((k) => this.hit(k)));
+    if (counts.some((c) => c > LOGIN_MAX_FAILURES)) throw this.tooMany();
+
+    const client = await this.prisma.client.findFirst({
+      where: { email: { equals: email, mode: 'insensitive' } },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, phone: true },
+    });
+    const digits = normalizePhone(client?.phone) ?? '';
+    if (!client || !digits || !digits.endsWith(dto.phoneLast4)) {
+      throw new UnauthorizedException(
+        'E-mail ou dígitos do telefone não conferem. Se é o seu primeiro acesso, use "Primeiro acesso".',
+      );
+    }
+
+    const user = await this.ensureClientUser(client.id, email);
+    if (!user.isActive) {
+      throw new UnauthorizedException('Seu acesso está bloqueado. Fale com a oficina.');
+    }
+    await Promise.all(keys.map((k) => this.release(k)));
     return this.issueSession(user);
   }
 

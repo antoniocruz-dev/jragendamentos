@@ -7,6 +7,7 @@ import { Public } from './decorators/public.decorator.js';
 import { AnyStaff } from './decorators/mechanic-area.decorator.js';
 import { FirstAccessDto } from './dto/first-access.dto.js';
 import { ClientEntryDto } from './dto/client-entry.dto.js';
+import { ClientLoginDto } from './dto/client-login.dto.js';
 
 @Controller('auth')
 export class AuthController {
@@ -51,7 +52,18 @@ export class AuthController {
     return this.authService.clientEntry(dto, ip);
   }
 
-  /** Primeiro acesso da equipe: a pessoa convidada cadastra a senha e recebe o usuário (código). */
+  /** "Já tenho cadastro": cliente volta ao painel com o e-mail e os 4 últimos dígitos do telefone. */
+  @Public()
+  @Post('client-login')
+  @HttpCode(HttpStatus.OK)
+  async clientLogin(
+    @Ip() ip: string,
+    @Body(new ValidationPipe({ transform: true, whitelist: true })) dto: ClientLoginDto,
+  ) {
+    return this.authService.clientLogin(dto, ip);
+  }
+
+  /** Primeiro acesso da equipe:a pessoa convidada cadastra a senha e recebe o usuário (código). */
   @Public()
   @Post('first-access')
   @HttpCode(HttpStatus.CREATED)

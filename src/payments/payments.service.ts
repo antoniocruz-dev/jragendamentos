@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { isValidMercadoPagoSignature } from './webhook-signature.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { COMMISSION_RATE } from '../financial/financial-calc.js';
 import { MercadoPagoService } from './providers/mercado-pago.service.js';
 import {
   WorkOrderStatus,
@@ -165,9 +166,8 @@ export class PaymentsService {
             billedAt: new Date(),
             paymentMethod: PaymentMethod.PIX,
             issRate: (await tx.financialSettings.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } })).issRate,
-            commissionRate: workOrder.operatorId
-              ? ((await tx.user.findUnique({ where: { id: workOrder.operatorId }, select: { commissionRate: true } }))?.commissionRate ?? null)
-              : null,
+            // Comissão fixa de 50% sobre a mão de obra (regra da oficina)
+            commissionRate: workOrder.operatorId ? COMMISSION_RATE : null,
           },
         });
         if (billed.count !== 1) {

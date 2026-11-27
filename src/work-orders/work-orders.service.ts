@@ -27,6 +27,7 @@ import {
   ObservationType,
 } from '@prisma/client';
 import { BillWorkOrderDto } from '../financial/dto/financial.dto.js';
+import { COMMISSION_RATE } from '../financial/financial-calc.js';
 import { CancelWorkOrderDto } from './dto/cancel-work-order.dto.js';
 import { MECHANIC_PROFILES, isPrivileged, observationRole } from '../common/roles.js';
 import { InsufficientStockError, reserveWorkOrderStock, returnWorkOrderStock, shortageText, type StockShortage } from '../common/stock.js';
@@ -48,6 +49,12 @@ export interface ApprovalResult {
   code: number;
   status: WorkOrderStatus;
   shortages: StockShortage[];
+}
+
+/** Mensagem da validação de desconto (desconto só em peças). */
+function discountMessage(totalProducts: Prisma.Decimal) {
+  const limit = totalProducts.toFixed(2).replace('.', ',');
+  return `O desconto vale só para peças e não pode passar do total de peças (R$ ${limit}).`;
 }
 
 @Injectable()
@@ -151,11 +158,11 @@ export class WorkOrdersService {
         }
       }
 
-      // Desconto: não pode passar do total (422)
+      // Desconto: só nas peças, nunca na mão de obra (regra da oficina) — não pode passar do total de peças (422)
       const gross = totalServices.add(totalProducts);
       const discount = new Prisma.Decimal(dto.discount ?? 0);
-      if (discount.gt(gross)) {
-        throw new UnprocessableEntityException('O desconto não pode ser maior que o valor total da OS.');
+      if (discount.gt(totalProducts)) {
+        throw new UnprocessableEntityException(discountMessage(totalProducts));
       }
       const finalAmount = gross.sub(discount);
 
@@ -626,7 +633,8 @@ export class WorkOrdersService {
 
       const gross = wo.totalServices.add(wo.totalProducts);
       const discount = dto.discount !== undefined ? new Prisma.Decimal(dto.discount) : wo.discount;
-      if (discount.gt(gross)) throw new BadRequestException('O desconto não pode ser maior que o valor da OS.');
+      // Desconto só nas peças (regra da oficina)
+      if (discount.gt(wo.totalProducts)) throw new BadRequestException(discountMessage(wo.totalProducts));
       const finalAmount = gross.sub(discount);
 
       const paidAt = dto.paidAt ? new Date(dto.paidAt) : new Date();
@@ -648,7 +656,7 @@ export class WorkOrdersService {
           finalAmount,
           operatorId: operator.id,
           issRate: settings.issRate,
-          commissionRate: operator.commissionRate,
+          commissionRate: COMMISSION_RATE, // comissão fixa de 50% sobre a mão de obra
           finishedAt: wo.finishedAt ?? paidAt,
         },
       });

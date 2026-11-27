@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { LayoutDashboard, Plus, ClipboardList, DollarSign, Calendar, Loader2, AlertCircle, AlertTriangle, PackageX, Undo2, X } from 'lucide-react';
 import { fetchApi } from '@/services/api';
 import { useAuth } from '@/services/auth';
+import { PayablesAlertModal } from '@/components/financial/PayablesAlertModal';
 import { hasModule, type AppModule } from '@/services/permissions';
 
 // ==========================================
@@ -277,6 +278,8 @@ function Dashboard() {
 
   return (
     <div className="min-h-full bg-surface-offwhite text-brand-ink px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+      {/* Contas a pagar: aparece uma vez a cada login, para quem tem o Financeiro */}
+      <PayablesAlertModal enabled={can('FINANCIAL')} />
       <div className="max-w-7xl mx-auto space-y-5 sm:space-y-6">
         <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4 border-b border-line-soft pb-4 sm:pb-6">
           <div>

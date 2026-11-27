@@ -74,6 +74,9 @@ export interface MechanicRow {
 
 export interface ExpenseRow {
   id: string;
+  /** Contas a pagar: PENDING com vencimento (dueDate); despesas pagas: PAID */
+  status?: 'PAID' | 'PENDING';
+  dueDate?: string | null;
   date: string | null;
   paidAt: string | null;
   description: string;
@@ -168,3 +171,55 @@ export const brDate = (iso: string | null) => (iso ? iso.slice(0, 10).split('-')
 
 /** Soma em centavos (evita erro de ponto flutuante ao totalizar no navegador). */
 export const sumMoney = (values: number[]) => Math.round(values.reduce((a, v) => a + Math.round(v * 100), 0)) / 100;
+
+/** Extrato do recibo de comissão (GET /financial/commission-statement). */
+export interface CommissionStatement {
+  mechanic: { id: string; name: string };
+  period: { from: string; to: string } | null;
+  companyName: string | null;
+  orders: {
+    id: string;
+    code: number;
+    billedAt: string | null;
+    date: string | null;
+    client: string;
+    vehicle: string;
+    labor: number;
+    commissionRate: number;
+    commission: number;
+  }[];
+  laborTotal: number;
+  total: number;
+  balance: { mechanicId: string; name: string; commission: number; paid: number; balance: number };
+}
+
+/** Item de conta a pagar (GET /financial/payables). */
+export interface PayableExpense {
+  id: string;
+  description: string;
+  category: string;
+  categoryLabel: string;
+  amount: number;
+  dueDate: string | null;
+  paymentMethod: string;
+  paidBy: 'CAIXA' | 'SOCIO';
+  beneficiaryId: string | null;
+  beneficiary: string | null;
+  notes: string | null;
+}
+
+export interface Payables {
+  /** Hoje na oficina (AAAA-MM-DD, America/Belem) */
+  today: string;
+  expenses: PayableExpense[];
+  commissions: { mechanicId: string; name: string; commission: number; paid: number; balance: number }[];
+}
+
+/** Converte a conta a pagar no formato de linha usado pelo modal de despesa. */
+export const payableToRow = (p: PayableExpense): ExpenseRow => ({
+  ...p,
+  status: 'PENDING',
+  date: null,
+  paidAt: null,
+  payment: '',
+});

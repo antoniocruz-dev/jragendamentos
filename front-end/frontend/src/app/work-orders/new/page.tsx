@@ -171,8 +171,9 @@ export default function NewWorkOrderPage() {
       setSubmitError('Identifique o veículo e cliente antes de abrir a OS.');
       return;
     }
-    if (discount > grossTotal) {
-      setSubmitError('O desconto não pode ser maior que o valor total da OS.');
+    // Desconto só nas peças (regra da oficina): nunca reduz a mão de obra
+    if (discount > totalProducts) {
+      setSubmitError(`O desconto vale só para peças e não pode passar de R$ ${totalProducts.toFixed(2)}.`);
       return;
     }
     if (items.length === 0) {
@@ -448,7 +449,7 @@ export default function NewWorkOrderPage() {
                 <span className="font-medium text-brand-ink">R$ {totalProducts.toFixed(2)}</span>
               </div>
               <label className="flex items-center justify-between gap-3 text-brand-graphite">
-                <span>Desconto (R$):</span>
+                <span>Desconto em peças (R$):</span>
                 <input
                   inputMode="decimal"
                   value={discountInput}
@@ -457,7 +458,7 @@ export default function NewWorkOrderPage() {
                   className="w-28 text-right bg-surface-white border border-line rounded-lg px-2 py-1.5 text-brand-ink focus:outline-none focus:border-neon-deep"
                 />
               </label>
-              {discount > grossTotal && <p className="text-xs text-rose-700">O desconto passa do valor total.</p>}
+              {discount > totalProducts && <p className="text-xs text-rose-700">O desconto vale só para peças e passa do total de peças.</p>}
             </div>
 
             <div className="grid grid-cols-2 gap-1 bg-surface-white border border-line rounded-lg p-1 mb-4 text-xs font-semibold">

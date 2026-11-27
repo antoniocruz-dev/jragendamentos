@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Put, 
 import { FinancialService } from './financial.service.js';
 import { RequireModules } from '../auth/decorators/require-modules.decorator.js';
 import { ManagersOnly } from '../auth/decorators/managers-only.decorator.js';
-import { CreateExpenseDto, ResolveRefundDto, UpdateExpenseDto, UpdateSettingsDto } from './dto/financial.dto.js';
+import { CreateExpenseDto, PayExpenseDto, ResolveRefundDto, UpdateExpenseDto, UpdateSettingsDto } from './dto/financial.dto.js';
 import { CurrentUser, type AuthenticatedUser } from '../auth/decorators/current-user.decorator.js';
 import { ForbiddenException } from '@nestjs/common';
 
@@ -29,6 +29,17 @@ export class FinancialController {
   @Get('orders/:id/closing')
   orderClosing(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.financial.orderClosing(id);
+  }
+
+  /** Extrato do recibo de comissão: ?mechanicId&from&to ou ?mechanicId&orderIds=a,b,c */
+  @Get('commission-statement')
+  commissionStatement(
+    @Query('mechanicId') mechanicId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('orderIds') orderIds?: string,
+  ) {
+    return this.financial.commissionStatement({ mechanicId, from, to, orderIds });
   }
 
   /** Pendências de estorno: OS faturadas que foram canceladas (?status=PENDING|REFUNDED|WAIVED|ALL). */
@@ -87,5 +98,17 @@ export class FinancialController {
   @Delete('expenses/:id')
   removeExpense(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.financial.removeExpense(id);
+  }
+
+  /** Baixa de uma conta a pagar (PENDING → PAID). */
+  @Patch('expenses/:id/pay')
+  payExpense(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: PayExpenseDto) {
+    return this.financial.payExpense(id, dto);
+  }
+
+  /** Contas a pagar até o fim do mês (inclui vencidas) e comissões em aberto: alerta do Dashboard. */
+  @Get('payables')
+  payables() {
+    return this.financial.payables();
   }
 }

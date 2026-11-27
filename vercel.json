@@ -10,6 +10,7 @@
       "framework": "nextjs"
     }
   },
+  "crons": [{ "path": "/api/cron/payables-reminder", "schedule": "0 10 * * *" }],
   "rewrites": [
     { "source": "/api/(.*)", "destination": { "service": "app" } },
     { "source": "/(.*)", "destination": { "service": "frontend" } }

@@ -1,12 +1,23 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { Type } from 'class-transformer';
-import { IsDateString, IsEnum, IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Length, Max, Min, IsBoolean } from 'class-validator';
+import { IsDateString, IsEnum, IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Length, Max, Min, IsBoolean, ValidateIf } from 'class-validator';
 import { ExpensePayer, PaymentMethod, TaxRegime } from '@prisma/client';
 import { EXPENSE_CATEGORIES } from '../financial-calc.js';
 
 export class CreateExpenseDto {
+  /** PAID (padrão): despesa já paga. PENDING: conta a pagar, com vencimento e sem data de pagamento. */
+  @IsOptional()
+  @IsIn(['PAID', 'PENDING'], { message: 'Situação inválida: use PAID (paga) ou PENDING (a pagar).' })
+  status?: 'PAID' | 'PENDING';
+
+  @ValidateIf((o: CreateExpenseDto) => o.status !== 'PENDING')
   @IsDateString({}, { message: 'Data da despesa inválida.' })
-  paidAt: string;
+  paidAt?: string;
+
+  /** Vencimento: obrigatório para conta a pagar. */
+  @ValidateIf((o: CreateExpenseDto) => o.status === 'PENDING' || (o.dueDate !== undefined && o.dueDate !== null))
+  @IsDateString({}, { message: 'Informe o vencimento da conta a pagar.' })
+  dueDate?: string | null;
 
   @IsString()
   @IsNotEmpty({ message: 'Descreva a despesa.' })
@@ -38,6 +49,21 @@ export class CreateExpenseDto {
 }
 
 export class UpdateExpenseDto extends PartialType(CreateExpenseDto) {}
+
+/** Baixa de uma conta a pagar: vira despesa paga (data de hoje, se não informada). */
+export class PayExpenseDto {
+  @IsOptional()
+  @IsDateString({}, { message: 'Data do pagamento inválida.' })
+  paidAt?: string;
+
+  @IsOptional()
+  @IsEnum(PaymentMethod, { message: 'Forma de pagamento inválida.' })
+  paymentMethod?: PaymentMethod;
+
+  @IsOptional()
+  @IsEnum(ExpensePayer, { message: 'Informe quem pagou: CAIXA ou SOCIO.' })
+  paidBy?: ExpensePayer;
+}
 
 export class UpdateSettingsDto {
   @IsOptional()

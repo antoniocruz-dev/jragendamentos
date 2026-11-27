@@ -14,7 +14,7 @@ import {
   type Dec,
   type GroupBy,
 } from './financial-calc.js';
-import { CreateExpenseDto, ResolveRefundDto, UpdateExpenseDto, UpdateSettingsDto } from './dto/financial.dto.js';
+import { CreateExpenseDto, PayExpenseDto, ResolveRefundDto, UpdateExpenseDto, UpdateSettingsDto } from './dto/financial.dto.js';
 
 /**
  * OS que contam como receita: faturadas, e as faturadas que foram canceladas enquanto o estorno
@@ -163,7 +163,8 @@ export class FinancialService {
         },
       }),
       this.prisma.cashTransaction.findMany({
-        where: { type: TransactionType.EXPENSE, status: { not: TransactionStatus.CANCELLED }, paidAt: { gte: from, lte: to } },
+        // Só despesas pagas: conta a pagar (PENDING) entra no resultado na data da baixa
+        where: { type: TransactionType.EXPENSE, status: TransactionStatus.PAID, paidAt: { gte: from, lte: to } },
         include: { beneficiary: { select: { id: true, name: true } } },
         orderBy: { paidAt: 'asc' },
       }),
@@ -183,7 +184,6 @@ export class FinancialService {
         totalProducts: o.totalProducts,
         discount: o.discount,
         issRate: o.issRate,
-        commissionRate: o.commissionRate,
         hasMechanic: !!o.operatorId,
         items: o.items,
       });
@@ -346,6 +346,142 @@ export class FinancialService {
   }
 
   // ==========================================
+  // COMISSÕES: saldo por mecânico e recibo
+  // ==========================================
+
+  /**
+   * Saldo de comissão de todo o histórico, por mecânico: comissão apurada nas OS que contam como
+   * receita (computeOrder, arredondada por OS) − pagamentos de comissão já feitos (despesas pagas).
+   */
+  async mechanicBalances(mechanicId?: string) {
+    const [orders, payments] = await Promise.all([
+      this.prisma.workOrder.findMany({
+        where: { AND: [REVENUE_ORDERS], operatorId: mechanicId ?? { not: null } },
+        select: {
+          operatorId: true,
+          totalServices: true,
+          totalProducts: true,
+          discount: true,
+          issRate: true,
+          items: { select: { itemType: true, quantity: true, unitCost: true } },
+        },
+      }),
+      this.prisma.cashTransaction.groupBy({
+        by: ['beneficiaryId'],
+        where: {
+          type: TransactionType.EXPENSE,
+          status: TransactionStatus.PAID,
+          category: COMMISSION_PAYMENT,
+          beneficiaryId: mechanicId ?? { not: null },
+        },
+        _sum: { amount: true },
+      }),
+    ]);
+
+    const map = new Map<string, { commission: Dec; paid: Dec }>();
+    const entry = (id: string) => {
+      if (!map.has(id)) map.set(id, { commission: ZERO, paid: ZERO });
+      return map.get(id)!;
+    };
+    for (const o of orders) {
+      const f = computeOrder({ ...o, hasMechanic: true });
+      entry(o.operatorId!).commission = entry(o.operatorId!).commission.add(f.commission);
+    }
+    for (const p of payments) {
+      if (p.beneficiaryId) entry(p.beneficiaryId).paid = entry(p.beneficiaryId).paid.add(D(p._sum.amount));
+    }
+    const ids = [...map.keys()];
+    const users = ids.length
+      ? await this.prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } })
+      : [];
+    const names = new Map(users.map((u) => [u.id, u.name]));
+    return ids.map((id) => {
+      const m = map.get(id)!;
+      return {
+        mechanicId: id,
+        name: names.get(id) ?? 'Mecânico',
+        commission: money(m.commission),
+        paid: money(m.paid),
+        balance: money(m.commission.sub(m.paid)),
+      };
+    });
+  }
+
+  /**
+   * Extrato para o recibo de comissão: OS do mecânico faturadas no período (ou só as escolhidas),
+   * com a comissão de cada uma calculada por computeOrder e o total somado em Decimal.
+   */
+  async commissionStatement(filters: { mechanicId?: string; from?: string; to?: string; orderIds?: string }) {
+    if (!filters.mechanicId) throw new BadRequestException('Informe o mecânico.');
+    const mechanic = await this.prisma.user.findUnique({
+      where: { id: filters.mechanicId },
+      select: { id: true, name: true, role: true },
+    });
+    if (!mechanic || mechanic.role === UserRole.CLIENT) throw new NotFoundException('Mecânico não encontrado.');
+
+    const ids = (filters.orderIds ?? '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const from = parseDate(filters.from, 'from');
+    const to = parseDate(filters.to, 'to');
+    if (!ids.length && (!from || !to)) throw new BadRequestException('Informe o período ou as OS do recibo.');
+    if (from && to && from > to) throw new BadRequestException('A data inicial deve ser anterior à final.');
+
+    const orders = await this.prisma.workOrder.findMany({
+      where: {
+        AND: [REVENUE_ORDERS],
+        operatorId: mechanic.id,
+        ...(ids.length ? { id: { in: ids } } : { billedAt: { gte: from, lte: to } }),
+      },
+      orderBy: { billedAt: 'asc' },
+      select: {
+        id: true,
+        code: true,
+        billedAt: true,
+        totalServices: true,
+        totalProducts: true,
+        discount: true,
+        issRate: true,
+        client: { select: { name: true } },
+        vehicle: { select: { licensePlate: true, brand: true, model: true } },
+        items: { select: { itemType: true, quantity: true, unitCost: true } },
+      },
+    });
+
+    let total = ZERO;
+    let laborTotal = ZERO;
+    const rows = orders.map((o) => {
+      const f = computeOrder({ ...o, hasMechanic: true });
+      total = total.add(f.commission);
+      laborTotal = laborTotal.add(f.labor);
+      return {
+        id: o.id,
+        code: o.code,
+        billedAt: o.billedAt?.toISOString() ?? null,
+        date: o.billedAt ? localDay(o.billedAt) : null,
+        client: o.client.name,
+        vehicle: `${o.vehicle.brand} ${o.vehicle.model} · ${o.vehicle.licensePlate}`,
+        labor: money(f.labor),
+        commissionRate: Number(f.commissionRate),
+        commission: money(f.commission),
+      };
+    });
+    const [balance] = await this.mechanicBalances(mechanic.id);
+    const settings = await this.getSettings();
+
+    return {
+      mechanic: { id: mechanic.id, name: mechanic.name },
+      period: from && to && !ids.length ? { from: from.toISOString(), to: to.toISOString() } : null,
+      companyName: settings.companyName,
+      orders: rows,
+      laborTotal: money(laborTotal),
+      total: money(total),
+      balance: balance ?? { mechanicId: mechanic.id, name: mechanic.name, commission: 0, paid: 0, balance: 0 },
+    };
+  }
+
+  // ==========================================
   // FECHAMENTO DE UMA OS (documento "Controle de Serviço")
   // ==========================================
 
@@ -362,17 +498,12 @@ export class FinancialService {
     if (!o) throw new NotFoundException('Ordem de Serviço não encontrada.');
 
     const settings = await this.getSettings();
-    // OS ainda não faturada: prévia com a alíquota atual de ISS e a comissão atual do mecânico
-    let commissionRate = o.commissionRate;
-    if (commissionRate === null && o.operatorId) {
-      commissionRate = (await this.prisma.user.findUnique({ where: { id: o.operatorId }, select: { commissionRate: true } }))?.commissionRate ?? null;
-    }
+    // OS ainda não faturada: prévia com a alíquota atual de ISS (a comissão é fixa em 50%)
     const f = computeOrder({
       totalServices: o.totalServices,
       totalProducts: o.totalProducts,
       discount: o.discount,
       issRate: o.issRate ?? settings.issRate,
-      commissionRate,
       hasMechanic: !!o.operatorId,
       items: o.items,
     });
@@ -424,11 +555,16 @@ export class FinancialService {
 
   async createExpense(dto: CreateExpenseDto) {
     await this.validateBeneficiary(dto.category, dto.beneficiaryId);
+    const pending = dto.status === 'PENDING';
+    if (pending && !dto.dueDate) throw new BadRequestException('Informe o vencimento da conta a pagar.');
+    if (!pending && !dto.paidAt) throw new BadRequestException('Informe a data da despesa.');
     return this.prisma.cashTransaction.create({
       data: {
         type: TransactionType.EXPENSE,
-        status: TransactionStatus.PAID,
-        paidAt: new Date(dto.paidAt),
+        // Conta a pagar fica PENDING e sem paidAt: só entra no relatório depois da baixa
+        status: pending ? TransactionStatus.PENDING : TransactionStatus.PAID,
+        paidAt: pending ? null : new Date(dto.paidAt!),
+        dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
         description: dto.description.trim(),
         category: dto.category,
         amount: D(dto.amount),
@@ -446,11 +582,15 @@ export class FinancialService {
     const category = dto.category ?? current.category;
     const beneficiaryId = dto.beneficiaryId !== undefined ? dto.beneficiaryId : current.beneficiaryId;
     await this.validateBeneficiary(category, beneficiaryId);
+    // A situação (paga / a pagar) só muda pela baixa (PATCH /expenses/:id/pay)
+    const isPending = current.status === TransactionStatus.PENDING;
+    if (isPending && dto.dueDate === null) throw new BadRequestException('A conta a pagar precisa de vencimento.');
 
     return this.prisma.cashTransaction.update({
       where: { id },
       data: {
-        ...(dto.paidAt ? { paidAt: new Date(dto.paidAt) } : {}),
+        ...(dto.paidAt && !isPending ? { paidAt: new Date(dto.paidAt) } : {}),
+        ...(dto.dueDate !== undefined ? { dueDate: dto.dueDate ? new Date(dto.dueDate) : null } : {}),
         ...(dto.description !== undefined ? { description: dto.description.trim() } : {}),
         ...(dto.category ? { category: dto.category } : {}),
         ...(dto.amount !== undefined ? { amount: D(dto.amount) } : {}),
@@ -467,6 +607,61 @@ export class FinancialService {
     if (!current || current.type !== TransactionType.EXPENSE) throw new NotFoundException('Despesa não encontrada.');
     await this.prisma.cashTransaction.delete({ where: { id } });
     return { deleted: true };
+  }
+
+  /**
+   * Baixa de uma conta a pagar. O updateMany condicionado ao status PENDING é atômico:
+   * duas baixas simultâneas da mesma conta não pagam duas vezes (a segunda recebe 409).
+   */
+  async payExpense(id: string, dto: PayExpenseDto) {
+    const current = await this.prisma.cashTransaction.findUnique({ where: { id }, select: { type: true, status: true } });
+    if (!current || current.type !== TransactionType.EXPENSE) throw new NotFoundException('Despesa não encontrada.');
+    const { count } = await this.prisma.cashTransaction.updateMany({
+      where: { id, status: TransactionStatus.PENDING },
+      data: {
+        status: TransactionStatus.PAID,
+        paidAt: dto.paidAt ? new Date(dto.paidAt) : new Date(),
+        ...(dto.paymentMethod ? { paymentMethod: dto.paymentMethod } : {}),
+        ...(dto.paidBy ? { paidBy: dto.paidBy } : {}),
+      },
+    });
+    if (count === 0) throw new ConflictException('Esta conta já foi paga.');
+    return this.prisma.cashTransaction.findUniqueOrThrow({ where: { id } });
+  }
+
+  /**
+   * Contas a pagar para o alerta do Dashboard: despesas PENDING que vencem até o fim do mês
+   * corrente (inclui as vencidas) e mecânicos com saldo de comissão em aberto.
+   */
+  async payables() {
+    const [y, m] = localDay(new Date()).split('-').map(Number);
+    // 1º dia do mês seguinte, 00:00 em Parauapebas (UTC−3, sem horário de verão)
+    const nextMonth = new Date(Date.UTC(y, m, 1, 3));
+    const [rows, balances] = await Promise.all([
+      this.prisma.cashTransaction.findMany({
+        where: { type: TransactionType.EXPENSE, status: TransactionStatus.PENDING, dueDate: { lt: nextMonth } },
+        orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+        include: { beneficiary: { select: { id: true, name: true } } },
+      }),
+      this.mechanicBalances(),
+    ]);
+    return {
+      today: localDay(new Date()),
+      expenses: rows.map((e) => ({
+        id: e.id,
+        description: e.description ?? '',
+        category: e.category,
+        categoryLabel: EXPENSE_CATEGORIES[e.category] ?? e.category,
+        amount: money(D(e.amount)),
+        dueDate: e.dueDate ? localDay(e.dueDate) : null,
+        paymentMethod: e.paymentMethod,
+        paidBy: e.paidBy ?? 'CAIXA',
+        beneficiaryId: e.beneficiaryId,
+        beneficiary: e.beneficiary?.name ?? null,
+        notes: e.notes,
+      })),
+      commissions: balances.filter((b) => b.balance > 0).sort((a, b) => b.balance - a.balance),
+    };
   }
 
   // ==========================================

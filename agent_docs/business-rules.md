@@ -13,11 +13,12 @@ still diverges from them; do not "fix" those silently, they are tracked as separ
 
 ## Financial and fiscal
 
-- **Discount applies only to products (parts).** It never reduces labor, ISS base, or mechanic commission.
-- Per billed O.S.: parts sale = parts total − discount; labor = services total; total billed = parts sale + labor; gross profit = billed − parts cost.
-- ISS = labor × ISS rate (parts are outside the ISS base, they fall under ICMS). Commission = labor × the responsible mechanic's rate.
+- **Discount applies only to products (parts).** It never reduces labor, ISS base, or mechanic commission, and it can never exceed the parts total (creating or billing an O.S. with a larger discount is rejected).
+- Per billed O.S.: parts sale = parts total − discount; labor = services total (no discount); total billed = parts sale + labor; gross profit = billed − parts cost.
+- ISS = labor × ISS rate (parts are outside the ISS base, they fall under ICMS).
+- **Commission = labor × 50%, fixed for every mechanic** (`COMMISSION_RATE` in `src/financial/financial-calc.ts`). There is no per-mechanic rate (`users.commission_rate` is no longer used).
 - **O.S. result = gross profit − ISS − commission.**
-- Values must be exact: `Prisma.Decimal` only, rounded to cents (half up) per O.S. and only then summed. Values are frozen at billing; later edits to rates or costs never rewrite billed O.S.s.
+- Values must be exact: `Prisma.Decimal` only, rounded to cents (half up) per O.S. and only then summed. Values are frozen at billing; later edits to rates or costs never rewrite billed O.S.s. One exception was approved by the owner on 2026-11-26: when "discount only on parts" and the fixed 50% commission were adopted, already billed O.S.s started being calculated by the new rule (labor, ISS and commission are derived by `computeOrder`, not stored). If a legacy O.S. has a discount larger than its parts total, the excess still comes out of labor so the billed total keeps matching the cash received.
 - The system does NOT issue fiscal documents (no NFS-e/NF-e); it only calculates taxes for control.
 - Tax regime (SIMPLES_NACIONAL, LUCRO_PRESUMIDO, LUCRO_REAL, MEI) is set in the fiscal settings and must follow current Brazilian legislation. Never hardcode a rate or invent one: ISS is municipal (shop is in Parauapebas, PA; LC 116/2003 allows 2%-5%), Simples Nacional collects ISS inside the DAS, MEI pays a fixed amount. Rates are configurable and must be confirmed with the shop's accountant.
 
@@ -28,4 +29,3 @@ still diverges from them; do not "fix" those silently, they are tracked as separ
 ## Known gaps between rules and code (pending fixes)
 
 1. Staff profiles (Administrador, Gerente Geral, Auxiliar Administrativo) can still approve quotes: `PATCH /work-orders/:id/approve` and the status update path (`src/work-orders/work-orders.service.ts`, `APPROVER_PROFILES`). Should be client-only via the portal.
-2. The discount is applied to the whole O.S. and split between parts and labor (`computeOrder` in `src/financial/financial-calc.ts`, also the create/update validation in the work-orders service). Should apply to parts only.
