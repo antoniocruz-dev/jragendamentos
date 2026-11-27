@@ -40,9 +40,9 @@ function AlertsPanel({ alerts, onResolved }: { alerts: NonNullable<Summary['aler
   }
 
   return (
-    <section className="bg-surface-white border border-neon-deep/30 rounded-2xl p-4 sm:p-5 space-y-3" aria-label="Alertas">
-      <h2 className="flex items-center gap-2 text-sm font-bold text-brand-graphite">
-        <AlertTriangle className="w-4 h-4" />
+    <section className="bg-gold-muted border-2 border-gold rounded-2xl p-4 sm:p-5 space-y-3 shadow-sm" aria-label="Alertas">
+      <h2 className="flex items-center gap-2 text-sm font-bold text-gold-deep">
+        <AlertTriangle className="w-4 h-4 text-gold-deep" />
         Alertas ({total})
       </h2>
       <ul className="space-y-2 text-sm">
