@@ -26,6 +26,7 @@ import { toast } from '@/components/feedback';
 import { useAuth } from '@/services/auth';
 import { canManageRecords } from '@/services/permissions';
 import { ActionBtn, Field, FormError, Modal, ModalActions, errorMessage, inputCls } from '@/components/crud';
+import { CommissionReceiptModal } from '@/components/financial/CommissionReceiptModal';
 import {
   GROUP_LABELS,
   PAYMENT_OPTIONS,
@@ -550,11 +551,22 @@ function OrdersTab({ report, isManager, onChanged }: { report: FinancialReport; 
 // ==========================================
 
 function MechanicsTab({ report, staff, meta, onChanged }: { report: FinancialReport; staff: StaffOption[]; meta: FinancialMeta | null; onChanged: () => void }) {
-  const [paying, setPaying] = useState<{ id: string; amount: number; name: string } | null>(null);
+  const [paying, setPaying] = useState<{ id: string; amount: number; name: string; description?: string } | null>(null);
+  const [receipt, setReceipt] = useState<{ mechanicId?: string } | null>(null);
 
-  if (report.mechanics.length === 0) return <Box>Nenhuma produção ou pagamento de comissão no período.</Box>;
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => setReceipt({})}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-neon-primary hover:bg-neon-soft text-brand-ink font-bold text-sm rounded-lg"
+        >
+          <FileText className="w-4 h-4" aria-hidden />
+          Recibo de comissão
+        </button>
+      </div>
+      {report.mechanics.length === 0 && <Box>Nenhuma produção ou pagamento de comissão no período.</Box>}
       <p className="text-xs text-brand-steel">
         Comissão sobre a mão de obra líquida de descontos, com a % de cada mecânico na data do faturamento (ajuste a % em Equipe → Editar).
         &quot;Pago no período&quot; soma as despesas da categoria &quot;Pagamento de comissão&quot;.
@@ -569,6 +581,16 @@ function MechanicsTab({ report, staff, meta, onChanged }: { report: FinancialRep
               <span className="text-brand-graphite">Pago no período <b className="text-brand-ink block">{brl(m.paid)}</b></span>
               <span className="text-brand-graphite">Saldo a pagar <b className={`block ${m.balance > 0 ? 'text-brand-graphite' : m.balance < 0 ? 'text-rose-700' : 'text-emerald-700'}`}>{brl(m.balance)}</b></span>
             </div>
+            {m.id && (
+              <button
+                type="button"
+                onClick={() => setReceipt({ mechanicId: m.id! })}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border border-line text-brand-graphite hover:bg-surface-muted self-start"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                Recibo
+              </button>
+            )}
             {m.id && m.balance > 0 && (
               <button
                 onClick={() => setPaying({ id: m.id!, amount: m.balance, name: m.name })}
@@ -606,10 +628,26 @@ function MechanicsTab({ report, staff, meta, onChanged }: { report: FinancialRep
         <ExpenseModal
           staff={staff}
           meta={meta}
-          initial={{ category: 'COMISSAO_MECANICO', beneficiaryId: paying.id, amount: paying.amount, description: `Pagamento de comissão - ${paying.name}` }}
+          initial={{
+            category: 'COMISSAO_MECANICO',
+            beneficiaryId: paying.id,
+            amount: paying.amount,
+            description: paying.description ?? `Pagamento de comissão - ${paying.name}`,
+          }}
           onClose={(changed) => {
             setPaying(null);
             if (changed) onChanged();
+          }}
+        />
+      )}
+      {receipt && !paying && (
+        <CommissionReceiptModal
+          staff={staff}
+          defaultMechanicId={receipt.mechanicId}
+          onClose={() => setReceipt(null)}
+          onRegisterPayment={(p) => {
+            setReceipt(null);
+            setPaying(p);
           }}
         />
       )}

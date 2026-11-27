@@ -1,5 +1,5 @@
 import type { jsPDF } from 'jspdf';
-import { GROUP_LABELS, brDate, brl, type FinancialReport, type OrderClosing } from '@/services/financial';
+import { GROUP_LABELS, brDate, brl, type FinancialReport, type OrderClosing, type CommissionStatement } from '@/services/financial';
 import { download } from './export-excel';
 
 /**
@@ -368,4 +368,96 @@ export async function exportOrderClosingPdf(c: OrderClosing) {
 
   footer(doc, `Controle Interno de Oficina — ${c.vehicle} (Placa: ${c.plate})`);
   download(doc.output('blob'), `controle-de-servico_OS-${c.code}.pdf`);
+}
+
+// ==========================================
+// RECIBO DE PAGAMENTO DE COMISSÃO (mecânico)
+// ==========================================
+
+/**
+ * Recibo A4 pronto para imprimir: abre o PDF numa nova aba com o diálogo de impressão
+ * (autoPrint). Se o navegador bloquear a aba, o arquivo é baixado.
+ */
+export async function exportCommissionReceiptPdf(s: CommissionStatement, scopeText: string) {
+  const { jsPDF, autoTable } = await load();
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const W = doc.internal.pageSize.getWidth();
+  const company = s.companyName || 'JR Garage Center';
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(17);
+  doc.setTextColor(...NAVY);
+  doc.text('RECIBO DE PAGAMENTO DE COMISSÃO', 14, 18);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(51, 65, 85);
+  doc.text(`${company} · Parauapebas/PA`, 14, 24.5);
+  doc.setDrawColor(...NAVY);
+  doc.setLineWidth(0.7);
+  doc.line(14, 28, W - 14, 28);
+  doc.setLineWidth(0.2);
+
+  doc.setFontSize(10);
+  doc.setTextColor(30, 30, 30);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Mecânico:', 14, 36);
+  doc.setFont('helvetica', 'normal');
+  doc.text(s.mechanic.name, 34, 36);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Referência:', 14, 42);
+  doc.setFont('helvetica', 'normal');
+  doc.text(scopeText, 36, 42);
+
+  autoTable(doc, {
+    ...tableTheme,
+    startY: 48,
+    head: [['O.S', 'Faturada em', 'Cliente', 'Veículo', 'Mão de obra', '%', 'Comissão']],
+    body: s.orders.map((o) => [
+      `#${o.code}`,
+      brDate(o.date),
+      o.client,
+      o.vehicle,
+      brl(o.labor),
+      `${o.commissionRate.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%`,
+      brl(o.commission),
+    ]),
+    foot: [['', '', '', 'Total', brl(s.laborTotal), '', brl(s.total)]],
+    columnStyles: { 4: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'right' } },
+  });
+
+  let y = ensureSpace(doc, lastY(doc) + 10, 90);
+  doc.setFontSize(10);
+  doc.setTextColor(30, 30, 30);
+  const statement =
+    `Declaro que recebi de ${company} a quantia de ${brl(s.total)}, referente à comissão sobre a mão de obra ` +
+    `das ordens de serviço relacionadas acima, dando plena quitação do valor recebido.`;
+  const lines = doc.splitTextToSize(statement, W - 28) as string[];
+  doc.text(lines, 14, y);
+  y += lines.length * 5 + 8;
+
+  const today = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Belem', day: '2-digit', month: 'long', year: 'numeric' }).format(new Date());
+  doc.text(`Parauapebas/PA, ${today}.`, 14, y);
+  y += 28;
+
+  // Assinaturas: mecânico e financeiro da oficina
+  const colW = (W - 28 - 12) / 2;
+  const sign = (x: number, title: string, name: string) => {
+    doc.setDrawColor(30, 30, 30);
+    doc.line(x, y, x + colW, y);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text(name, x + colW / 2, y + 5, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...MUTED);
+    doc.text(title, x + colW / 2, y + 10, { align: 'center' });
+    doc.setTextColor(30, 30, 30);
+  };
+  sign(14, 'Mecânico (recebedor)', s.mechanic.name);
+  sign(14 + colW + 12, `Financeiro - ${company}`, 'Responsável financeiro');
+
+  footer(doc, `Recibo de comissão - ${s.mechanic.name} - ${scopeText}`);
+  doc.autoPrint();
+  const url = doc.output('bloburl') as unknown as string;
+  const win = window.open(url, '_blank');
+  if (!win) download(doc.output('blob'), `recibo-comissao_${s.mechanic.name.replace(/\s+/g, '-')}.pdf`);
 }

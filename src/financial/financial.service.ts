@@ -346,6 +346,144 @@ export class FinancialService {
   }
 
   // ==========================================
+  // COMISSÕES: saldo por mecânico e recibo
+  // ==========================================
+
+  /**
+   * Saldo de comissão de todo o histórico, por mecânico: comissão apurada nas OS que contam como
+   * receita (computeOrder, arredondada por OS) − pagamentos de comissão já feitos (despesas pagas).
+   */
+  async mechanicBalances(mechanicId?: string) {
+    const [orders, payments] = await Promise.all([
+      this.prisma.workOrder.findMany({
+        where: { AND: [REVENUE_ORDERS], operatorId: mechanicId ?? { not: null } },
+        select: {
+          operatorId: true,
+          totalServices: true,
+          totalProducts: true,
+          discount: true,
+          issRate: true,
+          commissionRate: true,
+          items: { select: { itemType: true, quantity: true, unitCost: true } },
+        },
+      }),
+      this.prisma.cashTransaction.groupBy({
+        by: ['beneficiaryId'],
+        where: {
+          type: TransactionType.EXPENSE,
+          status: TransactionStatus.PAID,
+          category: COMMISSION_PAYMENT,
+          beneficiaryId: mechanicId ?? { not: null },
+        },
+        _sum: { amount: true },
+      }),
+    ]);
+
+    const map = new Map<string, { commission: Dec; paid: Dec }>();
+    const entry = (id: string) => {
+      if (!map.has(id)) map.set(id, { commission: ZERO, paid: ZERO });
+      return map.get(id)!;
+    };
+    for (const o of orders) {
+      const f = computeOrder({ ...o, hasMechanic: true });
+      entry(o.operatorId!).commission = entry(o.operatorId!).commission.add(f.commission);
+    }
+    for (const p of payments) {
+      if (p.beneficiaryId) entry(p.beneficiaryId).paid = entry(p.beneficiaryId).paid.add(D(p._sum.amount));
+    }
+    const ids = [...map.keys()];
+    const users = ids.length
+      ? await this.prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } })
+      : [];
+    const names = new Map(users.map((u) => [u.id, u.name]));
+    return ids.map((id) => {
+      const m = map.get(id)!;
+      return {
+        mechanicId: id,
+        name: names.get(id) ?? 'Mecânico',
+        commission: money(m.commission),
+        paid: money(m.paid),
+        balance: money(m.commission.sub(m.paid)),
+      };
+    });
+  }
+
+  /**
+   * Extrato para o recibo de comissão: OS do mecânico faturadas no período (ou só as escolhidas),
+   * com a comissão de cada uma calculada por computeOrder e o total somado em Decimal.
+   */
+  async commissionStatement(filters: { mechanicId?: string; from?: string; to?: string; orderIds?: string }) {
+    if (!filters.mechanicId) throw new BadRequestException('Informe o mecânico.');
+    const mechanic = await this.prisma.user.findUnique({
+      where: { id: filters.mechanicId },
+      select: { id: true, name: true, role: true },
+    });
+    if (!mechanic || mechanic.role === UserRole.CLIENT) throw new NotFoundException('Mecânico não encontrado.');
+
+    const ids = (filters.orderIds ?? '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const from = parseDate(filters.from, 'from');
+    const to = parseDate(filters.to, 'to');
+    if (!ids.length && (!from || !to)) throw new BadRequestException('Informe o período ou as OS do recibo.');
+    if (from && to && from > to) throw new BadRequestException('A data inicial deve ser anterior à final.');
+
+    const orders = await this.prisma.workOrder.findMany({
+      where: {
+        AND: [REVENUE_ORDERS],
+        operatorId: mechanic.id,
+        ...(ids.length ? { id: { in: ids } } : { billedAt: { gte: from, lte: to } }),
+      },
+      orderBy: { billedAt: 'asc' },
+      select: {
+        id: true,
+        code: true,
+        billedAt: true,
+        totalServices: true,
+        totalProducts: true,
+        discount: true,
+        issRate: true,
+        commissionRate: true,
+        client: { select: { name: true } },
+        vehicle: { select: { licensePlate: true, brand: true, model: true } },
+        items: { select: { itemType: true, quantity: true, unitCost: true } },
+      },
+    });
+
+    let total = ZERO;
+    let laborTotal = ZERO;
+    const rows = orders.map((o) => {
+      const f = computeOrder({ ...o, hasMechanic: true });
+      total = total.add(f.commission);
+      laborTotal = laborTotal.add(f.labor);
+      return {
+        id: o.id,
+        code: o.code,
+        billedAt: o.billedAt?.toISOString() ?? null,
+        date: o.billedAt ? localDay(o.billedAt) : null,
+        client: o.client.name,
+        vehicle: `${o.vehicle.brand} ${o.vehicle.model} · ${o.vehicle.licensePlate}`,
+        labor: money(f.labor),
+        commissionRate: Number(f.commissionRate),
+        commission: money(f.commission),
+      };
+    });
+    const [balance] = await this.mechanicBalances(mechanic.id);
+    const settings = await this.getSettings();
+
+    return {
+      mechanic: { id: mechanic.id, name: mechanic.name },
+      period: from && to && !ids.length ? { from: from.toISOString(), to: to.toISOString() } : null,
+      companyName: settings.companyName,
+      orders: rows,
+      laborTotal: money(laborTotal),
+      total: money(total),
+      balance: balance ?? { mechanicId: mechanic.id, name: mechanic.name, commission: 0, paid: 0, balance: 0 },
+    };
+  }
+
+  // ==========================================
   // FECHAMENTO DE UMA OS (documento "Controle de Serviço")
   // ==========================================
 

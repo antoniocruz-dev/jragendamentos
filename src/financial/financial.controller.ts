@@ -31,6 +31,17 @@ export class FinancialController {
     return this.financial.orderClosing(id);
   }
 
+  /** Extrato do recibo de comissão: ?mechanicId&from&to ou ?mechanicId&orderIds=a,b,c */
+  @Get('commission-statement')
+  commissionStatement(
+    @Query('mechanicId') mechanicId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('orderIds') orderIds?: string,
+  ) {
+    return this.financial.commissionStatement({ mechanicId, from, to, orderIds });
+  }
+
   /** Pendências de estorno: OS faturadas que foram canceladas (?status=PENDING|REFUNDED|WAIVED|ALL). */
   @Get('refunds')
   refunds(@Query('status') status?: string) {

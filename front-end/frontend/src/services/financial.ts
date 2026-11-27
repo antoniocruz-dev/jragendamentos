@@ -168,3 +168,24 @@ export const brDate = (iso: string | null) => (iso ? iso.slice(0, 10).split('-')
 
 /** Soma em centavos (evita erro de ponto flutuante ao totalizar no navegador). */
 export const sumMoney = (values: number[]) => Math.round(values.reduce((a, v) => a + Math.round(v * 100), 0)) / 100;
+
+/** Extrato do recibo de comissão (GET /financial/commission-statement). */
+export interface CommissionStatement {
+  mechanic: { id: string; name: string };
+  period: { from: string; to: string } | null;
+  companyName: string | null;
+  orders: {
+    id: string;
+    code: number;
+    billedAt: string | null;
+    date: string | null;
+    client: string;
+    vehicle: string;
+    labor: number;
+    commissionRate: number;
+    commission: number;
+  }[];
+  laborTotal: number;
+  total: number;
+  balance: { mechanicId: string; name: string; commission: number; paid: number; balance: number };
+}
