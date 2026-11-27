@@ -53,7 +53,7 @@ scripts/                 seed-demo.mjs
 
 # Workflow Rules
 
-- Run backend and frontend typecheck plus frontend lint after code changes, before calling a task done (a pre-commit hook enforces it).
+- Run backend and frontend typecheck plus frontend lint after code changes, before calling a task done (a Claude Code hook blocks AI commits that fail them; manual commits are not checked, see `.claude/hooks/README.md`).
 - All money math uses `Prisma.Decimal` through `src/financial/financial-calc.ts`; never `number` arithmetic or floats.
 - Never change business rules (see `agent_docs/business-rules.md`) without asking first.
 - Database changes always go through a Prisma migration; never edit production data by hand.
