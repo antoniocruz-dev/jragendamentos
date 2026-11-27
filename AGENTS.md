@@ -37,7 +37,7 @@ cd front-end/frontend && npm run build
 
 # Database
 npx prisma migrate dev          # create/apply a migration locally (schema: src/prisma/schema.prisma)
-npm run prisma:migrate:deploy   # apply in production
+npm run prisma:migrate:deploy   # apply pending migrations (production runs it automatically in the Vercel build, see scripts/migrate-if-production.mjs)
 ```
 
 # File Structure

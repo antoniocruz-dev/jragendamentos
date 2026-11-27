@@ -32,7 +32,7 @@
   },
   "scripts": {
     "postinstall": "prisma generate",
-    "build": "prisma generate && nest build",
+    "build": "prisma generate && node scripts/migrate-if-production.mjs && nest build",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "start": "node dist/main.js",
     "start:dev": "tsc && node --watch dist/main.js"
